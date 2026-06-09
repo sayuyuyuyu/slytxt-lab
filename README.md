@@ -9,6 +9,7 @@ pnpm install
 pnpm dev
 pnpm build
 pnpm preview
+pnpm run verify
 ```
 
 Pagefind の検索インデックスは `pnpm build` 時に `dist/pagefind` へ生成されます。検索の動作確認は `pnpm build` 後に `pnpm preview` で行ってください。
@@ -27,6 +28,10 @@ Cloudflare Pages では以下を指定します。
 Build command: pnpm build
 Output directory: dist
 ```
+
+## Development Flow
+
+`main` への直接 push は禁止です。変更は作業ブランチから Pull Request を作成し、CI が通ってから merge します。
 
 ## Content
 
