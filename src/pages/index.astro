@@ -1,0 +1,111 @@
+---
+import ArticleCard from "@/components/ArticleCard.astro";
+import EmptyState from "@/components/EmptyState.astro";
+import ProjectCard from "@/components/ProjectCard.astro";
+import { getArticles, getProjects } from "@/lib/content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const [techPosts, lifePosts, projects] = await Promise.all([
+  getArticles("tech"),
+  getArticles("life"),
+  getProjects()
+]);
+
+const activeProjects = projects.filter((project) =>
+  ["planning", "active", "maintenance"].includes(project.data.status)
+);
+---
+
+<BaseLayout>
+  <section class="hero">
+    <div class="hero__inner">
+      <div class="hero__content">
+        <p class="eyebrow">slytxt.dev</p>
+        <h1>しらゆラボ</h1>
+        <p>
+          しらゆの個人研究所。AI、MCP、クラウド、個人開発の試行錯誤と、旅行・ゲーム・音楽・ガジェットの記録を置いていきます。
+        </p>
+        <div class="hero__actions">
+          <a class="button button--primary" href="/projects/">Projects</a>
+          <a class="button button--ghost" href="/about/">About</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Tech Notes</p>
+          <h2>最近のTech記事</h2>
+        </div>
+        <a class="link-button" href="/tech/">すべて見る</a>
+      </div>
+      {
+        techPosts.length > 0 ? (
+          <div class="entry-grid">
+            {techPosts.slice(0, 5).map((entry) => <ArticleCard entry={entry} />)}
+          </div>
+        ) : (
+          <EmptyState title="Tech記事はまだありません" description="src/content/tech に MDX を追加すると表示されます。" />
+        )
+      }
+    </div>
+  </section>
+
+  <section class="section section--muted">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Life Log</p>
+          <h2>最近のLife記事</h2>
+        </div>
+        <a class="link-button" href="/life/">すべて見る</a>
+      </div>
+      {
+        lifePosts.length > 0 ? (
+          <div class="entry-grid">
+            {lifePosts.slice(0, 5).map((entry) => <ArticleCard entry={entry} />)}
+          </div>
+        ) : (
+          <EmptyState title="Life記事はまだありません" description="src/content/life に MDX を追加すると表示されます。" />
+        )
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Projects</p>
+          <h2>進行中の制作物</h2>
+        </div>
+        <a class="link-button" href="/projects/">すべて見る</a>
+      </div>
+      {
+        activeProjects.length > 0 ? (
+          <div class="project-grid">
+            {activeProjects.slice(0, 6).map((entry) => <ProjectCard entry={entry} />)}
+          </div>
+        ) : (
+          <EmptyState title="進行中の制作物はまだありません" description="src/content/projects に MDX を追加すると表示されます。" />
+        )
+      }
+    </div>
+  </section>
+
+  <section class="section section--muted">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">About</p>
+          <h2>この研究所について</h2>
+          <p>技術活動・趣味活動・個人開発を、長期的に参照できる形で整理しています。</p>
+        </div>
+        <a class="button" href="/about/">プロフィールを見る</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

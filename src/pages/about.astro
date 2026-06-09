@@ -1,0 +1,31 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="About - しらゆラボ" description="しらゆラボのプロフィールとサイト方針。">
+  <header class="page-header">
+    <div class="container">
+      <p class="eyebrow">About</p>
+      <h1 class="page-title">個人研究所としてのしらゆラボ</h1>
+      <p class="page-lead">
+        技術の試作、個人開発、趣味のログを一か所に集め、後から読み返せる知識ベースとして育てていきます。
+      </p>
+    </div>
+  </header>
+  <section class="section">
+    <div class="container">
+      <article class="article-main article-body">
+        <h2>扱うテーマ</h2>
+        <p>
+          Tech では AI、Claude Code、MCP、AWS、Azure、Power Automate、設計、プログラミングを扱います。
+          Life では旅行、聖地巡礼、ゲーム、音楽、ガジェット、レビューなどを記録します。
+        </p>
+        <h2>運用方針</h2>
+        <p>
+          カテゴリは Tech / Life / Projects の 3 つに固定し、細かい分類はタグで表現します。
+          記事は MDX で管理し、後からコメント、埋め込み、外部サービス連携を足しやすい構造にしています。
+        </p>
+      </article>
+    </div>
+  </section>
+</BaseLayout>

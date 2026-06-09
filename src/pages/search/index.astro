@@ -1,0 +1,24 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Search - しらゆラボ" description="Tech、Life、Projects を横断検索します。">
+  <header class="page-header">
+    <div class="container">
+      <p class="eyebrow">Search</p>
+      <h1 class="page-title">サイト内検索</h1>
+      <p class="page-lead">Tech、Life、Projects の本文を Pagefind で全文検索します。</p>
+    </div>
+  </header>
+  <section class="listing">
+    <div class="container">
+      <div class="search-box">
+        <pagefind-input placeholder="キーワードを入力"></pagefind-input>
+        <pagefind-summary></pagefind-summary>
+        <pagefind-results></pagefind-results>
+      </div>
+    </div>
+  </section>
+  <link href="/pagefind/pagefind-component-ui.css" rel="stylesheet" />
+  <script is:inline src="/pagefind/pagefind-component-ui.js" type="module"></script>
+</BaseLayout>

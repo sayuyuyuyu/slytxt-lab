@@ -1,0 +1,33 @@
+---
+import ArticleCard from "@/components/ArticleCard.astro";
+import EmptyState from "@/components/EmptyState.astro";
+import Pagination from "@/components/Pagination.astro";
+import { getArticles, paginateEntries } from "@/lib/content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const page = paginateEntries(await getArticles("life"), "/life");
+---
+
+<BaseLayout title="Life - しらゆラボ" description="旅行、聖地巡礼、ゲーム、音楽、ガジェット、日常、レビューの記事一覧。">
+  <header class="page-header">
+    <div class="container">
+      <p class="eyebrow">Life</p>
+      <h1 class="page-title">Life記事</h1>
+      <p class="page-lead">旅行、聖地巡礼、ゲーム、音楽、ガジェット、日常、レビューの記録。</p>
+    </div>
+  </header>
+  <section class="listing">
+    <div class="container">
+      {
+        page.entries.length > 0 ? (
+          <div class="listing-list">
+            {page.entries.map((entry) => <ArticleCard entry={entry} />)}
+          </div>
+        ) : (
+          <EmptyState title="Life記事はまだありません" description="src/content/life に MDX を追加すると自動反映されます。" />
+        )
+      }
+      <Pagination basePath="/life" {...page} />
+    </div>
+  </section>
+</BaseLayout>

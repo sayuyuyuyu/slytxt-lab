@@ -1,0 +1,33 @@
+---
+import ArticleCard from "@/components/ArticleCard.astro";
+import EmptyState from "@/components/EmptyState.astro";
+import Pagination from "@/components/Pagination.astro";
+import { getArticles, paginateEntries } from "@/lib/content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const page = paginateEntries(await getArticles("tech"), "/tech");
+---
+
+<BaseLayout title="Tech - しらゆラボ" description="AI、MCP、クラウド、個人開発、設計、プログラミングの記事一覧。">
+  <header class="page-header">
+    <div class="container">
+      <p class="eyebrow">Tech</p>
+      <h1 class="page-title">Tech記事</h1>
+      <p class="page-lead">AI、Claude Code、MCP、AWS、Azure、Power Automate、個人開発の記録。</p>
+    </div>
+  </header>
+  <section class="listing">
+    <div class="container">
+      {
+        page.entries.length > 0 ? (
+          <div class="listing-list">
+            {page.entries.map((entry) => <ArticleCard entry={entry} />)}
+          </div>
+        ) : (
+          <EmptyState title="Tech記事はまだありません" description="src/content/tech に MDX を追加すると自動反映されます。" />
+        )
+      }
+      <Pagination basePath="/tech" {...page} />
+    </div>
+  </section>
+</BaseLayout>

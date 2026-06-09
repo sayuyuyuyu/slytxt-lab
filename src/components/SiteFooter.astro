@@ -1,0 +1,14 @@
+---
+import { getYear } from "@/lib/format";
+import { site } from "@/lib/site";
+---
+
+<footer class="site-footer" data-pagefind-ignore>
+  <div class="container site-footer__inner">
+    <span>&copy; {getYear(new Date())} {site.name}</span>
+    <nav class="footer-links" aria-label="外部リンク">
+      <a href={site.xUrl} rel="me noreferrer">X</a>
+      <a href={site.noteUrl} rel="me noreferrer">note</a>
+    </nav>
+  </div>
+</footer>

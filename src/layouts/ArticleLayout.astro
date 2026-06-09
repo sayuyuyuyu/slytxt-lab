@@ -1,0 +1,89 @@
+---
+import AdultGate from "@/components/AdultGate.astro";
+import Breadcrumbs from "@/components/Breadcrumbs.astro";
+import TableOfContents from "@/components/TableOfContents.astro";
+import TagList from "@/components/TagList.astro";
+import { getEntryPath, getEntrySlug, type ArticleEntry } from "@/lib/content";
+import { formatDate } from "@/lib/format";
+import { categoryLabels, site } from "@/lib/site";
+import BaseLayout from "./BaseLayout.astro";
+
+type Heading = {
+  depth: number;
+  slug: string;
+  text: string;
+};
+
+type Props = {
+  entry: ArticleEntry;
+  headings: Heading[];
+  previous?: ArticleEntry;
+  next?: ArticleEntry;
+};
+
+const { entry, headings, previous, next } = Astro.props;
+const date = entry.data.updated ?? entry.data.published;
+const title = `${entry.data.title} - ${categoryLabels[entry.collection]} - ${site.name}`;
+const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
+---
+
+<BaseLayout
+  title={title}
+  description={entry.data.description}
+  image={ogImage}
+  type="article"
+  published={entry.data.published}
+  updated={entry.data.updated}
+>
+  <header class="article-hero">
+    <div class="container">
+      <Breadcrumbs
+        items={[
+          { label: categoryLabels[entry.collection], href: `/${entry.collection}/` },
+          { label: entry.data.title }
+        ]}
+      />
+      <p class="eyebrow">{categoryLabels[entry.collection]}</p>
+      <h1 class="page-title">{entry.data.title}</h1>
+      <p class="page-lead">{entry.data.description}</p>
+      <div class="article-meta">
+        <time datetime={date.toISOString()}>{formatDate(date)}</time>
+        {entry.data.adult && <span aria-label="成人向け作品レビューを含む"> / 🔞</span>}
+      </div>
+      <TagList tags={entry.data.tags} />
+    </div>
+  </header>
+
+  <div class="article-shell">
+    <article class="article-main" data-pagefind-body data-pagefind-filter={`category:${entry.collection}`}>
+      {entry.data.adult && <AdultGate storageKey="adult-content-consent" />}
+      <div class="article-body" data-adult-content data-locked={entry.data.adult ? "true" : "false"}>
+        <slot />
+      </div>
+
+      <nav class="article-nav" aria-label="前後の記事" data-pagefind-ignore>
+        {
+          previous ? (
+            <a href={getEntryPath(previous)}>
+              <span>前の記事</span>
+              {previous.data.title}
+            </a>
+          ) : (
+            <span></span>
+          )
+        }
+        {
+          next ? (
+            <a href={getEntryPath(next)}>
+              <span>次の記事</span>
+              {next.data.title}
+            </a>
+          ) : (
+            <span></span>
+          )
+        }
+      </nav>
+    </article>
+    <TableOfContents headings={headings} />
+  </div>
+</BaseLayout>

@@ -1,0 +1,29 @@
+<button class="theme-toggle" type="button" aria-label="テーマを切り替える" data-theme-toggle>
+  <span class="theme-toggle__icon" aria-hidden="true" data-theme-icon>◐</span>
+</button>
+
+<script is:inline>
+  (() => {
+    const button = document.querySelector("[data-theme-toggle]");
+    const icon = document.querySelector("[data-theme-icon]");
+
+    if (!button || !icon) return;
+
+    const setIcon = () => {
+      icon.textContent = document.documentElement.classList.contains("dark") ? "☾" : "☼";
+    };
+
+    button.addEventListener("click", () => {
+      const nextTheme = document.documentElement.classList.contains("dark") ? "light" : "dark";
+      document.documentElement.classList.toggle("dark", nextTheme === "dark");
+      try {
+        localStorage.setItem("theme", nextTheme);
+      } catch {
+        // Ignore storage errors so the toggle still works for the current page.
+      }
+      setIcon();
+    });
+
+    setIcon();
+  })();
+</script>

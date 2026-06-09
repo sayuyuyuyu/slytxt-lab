@@ -1,0 +1,29 @@
+---
+import { getEntryPath, type ArticleEntry } from "@/lib/content";
+import { formatDate } from "@/lib/format";
+import { categoryLabels } from "@/lib/site";
+import TagList from "./TagList.astro";
+
+type Props = {
+  entry: ArticleEntry;
+};
+
+const { entry } = Astro.props;
+const date = entry.data.updated ?? entry.data.published;
+---
+
+<article class="entry-card">
+  <div class="entry-card__meta">
+    <span>{categoryLabels[entry.collection]}</span>
+    <span aria-hidden="true"> / </span>
+    <time datetime={date.toISOString()}>{formatDate(date)}</time>
+    {entry.data.adult && <span aria-label="成人向け作品レビューを含む"> / 🔞</span>}
+  </div>
+  <h3>
+    <a href={getEntryPath(entry)}>{entry.data.title}</a>
+  </h3>
+  <p>{entry.data.description}</p>
+  <div class="entry-card__footer">
+    <TagList tags={entry.data.tags} />
+  </div>
+</article>

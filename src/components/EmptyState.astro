@@ -1,0 +1,13 @@
+---
+type Props = {
+  title: string;
+  description?: string;
+};
+
+const { title, description } = Astro.props;
+---
+
+<div class="empty-state">
+  <p class="empty-state__title">{title}</p>
+  {description && <p>{description}</p>}
+</div>

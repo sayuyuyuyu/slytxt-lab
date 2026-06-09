@@ -1,0 +1,57 @@
+---
+import ArticleCard from "@/components/ArticleCard.astro";
+import ProjectCard from "@/components/ProjectCard.astro";
+import { collectTags } from "@/lib/tags";
+import { getAllEntries, getEntriesByTag, type ArticleEntry, type ProjectEntry } from "@/lib/content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+  const entries = await getAllEntries();
+  const tags = collectTags(entries);
+
+  return Array.from(tags.entries()).map(([slug, label]) => ({
+    params: { tag: slug },
+    props: { label }
+  }));
+}
+
+const { tag } = Astro.params;
+const { label } = Astro.props;
+const entries = getEntriesByTag(await getAllEntries(), tag ?? "");
+const articles = entries.filter((entry) => entry.collection !== "projects") as ArticleEntry[];
+const projects = entries.filter((entry) => entry.collection === "projects") as ProjectEntry[];
+---
+
+<BaseLayout title={`#${label} - Tags - しらゆラボ`} description={`#${label} が付いた記事とプロジェクト。`}>
+  <header class="page-header">
+    <div class="container">
+      <p class="eyebrow">Tag</p>
+      <h1 class="page-title">#{label}</h1>
+      <p class="page-lead">{entries.length}件のコンテンツ</p>
+    </div>
+  </header>
+  <section class="listing">
+    <div class="container">
+      {articles.length > 0 && (
+        <>
+          <div class="section-head">
+            <h2>Articles</h2>
+          </div>
+          <div class="listing-list">
+            {articles.map((entry) => <ArticleCard entry={entry} />)}
+          </div>
+        </>
+      )}
+      {projects.length > 0 && (
+        <>
+          <div class="section-head" style="margin-top: 48px;">
+            <h2>Projects</h2>
+          </div>
+          <div class="project-grid">
+            {projects.map((entry) => <ProjectCard entry={entry} />)}
+          </div>
+        </>
+      )}
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,35 @@
+---
+import { site } from "@/lib/site";
+import ThemeToggle from "./ThemeToggle.astro";
+
+const currentPath = Astro.url.pathname;
+
+const navItems = [
+  { href: "/tech/", label: "Tech" },
+  { href: "/life/", label: "Life" },
+  { href: "/projects/", label: "Projects" },
+  { href: "/search/", label: "Search" },
+  { href: "/about/", label: "About" }
+];
+
+function isCurrent(href: string) {
+  return currentPath === href || currentPath.startsWith(href);
+}
+---
+
+<header class="site-header" data-pagefind-ignore>
+  <div class="site-header__inner">
+    <a class="brand" href="/" aria-label={`${site.name} ホーム`}>
+      <span class="brand__mark" aria-hidden="true">し</span>
+      <span>{site.name}</span>
+    </a>
+    <nav class="site-nav" aria-label="メインナビゲーション">
+      {navItems.map((item) => (
+        <a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>
+          {item.label}
+        </a>
+      ))}
+      <ThemeToggle />
+    </nav>
+  </div>
+</header>

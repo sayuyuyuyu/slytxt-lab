@@ -1,0 +1,29 @@
+---
+import { getEntryPath, type ProjectEntry } from "@/lib/content";
+import { formatDate } from "@/lib/format";
+import { projectStatusLabels } from "@/lib/site";
+import TagList from "./TagList.astro";
+
+type Props = {
+  entry: ProjectEntry;
+};
+
+const { entry } = Astro.props;
+const date = entry.data.updated ?? entry.data.started;
+---
+
+<article class="project-card">
+  <div class="project-card__meta">
+    <span class="status">{projectStatusLabels[entry.data.status]}</span>
+    <span aria-hidden="true"> / </span>
+    <time datetime={date.toISOString()}>{formatDate(date)}</time>
+  </div>
+  <h3>
+    <a href={getEntryPath(entry)}>{entry.data.title}</a>
+  </h3>
+  <p>{entry.data.description}</p>
+  <TagList tags={entry.data.tags} />
+  <div class="project-card__footer">
+    <a class="link-button" href={getEntryPath(entry)}>詳細</a>
+  </div>
+</article>

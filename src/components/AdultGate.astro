@@ -1,0 +1,57 @@
+---
+type Props = {
+  storageKey?: string;
+};
+
+const { storageKey = "adult-content-consent" } = Astro.props;
+---
+
+<div class="adult-gate" data-adult-gate data-adult-key={storageKey} data-locked="true">
+  <p>
+    <strong>成人向け作品に関するレビューを含みます</strong>
+    閲覧を続ける場合は同意してください。同意はこのブラウザに保存されます。
+  </p>
+  <button class="button button--primary" type="button" data-adult-accept>同意して読む</button>
+</div>
+<noscript>
+  <p class="adult-gate" style="display: block;">
+    <strong>成人向け作品に関するレビューを含みます</strong>
+  </p>
+</noscript>
+
+<script is:inline>
+  (() => {
+    const gates = document.querySelectorAll("[data-adult-gate]");
+    const lockedContents = document.querySelectorAll("[data-adult-content]");
+
+    gates.forEach((gate) => {
+      const key = gate.getAttribute("data-adult-key") || "adult-content-consent";
+      const accepted = (() => {
+        try {
+          return localStorage.getItem(key) === "true";
+        } catch {
+          return false;
+        }
+      })();
+
+      const unlock = () => {
+        gate.setAttribute("data-locked", "false");
+        lockedContents.forEach((content) => content.setAttribute("data-locked", "false"));
+      };
+
+      if (accepted) {
+        unlock();
+        return;
+      }
+
+      gate.querySelector("[data-adult-accept]")?.addEventListener("click", () => {
+        try {
+          localStorage.setItem(key, "true");
+        } catch {
+          // Ignore storage errors; the current page can still be unlocked.
+        }
+        unlock();
+      });
+    });
+  })();
+</script>

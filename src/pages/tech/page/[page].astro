@@ -1,0 +1,46 @@
+---
+import ArticleCard from "@/components/ArticleCard.astro";
+import EmptyState from "@/components/EmptyState.astro";
+import Pagination from "@/components/Pagination.astro";
+import { getArticles, paginateEntries } from "@/lib/content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+  const entries = await getArticles("tech");
+  const totalPages = Math.ceil(entries.length / 10);
+
+  return Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => {
+    const pageNumber = index + 2;
+    return {
+      params: { page: String(pageNumber) },
+      props: { pageNumber }
+    };
+  });
+}
+
+const { pageNumber } = Astro.props;
+const page = paginateEntries(await getArticles("tech"), "/tech", pageNumber);
+---
+
+<BaseLayout title={`Tech ${pageNumber}ページ目 - しらゆラボ`} description="Tech記事のアーカイブ。">
+  <header class="page-header">
+    <div class="container">
+      <p class="eyebrow">Tech</p>
+      <h1 class="page-title">Tech記事</h1>
+    </div>
+  </header>
+  <section class="listing">
+    <div class="container">
+      {
+        page.entries.length > 0 ? (
+          <div class="listing-list">
+            {page.entries.map((entry) => <ArticleCard entry={entry} />)}
+          </div>
+        ) : (
+          <EmptyState title="Tech記事はまだありません" />
+        )
+      }
+      <Pagination basePath="/tech" {...page} />
+    </div>
+  </section>
+</BaseLayout>

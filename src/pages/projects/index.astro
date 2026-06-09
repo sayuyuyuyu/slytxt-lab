@@ -1,0 +1,31 @@
+---
+import EmptyState from "@/components/EmptyState.astro";
+import ProjectCard from "@/components/ProjectCard.astro";
+import { getProjects } from "@/lib/content";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const projects = await getProjects();
+---
+
+<BaseLayout title="Projects - しらゆラボ" description="個人開発・MCP Server・Agent環境など制作物の一覧。">
+  <header class="page-header">
+    <div class="container">
+      <p class="eyebrow">Projects</p>
+      <h1 class="page-title">制作物</h1>
+      <p class="page-lead">Discord秘書メイド、Hermes Agent環境、MCP Server、個人サイトなどの開発記録。</p>
+    </div>
+  </header>
+  <section class="listing">
+    <div class="container">
+      {
+        projects.length > 0 ? (
+          <div class="project-grid">
+            {projects.map((entry) => <ProjectCard entry={entry} />)}
+          </div>
+        ) : (
+          <EmptyState title="制作物はまだありません" description="src/content/projects に MDX を追加すると自動反映されます。" />
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
