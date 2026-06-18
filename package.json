@@ -6,9 +6,10 @@
   "packageManager": "pnpm@10.14.0",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && pagefind --site dist --glob \"**/*.html\"",
+    "build": "astro build --force && pagefind --site dist --glob \"**/*.html\"",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "verify": "pnpm check && pnpm build"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.0",
