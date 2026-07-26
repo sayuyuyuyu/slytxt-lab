@@ -878,7 +878,7 @@ body {
 .eyebrow {
   margin-bottom: 14px;
   color: var(--accent);
-  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -999,7 +999,6 @@ body {
 .project-card h3 a:hover { text-decoration: underline; text-underline-offset: 0.18em; }
 
 .tag { border: 0; border-radius: 0; padding: 0; background: transparent; font-size: 0.75rem; font-weight: 500; }
-.tag::before { content: "#"; }
 
 .empty-state { padding: 28px 0; }
 .page-header { padding: 88px 0 26px; }
