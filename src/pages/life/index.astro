@@ -8,12 +8,12 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 const page = paginateEntries(await getArticles("life"), "/life");
 ---
 
-<BaseLayout title="Life - しらゆラボ" description="旅行、聖地巡礼、ゲーム、音楽、ガジェット、日常、レビューの記事一覧。">
+<BaseLayout title="日々の記録 - しらゆラボ" description="旅行、ゲーム、音楽、ガジェットについての記録です。">
   <header class="page-header">
     <div class="container">
-      <p class="eyebrow">Life</p>
-      <h1 class="page-title">Life記事</h1>
-      <p class="page-lead">旅行、聖地巡礼、ゲーム、音楽、ガジェット、日常、レビューの記録。</p>
+      <p class="eyebrow">journal</p>
+      <h1 class="page-title">日々の記録</h1>
+      <p class="page-lead">旅行、ゲーム、音楽、ガジェットについて書きます。</p>
     </div>
   </header>
   <section class="listing">
@@ -24,7 +24,7 @@ const page = paginateEntries(await getArticles("life"), "/life");
             {page.entries.map((entry) => <ArticleCard entry={entry} />)}
           </div>
         ) : (
-          <EmptyState title="Life記事はまだありません" description="src/content/life に MDX を追加すると自動反映されます。" />
+          <EmptyState title="まだ記録はありません" description="出かけたことや、気に入ったものを書いていきます。" />
         )
       }
       <Pagination basePath="/life" {...page} />

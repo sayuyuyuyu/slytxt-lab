@@ -7,12 +7,12 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 const projects = await getProjects();
 ---
 
-<BaseLayout title="Projects - しらゆラボ" description="個人開発・MCP Server・Agent環境など制作物の一覧。">
+<BaseLayout title="つくったもの - しらゆラボ" description="しらゆが個人でつくっているものをまとめています。">
   <header class="page-header">
     <div class="container">
-      <p class="eyebrow">Projects</p>
-      <h1 class="page-title">制作物</h1>
-      <p class="page-lead">Discord秘書メイド、Hermes Agent環境、MCP Server、個人サイトなどの開発記録。</p>
+      <p class="eyebrow">making</p>
+      <h1 class="page-title">つくったもの</h1>
+      <p class="page-lead">個人でつくっているものを、進み具合と一緒にまとめます。</p>
     </div>
   </header>
   <section class="listing">
@@ -23,7 +23,7 @@ const projects = await getProjects();
             {projects.map((entry) => <ProjectCard entry={entry} />)}
           </div>
         ) : (
-          <EmptyState title="制作物はまだありません" description="src/content/projects に MDX を追加すると自動反映されます。" />
+          <EmptyState title="まだ公開できるものはありません" description="形になったものから、ここに置きます。" />
         )
       }
     </div>

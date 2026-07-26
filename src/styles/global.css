@@ -771,3 +771,271 @@ html.js [data-adult-content][data-locked="true"] {
     padding-top: 42px;
   }
 }
+
+/* The home page is intentionally closer to a reading notebook than a product landing page. */
+:root {
+  --bg: #fdfcf8;
+  --bg-soft: #f4f0e8;
+  --surface: #fdfcf8;
+  --surface-muted: #f4f0e8;
+  --text: #292721;
+  --text-muted: #6d685e;
+  --border: #d9d3c7;
+  --accent: #b3432d;
+  --accent-strong: #8f301f;
+  --accent-warm: #b3432d;
+  --content-width: 1040px;
+  --article-width: 700px;
+}
+
+:root.dark {
+  --bg: #1d1b18;
+  --bg-soft: #26231f;
+  --surface: #1d1b18;
+  --surface-muted: #292621;
+  --text: #f2eee5;
+  --text-muted: #b8b0a1;
+  --border: #4b453c;
+  --accent: #ee947d;
+  --accent-strong: #ffc0ad;
+  --accent-warm: #ee947d;
+}
+
+body {
+  background: var(--bg);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  line-height: 1.8;
+}
+
+.site-header {
+  position: relative;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.site-header__inner {
+  min-height: 88px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  gap: 9px;
+  font-family: Georgia, "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.brand__mark {
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 1.35rem;
+}
+
+.site-nav { gap: 2px; }
+
+.site-nav a,
+.theme-toggle,
+.link-button {
+  min-height: 36px;
+  border-radius: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 500;
+}
+
+.site-nav a[aria-current="page"],
+.site-nav a:hover,
+.theme-toggle:hover,
+.link-button:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent-strong);
+}
+
+.hero {
+  min-height: 0;
+  overflow: visible;
+  color: var(--text);
+}
+
+.hero::before { display: none; }
+
+.hero__inner {
+  width: min(100% - 32px, var(--content-width));
+  padding: clamp(96px, 14vw, 164px) 0 clamp(80px, 10vw, 120px);
+}
+
+.hero__content { width: min(100%, 760px); }
+
+.eyebrow {
+  margin-bottom: 14px;
+  color: var(--accent);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+.hero h1,
+.page-title,
+.article-hero h1,
+.section-head h2 {
+  font-family: Georgia, "Hiragino Mincho ProN", "Yu Mincho", serif;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.hero h1 {
+  max-width: 760px;
+  font-size: clamp(3.1rem, 7.4vw, 6.2rem);
+  line-height: 1.13;
+}
+
+.hero p {
+  width: min(100%, 570px);
+  margin-top: 28px;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.hero__actions { margin-top: 38px; }
+
+.button {
+  min-height: 42px;
+  border-radius: 0;
+  padding: 9px 14px;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.button--primary {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+.button--ghost {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.section { padding: clamp(58px, 8vw, 96px) 0; }
+
+.section--muted {
+  border-block: 1px solid var(--border);
+  background: transparent;
+}
+
+.section-head {
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.section-head h2,
+.page-title { font-size: clamp(2rem, 4vw, 3.25rem); }
+
+.entry-grid,
+.project-grid,
+.listing-list { gap: 0; }
+
+.entry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.entry-card,
+.project-card,
+.empty-state {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.entry-card {
+  gap: 10px;
+  padding: 22px 0 24px;
+}
+
+.entry-grid .entry-card:nth-child(odd) { padding-right: 30px; }
+.entry-grid .entry-card:nth-child(even) { padding-left: 30px; }
+.entry-grid .entry-card:nth-child(even) { border-left: 1px solid var(--border); }
+
+.listing-list .entry-card {
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 24px;
+}
+
+.listing-list .entry-card__meta { grid-column: 1; grid-row: 1 / span 2; }
+.listing-list .entry-card h3 { grid-column: 2; }
+.listing-list .entry-card > p { grid-column: 2; }
+.listing-list .entry-card__footer { grid-column: 3; grid-row: 1 / span 2; }
+
+.project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.project-card {
+  min-height: 0;
+  gap: 10px;
+  padding: 24px 0 28px;
+}
+
+.project-grid .project-card:nth-child(odd) { padding-right: 30px; }
+.project-grid .project-card:nth-child(even) { border-left: 1px solid var(--border); padding-left: 30px; }
+
+.entry-card h3,
+.project-card h3 { font-family: Georgia, "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 1.3rem; font-weight: 500; }
+.entry-card h3 a,
+.project-card h3 a { text-decoration: none; }
+.entry-card h3 a:hover,
+.project-card h3 a:hover { text-decoration: underline; text-underline-offset: 0.18em; }
+
+.tag { border: 0; border-radius: 0; padding: 0; background: transparent; font-size: 0.75rem; font-weight: 500; }
+.tag::before { content: "#"; }
+
+.empty-state { padding: 28px 0; }
+.page-header { padding: 88px 0 26px; }
+.page-lead { max-width: 580px; margin-top: 16px; }
+
+.article-hero { padding-top: 72px; }
+.article-body { font-size: 1.05rem; }
+.article-body h2 { font-family: Georgia, "Hiragino Mincho ProN", "Yu Mincho", serif; font-weight: 500; }
+.article-body pre,
+.article-body img,
+.article-nav a,
+.search-box,
+.toc { border-radius: 0; }
+
+.site-footer { margin-top: 30px; padding: 28px 0 42px; }
+.footer-links a { font-weight: 500; }
+
+@media (max-width: 860px) {
+  .hero { min-height: 0; }
+  .entry-grid,
+  .project-grid { grid-template-columns: 1fr; }
+  .entry-grid .entry-card:nth-child(odd),
+  .entry-grid .entry-card:nth-child(even),
+  .project-grid .project-card:nth-child(odd),
+  .project-grid .project-card:nth-child(even) { border-left: 0; padding-inline: 0; }
+  .listing-list .entry-card { grid-template-columns: 120px minmax(0, 1fr); }
+  .listing-list .entry-card__footer { display: none; }
+}
+
+@media (max-width: 520px) {
+  .site-header__inner { min-height: auto; padding: 16px 0 10px; }
+  .hero__inner { padding-top: 84px; }
+  .hero h1 { font-size: clamp(2.8rem, 15vw, 4.5rem); }
+  .listing-list .entry-card { grid-template-columns: 1fr; }
+  .listing-list .entry-card__meta,
+  .listing-list .entry-card h3,
+  .listing-list .entry-card > p { grid-column: 1; }
+  .listing-list .entry-card__meta { grid-row: auto; }
+}

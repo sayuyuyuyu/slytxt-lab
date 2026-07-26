@@ -5,11 +5,11 @@ import ThemeToggle from "./ThemeToggle.astro";
 const currentPath = Astro.url.pathname;
 
 const navItems = [
-  { href: "/tech/", label: "Tech" },
-  { href: "/life/", label: "Life" },
-  { href: "/projects/", label: "Projects" },
-  { href: "/search/", label: "Search" },
-  { href: "/about/", label: "About" }
+  { href: "/tech/", label: "技術メモ" },
+  { href: "/life/", label: "日々" },
+  { href: "/projects/", label: "つくったもの" },
+  { href: "/search/", label: "検索" },
+  { href: "/about/", label: "このサイト" }
 ];
 
 function isCurrent(href: string) {
