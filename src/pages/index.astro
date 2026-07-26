@@ -20,14 +20,15 @@ const activeProjects = projects.filter((project) =>
   <section class="hero">
     <div class="hero__inner">
       <div class="hero__content">
-        <p class="eyebrow">slytxt.dev</p>
-        <h1>しらゆラボ</h1>
+        <p class="eyebrow">slytxt.dev / personal notes</p>
+        <h1>しらゆの<br />メモ置き場</h1>
         <p>
-          しらゆの個人研究所。AI、MCP、クラウド、個人開発の試行錯誤と、旅行・ゲーム・音楽・ガジェットの記録を置いていきます。
+          AIやクラウドを試した記録と、個人で作っているもののメモ。
+          たまに旅、ゲーム、音楽の話も書きます。
         </p>
         <div class="hero__actions">
-          <a class="button button--primary" href="/projects/">Projects</a>
-          <a class="button button--ghost" href="/about/">About</a>
+          <a class="button button--primary" href="/tech/">技術メモを読む</a>
+          <a class="button button--ghost" href="/about/">このサイトについて</a>
         </div>
       </div>
     </div>
@@ -37,8 +38,8 @@ const activeProjects = projects.filter((project) =>
     <div class="container">
       <div class="section-head">
         <div>
-          <p class="eyebrow">Tech Notes</p>
-          <h2>最近のTech記事</h2>
+          <p class="eyebrow">notes</p>
+          <h2>技術メモ</h2>
         </div>
         <a class="link-button" href="/tech/">すべて見る</a>
       </div>
@@ -48,7 +49,7 @@ const activeProjects = projects.filter((project) =>
             {techPosts.slice(0, 5).map((entry) => <ArticleCard entry={entry} />)}
           </div>
         ) : (
-          <EmptyState title="Tech記事はまだありません" description="src/content/tech に MDX を追加すると表示されます。" />
+          <EmptyState title="まだ記事はありません" description="最初の一本を書いたら、ここに並びます。" />
         )
       }
     </div>
@@ -58,8 +59,8 @@ const activeProjects = projects.filter((project) =>
     <div class="container">
       <div class="section-head">
         <div>
-          <p class="eyebrow">Life Log</p>
-          <h2>最近のLife記事</h2>
+          <p class="eyebrow">journal</p>
+          <h2>日々の記録</h2>
         </div>
         <a class="link-button" href="/life/">すべて見る</a>
       </div>
@@ -69,7 +70,7 @@ const activeProjects = projects.filter((project) =>
             {lifePosts.slice(0, 5).map((entry) => <ArticleCard entry={entry} />)}
           </div>
         ) : (
-          <EmptyState title="Life記事はまだありません" description="src/content/life に MDX を追加すると表示されます。" />
+          <EmptyState title="まだ記録はありません" description="出かけたことや、気に入ったものを書いていきます。" />
         )
       }
     </div>
@@ -79,8 +80,8 @@ const activeProjects = projects.filter((project) =>
     <div class="container">
       <div class="section-head">
         <div>
-          <p class="eyebrow">Projects</p>
-          <h2>進行中の制作物</h2>
+          <p class="eyebrow">making</p>
+          <h2>つくっているもの</h2>
         </div>
         <a class="link-button" href="/projects/">すべて見る</a>
       </div>
@@ -90,7 +91,7 @@ const activeProjects = projects.filter((project) =>
             {activeProjects.slice(0, 6).map((entry) => <ProjectCard entry={entry} />)}
           </div>
         ) : (
-          <EmptyState title="進行中の制作物はまだありません" description="src/content/projects に MDX を追加すると表示されます。" />
+          <EmptyState title="まだ公開できるものはありません" description="形になったものから、ここに置きます。" />
         )
       }
     </div>
@@ -100,9 +101,9 @@ const activeProjects = projects.filter((project) =>
     <div class="container">
       <div class="section-head">
         <div>
-          <p class="eyebrow">About</p>
-          <h2>この研究所について</h2>
-          <p>技術活動・趣味活動・個人開発を、長期的に参照できる形で整理しています。</p>
+          <p class="eyebrow">about</p>
+          <h2>この場所のこと</h2>
+          <p>書いたものと作ったものを、あとから自分で見つけられるように残しています。</p>
         </div>
         <a class="button" href="/about/">プロフィールを見る</a>
       </div>

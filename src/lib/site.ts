@@ -2,7 +2,7 @@ export const site = {
   name: "しらゆラボ",
   title: "しらゆラボ - slytxt.dev",
   description:
-    "AI、MCP、クラウド、個人開発、旅行、ゲーム、音楽、ガジェットを記録する個人研究所。",
+    "しらゆが試した技術と、日々の記録を置くサイトです。",
   author: "slytxt",
   locale: "ja_JP",
   lang: "ja",

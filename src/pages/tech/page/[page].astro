@@ -22,11 +22,11 @@ const { pageNumber } = Astro.props;
 const page = paginateEntries(await getArticles("tech"), "/tech", pageNumber);
 ---
 
-<BaseLayout title={`Tech ${pageNumber}ページ目 - しらゆラボ`} description="Tech記事のアーカイブ。">
+<BaseLayout title={`技術メモ ${pageNumber}ページ目 - しらゆラボ`} description="技術メモの一覧です。">
   <header class="page-header">
     <div class="container">
-      <p class="eyebrow">Tech</p>
-      <h1 class="page-title">Tech記事</h1>
+      <p class="eyebrow">notes</p>
+      <h1 class="page-title">技術メモ</h1>
     </div>
   </header>
   <section class="listing">
@@ -37,7 +37,7 @@ const page = paginateEntries(await getArticles("tech"), "/tech", pageNumber);
             {page.entries.map((entry) => <ArticleCard entry={entry} />)}
           </div>
         ) : (
-          <EmptyState title="Tech記事はまだありません" />
+          <EmptyState title="まだ記事はありません" />
         )
       }
       <Pagination basePath="/tech" {...page} />

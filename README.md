@@ -2,6 +2,8 @@
 
 Astro / TypeScript / MDX / Tailwind CSS / Pagefind で作る個人研究所サイトです。
 
+公開ページ: <https://slytxt.pages.dev/>
+
 ## Commands
 
 ```bash
