@@ -14,7 +14,7 @@ const section = articleSections[collection];
 const suffix = page.currentPage > 1 ? ` ${page.currentPage}ページ目` : "";
 ---
 <BaseLayout title={`${section.title}${suffix} - ${site.name}`} description={section.description}>
-  <PageHeader title={section.title} eyebrow={section.eyebrow} description={section.description} count={page.totalEntries} />
+  <PageHeader title={section.title} eyebrow={section.eyebrow} count={page.totalEntries} />
   <section class="listing" aria-label={`${section.title}の一覧`}>
     <div class="container">
       <div class="listing-tools"><a href="/tags/">タグから探す <span aria-hidden="true">↗</span></a></div>
