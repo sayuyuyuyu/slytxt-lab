@@ -1,5 +1,5 @@
 /** Disposable copy: test content never enters the source checkout or its dist. */
-import { cp, mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,7 +15,10 @@ for (const name of [
   "astro.config.mjs",
   "tsconfig.json",
 ]) {
-  await cp(path.join(root, name), path.join(target, name), { recursive: true });
+  const source = path.join(root, name);
+  // Optional directories such as an empty public/ are skipped instead of failing.
+  if (!(await stat(source).catch(() => null))) continue;
+  await cp(source, path.join(target, name), { recursive: true });
 }
 await symlink(
   path.join(root, "node_modules"),
