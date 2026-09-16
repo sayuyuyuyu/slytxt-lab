@@ -4,7 +4,7 @@ import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
 import { getEntrySlug, getProjects } from "@/lib/content";
 import { formatDate } from "@/lib/format";
-import { projectStatusLabels } from "@/lib/site";
+import { categoryLabels, projectStatusLabels } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { render } from "astro:content";
 
@@ -33,7 +33,7 @@ const date = entry.data.updated ?? entry.data.started;
   <header class="article-hero">
     <div class="container">
       <Breadcrumbs items={[{ label: "つくったもの", href: "/projects/" }, { label: entry.data.title }]} />
-      <p class="eyebrow">Projects</p>
+      <p class="eyebrow">{categoryLabels.projects}</p>
       <h1 class="page-title" data-pagefind-meta="title">{entry.data.title}</h1>
       <p class="page-lead">{entry.data.description}</p>
       <div class="article-meta">
@@ -44,9 +44,9 @@ const date = entry.data.updated ?? entry.data.started;
       <TagList tags={entry.data.tags} />
     </div>
   </header>
-  <div class:list={["article-shell", { "article-shell--wide": !headings.some((heading) => heading.depth === 2 || heading.depth === 3) }]} >
+  <div class:list={["article-shell", { "article-shell--wide": !headings.some((heading) => heading.depth === 2 || heading.depth === 3) }]}>
     <TableOfContents headings={headings} />
-    <article class="article-main" data-pagefind-filter="種類:つくったもの">
+    <article class="article-main" data-pagefind-filter={`種類:${categoryLabels.projects}`}>
       <div class="article-body">
         <Content />
       </div>
@@ -55,6 +55,5 @@ const date = entry.data.updated ?? entry.data.started;
         {entry.data.demo && <a href={entry.data.demo} rel="noreferrer"><span>Demo</span>{entry.data.demo}</a>}
       </div>
     </article>
-
   </div>
 </BaseLayout>
