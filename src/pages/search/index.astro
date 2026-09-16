@@ -2,27 +2,27 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
 ---
-<BaseLayout title="サイト内検索 - しらゆラボ" description="記事とつくったものをキーワードで探せます。" noindex>
-  <PageHeader title="サイト内検索" eyebrow="search" description="記事とつくったものを、タイトルや本文のキーワードで探せます。" />
+<BaseLayout title="サイト内検索 - しらゆラボ" description="記事とつくったものを、書いてある言葉から探せます。" noindex>
+  <PageHeader title="サイト内検索" eyebrow="search" description="記事とつくったものを、書いてある言葉から探せます。" />
   <section class="listing" aria-label="検索"><div class="container">
     <div class="search-box">
       <div id="search"></div>
       <p id="search-status" class="muted" role="status">検索を読み込んでいます。</p>
       <noscript><p>検索にはJavaScriptが必要です。<a href="/tags/">タグ一覧</a>からも探せます。</p></noscript>
     </div>
-    <p class="search-help">見つからないときは、短いキーワードや別の言い方で検索してみてください。<a href="/tags/">タグから探す</a>こともできます。</p>
+    <p class="search-help">見つからないときは、短い言葉のほうが引っかかります。<a href="/tags/">タグから探す</a>こともできます。</p>
   </div></section>
   <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
   <script is:inline>
     (() => {
       const status = document.getElementById("search-status");
-      const fail = () => { status.textContent = "検索を読み込めませんでした。ページを再読み込みするか、タグ一覧をご利用ください。"; };
+      const fail = () => { status.textContent = "検索を読み込めませんでした。ページを再読み込みするか、タグ一覧から辿ってください。"; };
       const script = document.createElement("script");
       script.src = "/pagefind/pagefind-ui.js";
       script.onload = () => {
         try {
           new PagefindUI({ element: "#search", showSubResults: true, showImages: false,
-            translations: { placeholder: "キーワードを入力", zero_results: "「[SEARCH_TERM]」に一致する記事はありません" }
+            translations: { placeholder: "言葉で探す", zero_results: "「[SEARCH_TERM]」に一致するものはありません" }
           });
           status.hidden = true;
         } catch { fail(); }

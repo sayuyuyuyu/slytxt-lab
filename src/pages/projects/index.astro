@@ -8,11 +8,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 const projects = await getProjects();
 ---
 
-<BaseLayout title="つくったもの - しらゆラボ" description="しらゆが個人でつくっているものをまとめています。">
+<BaseLayout title="つくったもの - しらゆラボ" description="しらゆがつくっているものと、いまの進み具合。">
   <PageHeader
     eyebrow="making"
     title="つくったもの"
-    description="個人でつくっているものを、進み具合と一緒にまとめます。"
+    description="つくっているものと、いまの進み具合。"
     count={projects.length}
   />
   <section class="listing">

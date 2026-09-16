@@ -11,8 +11,8 @@ const recent = sortArticles([...tech, ...life]).slice(0, 6);
   <section class="container home-intro" aria-labelledby="intro-title">
     <div>
       <p class="eyebrow">slytxt / personal notes</p>
-      <h1 id="intro-title">試したことを、<br />書き残す。</h1>
-      <p class="home-intro__lead">AIやクラウドを試した記録と、個人でつくっているもののメモ。たまに旅、ゲーム、音楽の話も書きます。</p>
+      <h1 id="intro-title">試したこと、<br />つくったもの。</h1>
+      <p class="home-intro__lead">AIやクラウドを試した記録と、個人でつくっているもののメモ。たまに旅、ゲーム、音楽の話も。</p>
       <a class="button" href="/about/">しらゆと、このサイトについて <span aria-hidden="true">↗</span></a>
     </div>
     <nav class="home-index" aria-label="記事と制作物">
@@ -28,7 +28,7 @@ const recent = sortArticles([...tech, ...life]).slice(0, 6);
         <div><p class="eyebrow">recent notes</p><h2 id="recent-title">最近書いたこと</h2></div>
         <div class="section-links"><a href="/tech/">技術メモ</a><a href="/life/">日々の記録</a><a href="/rss.xml">RSS</a></div>
       </div>
-      {recent.length ? <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="まだ記事はありません" description="試したことや、気に入ったものを、ここに書き残していきます。" />}
+      {recent.length ? <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="まだ記事はありません" description="試したことや、気に入ったものをここに置きます。" />}
     </div>
   </section>
   <section class="section" aria-labelledby="projects-title">
@@ -37,7 +37,7 @@ const recent = sortArticles([...tech, ...life]).slice(0, 6);
         <div><p class="eyebrow">projects</p><h2 id="projects-title">つくったもの</h2></div>
         <a class="link-button" href="/projects/">すべて見る <span aria-hidden="true">↗</span></a>
       </div>
-      {projects.length ? <div class="project-grid">{projects.slice(0, 4).map((entry) => <ProjectCard entry={entry} />)}</div> : <EmptyState title="まだ公開できるものはありません" description="形になったものから、進み具合と一緒にまとめます。" />}
+      {projects.length ? <div class="project-grid">{projects.slice(0, 4).map((entry) => <ProjectCard entry={entry} />)}</div> : <EmptyState title="まだ公開できるものはありません" description="形になったものから、進み具合と一緒に置きます。" />}
     </div>
   </section>
 </BaseLayout>

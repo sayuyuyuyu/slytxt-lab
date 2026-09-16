@@ -23,7 +23,7 @@ const articles = entries.filter((entry) => entry.collection !== "projects") as A
 const projects = entries.filter((entry) => entry.collection === "projects") as ProjectEntry[];
 ---
 
-<BaseLayout title={`#${label} - Tags - しらゆラボ`} description={`#${label} が付いた記事とプロジェクト。`}>
+<BaseLayout title={`#${label} - Tags - しらゆラボ`} description={`#${label} が付いた記事と、つくったもの。`}>
   <PageHeader
     eyebrow="tag"
     title={`#${label}`}

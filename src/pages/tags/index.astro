@@ -8,9 +8,9 @@ const entries = await getAllEntries();
 const tags = Array.from(collectTags(entries), ([slug, label]) => ({ slug, label, count: getEntriesByTag(entries, slug).length }))
   .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "ja"));
 ---
-<BaseLayout title="タグから探す - しらゆラボ" description="技術メモ、日々の記録、つくったものをタグから探せます。">
-  <PageHeader title="タグから探す" eyebrow="tags" description="気になる話題から、記事とつくったものを探せます。" count={tags.length} />
+<BaseLayout title="タグから探す - しらゆラボ" description="技術メモ、日々の記録、つくったものをタグから辿れます。">
+  <PageHeader title="タグから探す" eyebrow="tags" description="気になった言葉から辿れます。" count={tags.length} />
   <section class="listing" aria-label="タグ一覧"><div class="container">
-    {tags.length ? <ul class="tag-directory">{tags.map((tag) => <li><a href={`/tags/${tag.slug}/`}>#{tag.label}<span>{tag.count}件</span></a></li>)}</ul> : <EmptyState title="まだタグはありません" description="記事や制作物が増えると、ここから話題ごとに探せます。" />}
+    {tags.length ? <ul class="tag-directory">{tags.map((tag) => <li><a href={`/tags/${tag.slug}/`}>#{tag.label}<span>{tag.count}件</span></a></li>)}</ul> : <EmptyState title="まだタグはありません" description="記事が増えたら、ここに並びます。" />}
   </div></section>
 </BaseLayout>

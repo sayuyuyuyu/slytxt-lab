@@ -2,7 +2,7 @@ export const site = {
   name: "しらゆラボ",
   title: "しらゆラボ - slytxt.dev",
   description:
-    "しらゆが試した技術と、日々の記録を置くサイトです。",
+    "AIやクラウドを試した記録と、日々のこと、つくったもの。",
   author: "slytxt",
   locale: "ja_JP",
   lang: "ja",
@@ -21,16 +21,16 @@ export const articleSections = {
   tech: {
     title: categoryLabels.tech,
     eyebrow: "notes",
-    description: "AI、MCP、クラウド、プログラミングを試した記録です。",
+    description: "AI、MCP、クラウド、プログラミングを試した記録。",
     emptyTitle: "まだ記事はありません",
     emptyDescription: "最初の一本を書いたら、ここに並びます。"
   },
   life: {
     title: categoryLabels.life,
     eyebrow: "journal",
-    description: "旅行、ゲーム、音楽、ガジェットについての記録です。",
+    description: "旅行、ゲーム、音楽、ガジェットの話。",
     emptyTitle: "まだ記録はありません",
-    emptyDescription: "出かけたことや、気に入ったものを書いていきます。"
+    emptyDescription: "出かけたことや、気に入ったものを書きます。"
   }
 } as const;
 
