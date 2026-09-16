@@ -39,7 +39,7 @@ export function renderOgPng(options: {
   category?: keyof typeof categoryLabels;
 }): Uint8Array {
   const titleLines = wrapText(options.title);
-  const category = options.category ? categoryLabels[options.category] : "slytxt.dev";
+  const category = options.category ? categoryLabels[options.category] : site.name;
   const titleSpans = titleLines
     .map(
       (line, index) =>

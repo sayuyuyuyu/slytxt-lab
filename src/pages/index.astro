@@ -3,20 +3,19 @@ import ArticleCard from "@/components/ArticleCard.astro";
 import EmptyState from "@/components/EmptyState.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { getArticles, getProjects, sortArticles } from "@/lib/content";
+import { site } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 const [tech, life, projects] = await Promise.all([getArticles("tech"), getArticles("life"), getProjects()]);
 const recent = sortArticles([...tech, ...life]).slice(0, 6);
 ---
 <BaseLayout>
-  <section class="container home-intro" aria-labelledby="intro-title">
-    <div>
-      <h1 id="intro-title">しらゆラボ</h1>
-    </div>
-    <nav class="home-index" aria-label="記事と制作物">
-      <a href="/tech/">技術メモ <span>{tech.length}件 <span aria-hidden="true">↗</span></span></a>
-      <a href="/life/">日々の記録 <span>{life.length}件 <span aria-hidden="true">↗</span></span></a>
-      <a href="/projects/">つくったもの <span>{projects.length}件 <span aria-hidden="true">↗</span></span></a>
-      <a href="/tags/">タグから探す <span aria-hidden="true">↗</span></a>
+  <section class="container home-hero" aria-labelledby="intro-title">
+    <h1 id="intro-title">{site.name}</h1>
+    <nav class="home-hero__links" aria-label="記事と制作物">
+      <a href="/tech/">技術メモ <span>{tech.length}件</span></a>
+      <a href="/life/">日々の記録 <span>{life.length}件</span></a>
+      <a href="/projects/">つくったもの <span>{projects.length}件</span></a>
+      <a href="/tags/">タグ</a>
     </nav>
   </section>
   <section class="section" aria-labelledby="recent-title">

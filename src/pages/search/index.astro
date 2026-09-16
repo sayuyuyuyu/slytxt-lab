@@ -1,8 +1,9 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
+import { site } from "@/lib/site";
 ---
-<BaseLayout title="サイト内検索 - しらゆラボ" description="記事とつくったものを、書いてある言葉から探せます。" noindex>
+<BaseLayout title={`サイト内検索 - ${site.name}`} description="記事とつくったものを、書いてある言葉から探せます。" noindex>
   <PageHeader title="サイト内検索" eyebrow="search" />
   <section class="listing" aria-label="検索"><div class="container">
     <div class="search-box">

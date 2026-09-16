@@ -4,6 +4,7 @@ import ArticleCard from "@/components/ArticleCard.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { collectTags } from "@/lib/tags";
 import { getAllEntries, getEntriesByTag, type ArticleEntry, type ProjectEntry } from "@/lib/content";
+import { site } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
 export async function getStaticPaths() {
@@ -23,7 +24,7 @@ const articles = entries.filter((entry) => entry.collection !== "projects") as A
 const projects = entries.filter((entry) => entry.collection === "projects") as ProjectEntry[];
 ---
 
-<BaseLayout title={`#${label} - Tags - しらゆラボ`} description={`#${label} が付いた記事と、つくったもの。`}>
+<BaseLayout title={`#${label} - タグ - ${site.name}`} description={`#${label} が付いた記事と、つくったもの。`}>
   <PageHeader
     eyebrow="tag"
     title={`#${label}`}

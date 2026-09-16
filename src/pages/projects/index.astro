@@ -3,12 +3,13 @@ import EmptyState from "@/components/EmptyState.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { getProjects } from "@/lib/content";
+import { site } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
 const projects = await getProjects();
 ---
 
-<BaseLayout title="つくったもの - しらゆラボ" description="しらゆがつくっているものと、いまの進み具合。">
+<BaseLayout title={`つくったもの - ${site.name}`} description="しらゆがつくっているものと、いまの進み具合。">
   <PageHeader
     eyebrow="making"
     title="つくったもの"

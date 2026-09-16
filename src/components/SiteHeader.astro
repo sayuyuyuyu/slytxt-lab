@@ -6,8 +6,9 @@ const currentPath = Astro.url.pathname;
 
 const navItems = [
   { href: "/tech/", label: "技術メモ" },
-  { href: "/life/", label: "日々" },
+  { href: "/life/", label: "日々の記録" },
   { href: "/projects/", label: "つくったもの" },
+  { href: "/tags/", label: "タグ" },
   { href: "/search/", label: "検索" },
   { href: "/about/", label: "このサイト" }
 ];
@@ -17,19 +18,94 @@ function isCurrent(href: string) {
 }
 ---
 
-<header class="site-header" data-pagefind-ignore>
+<header class="site-header" data-site-header data-pagefind-ignore>
   <div class="site-header__inner">
     <a class="brand" href="/" aria-label={`${site.name} ホーム`}>
       <span class="brand__mark" aria-hidden="true">し</span>
       <span>{site.name}</span>
     </a>
-    <nav class="site-nav" aria-label="メインナビゲーション">
-      {navItems.map((item) => (
-        <a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>
-          {item.label}
-        </a>
-      ))}
+    <div class="site-header__actions">
+      <button
+        class="menu-button"
+        type="button"
+        aria-label="メニューを開く"
+        aria-expanded="false"
+        aria-controls="site-menu"
+        data-menu-button
+      >
+        <span class="menu-button__bar" aria-hidden="true"></span>
+        <span class="menu-button__bar" aria-hidden="true"></span>
+      </button>
+      <ThemeToggle />
+    </div>
+  </div>
+  <div class="site-menu" id="site-menu" data-menu hidden>
+    <nav aria-label="メインナビゲーション">
+      <ul>
+        {
+          navItems.map((item) => (
+            <li>
+              <a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
     </nav>
-    <ThemeToggle />
   </div>
 </header>
+
+<script>
+  (() => {
+    const header = document.querySelector<HTMLElement>("[data-site-header]");
+    const button = document.querySelector<HTMLButtonElement>("[data-menu-button]");
+    const menu = document.querySelector<HTMLElement>("[data-menu]");
+    if (!header || !button || !menu) return;
+
+    const isOpen = () => button.getAttribute("aria-expanded") === "true";
+
+    const setOpen = (open: boolean) => {
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", open ? "メニューを閉じる" : "メニューを開く");
+      menu.hidden = !open;
+      header.dataset.open = String(open);
+      if (open) header.dataset.hidden = "false";
+    };
+
+    button.addEventListener("click", () => setOpen(!isOpen()));
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && isOpen()) {
+        setOpen(false);
+        button.focus();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!isOpen()) return;
+      if (!header.contains(event.target as Node)) setOpen(false);
+    });
+
+    // Hide the header while scrolling down and bring it back on the way up.
+    const REVEAL_ABOVE = 120;
+    let lastY = window.scrollY;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const y = window.scrollY;
+      const delta = y - lastY;
+      if (Math.abs(delta) < 6) return;
+      const hide = delta > 0 && y > REVEAL_ABOVE && !isOpen();
+      header.dataset.hidden = String(hide);
+      lastY = y;
+    };
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!frame) frame = requestAnimationFrame(update);
+      },
+      { passive: true }
+    );
+  })();
+</script>

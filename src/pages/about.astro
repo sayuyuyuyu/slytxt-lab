@@ -1,9 +1,10 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
+import { site } from "@/lib/site";
 ---
 
-<BaseLayout searchable title="このサイトについて - しらゆラボ" description="しらゆが書いたことと、つくったもの。">
+<BaseLayout searchable title={`このサイトについて - ${site.name}`} description="しらゆが書いたことと、つくったもの。">
   <PageHeader
     eyebrow="about"
     title="書いたことと、つくったもの"

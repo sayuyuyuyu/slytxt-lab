@@ -4,7 +4,7 @@ import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
 import { getEntrySlug, getProjects } from "@/lib/content";
 import { formatDate } from "@/lib/format";
-import { categoryLabels, projectStatusLabels } from "@/lib/site";
+import { categoryLabels, projectStatusLabels, site } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { render } from "astro:content";
 
@@ -22,7 +22,7 @@ const date = entry.data.updated ?? entry.data.started;
 ---
 
 <BaseLayout
-  title={`${entry.data.title} - つくったもの - しらゆラボ`}
+  title={`${entry.data.title} - つくったもの - ${site.name}`}
   description={entry.data.description}
   image={`/og/projects/${getEntrySlug(entry)}.png`}
   type="article"

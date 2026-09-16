@@ -1,6 +1,6 @@
 export const site = {
-  name: "しらゆラボ",
-  title: "しらゆラボ - slytxt.dev",
+  name: "slytxt.lab",
+  title: "slytxt.lab",
   description:
     "AIやクラウドを試した記録と、日々のこと、つくったもの。",
   author: "slytxt",
