@@ -1,17 +1,14 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import PageHeader from "@/components/PageHeader.astro";
 ---
 
 <BaseLayout searchable title="このサイトについて - しらゆラボ" description="しらゆが書いたことと、つくったものを置くサイトです。">
-  <header class="page-header">
-    <div class="container">
-      <p class="eyebrow">about this site</p>
-      <h1 class="page-title">書いたことと、つくったもの</h1>
-      <p class="page-lead">
-        しらゆが試したこと、考えたこと、遊んだことを置いています。
-      </p>
-    </div>
-  </header>
+  <PageHeader
+    eyebrow="about this site"
+    title="書いたことと、つくったもの"
+    description="しらゆが試したこと、考えたこと、遊んだことを置いています。"
+  />
   <section class="section">
     <div class="container">
       <article class="article-main article-body">

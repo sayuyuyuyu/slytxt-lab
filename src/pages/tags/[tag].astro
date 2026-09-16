@@ -1,5 +1,5 @@
 ---
-import Breadcrumbs from "@/components/Breadcrumbs.astro";
+import PageHeader from "@/components/PageHeader.astro";
 import ArticleCard from "@/components/ArticleCard.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { collectTags } from "@/lib/tags";
@@ -24,14 +24,12 @@ const projects = entries.filter((entry) => entry.collection === "projects") as P
 ---
 
 <BaseLayout title={`#${label} - Tags - しらゆラボ`} description={`#${label} が付いた記事とプロジェクト。`}>
-  <header class="page-header">
-    <div class="container">
-      <Breadcrumbs items={[{ label: "タグ", href: "/tags/" }, { label: `#${label}` }]} />
-      <p class="eyebrow">tag</p>
-      <h1 class="page-title">#{label}</h1>
-      <p class="page-lead">{entries.length}件のコンテンツ</p>
-    </div>
-  </header>
+  <PageHeader
+    eyebrow="tag"
+    title={`#${label}`}
+    count={entries.length}
+    breadcrumbs={[{ label: "タグ", href: "/tags/" }, { label: `#${label}` }]}
+  />
   <section class="listing">
     <div class="container">
       {articles.length > 0 && (
