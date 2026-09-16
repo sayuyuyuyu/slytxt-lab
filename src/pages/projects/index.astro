@@ -20,7 +20,7 @@ const projects = await getProjects();
       {
         projects.length > 0 ? (
           <div class="project-grid">
-            {projects.map((entry) => <ProjectCard entry={entry} />)}
+            {projects.map((entry) => <ProjectCard entry={entry} headingLevel="h2" />)}
           </div>
         ) : (
           <EmptyState title="まだ公開できるものはありません" description="形になったものから、ここに置きます。" />

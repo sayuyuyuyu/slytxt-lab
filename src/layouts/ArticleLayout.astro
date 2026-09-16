@@ -34,6 +34,7 @@ const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
   type="article"
   published={entry.data.published}
   updated={entry.data.updated}
+  searchable
 >
   <header class="article-hero">
     <div class="container">
@@ -44,18 +45,20 @@ const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
         ]}
       />
       <p class="eyebrow">{categoryLabels[entry.collection]}</p>
-      <h1 class="page-title">{entry.data.title}</h1>
+      <h1 class="page-title" data-pagefind-meta="title">{entry.data.title}</h1>
       <p class="page-lead">{entry.data.description}</p>
       <div class="article-meta">
-        <time datetime={date.toISOString()}>{formatDate(date)}</time>
+        <span>公開 <time datetime={entry.data.published.toISOString()}>{formatDate(entry.data.published)}</time></span>
+        {entry.data.updated && <span>更新 <time datetime={date.toISOString()}>{formatDate(date)}</time></span>}
         {entry.data.adult && <span aria-label="成人向け作品レビューを含む"> / 🔞</span>}
       </div>
       <TagList tags={entry.data.tags} />
     </div>
   </header>
 
-  <div class="article-shell">
-    <article class="article-main" data-pagefind-body data-pagefind-filter={`category:${entry.collection}`}>
+  <div class:list={["article-shell", { "article-shell--wide": !headings.some((heading) => heading.depth === 2 || heading.depth === 3) }]}>
+    <TableOfContents headings={headings} />
+    <article class="article-main" data-pagefind-filter={`種類:${categoryLabels[entry.collection]}`}>
       {entry.data.adult && <AdultGate storageKey="adult-content-consent" />}
       <div class="article-body" data-adult-content data-locked={entry.data.adult ? "true" : "false"}>
         <slot />
@@ -84,6 +87,5 @@ const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
         }
       </nav>
     </article>
-    <TableOfContents headings={headings} />
   </div>
 </BaseLayout>

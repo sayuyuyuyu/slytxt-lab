@@ -6,16 +6,6 @@ export type ArticleEntry = CollectionEntry<"tech"> | CollectionEntry<"life">;
 export type ProjectEntry = CollectionEntry<"projects">;
 export type SiteEntry = ArticleEntry | ProjectEntry;
 
-export type PageData<T> = {
-  entries: T[];
-  currentPage: number;
-  totalPages: number;
-  prevUrl?: string;
-  nextUrl?: string;
-};
-
-const PAGE_SIZE = 10;
-
 function isPublished<T extends SiteEntry>(entry: T): boolean {
   return !entry.data.draft;
 }
@@ -89,33 +79,4 @@ export function getAdjacentArticles(entries: ArticleEntry[], currentId: string) 
     previous: index > 0 ? entries[index - 1] : undefined,
     next: index >= 0 && index < entries.length - 1 ? entries[index + 1] : undefined
   };
-}
-
-export function paginateEntries<T>(
-  entries: T[],
-  basePath: string,
-  page = 1,
-  pageSize = PAGE_SIZE
-): PageData<T> {
-  const totalPages = Math.max(1, Math.ceil(entries.length / pageSize));
-  const currentPage = Math.min(Math.max(page, 1), totalPages);
-  const start = (currentPage - 1) * pageSize;
-
-  return {
-    entries: entries.slice(start, start + pageSize),
-    currentPage,
-    totalPages,
-    prevUrl:
-      currentPage > 1
-        ? currentPage === 2
-          ? `${basePath}/`
-          : `${basePath}/page/${currentPage - 1}/`
-        : undefined,
-    nextUrl:
-      currentPage < totalPages ? `${basePath}/page/${currentPage + 1}/` : undefined
-  };
-}
-
-export function getPageNumbers(totalPages: number): number[] {
-  return Array.from({ length: totalPages }, (_, index) => index + 1);
 }

@@ -1,5 +1,5 @@
 ---
-import { getPageNumbers } from "@/lib/content";
+import { pagePath, visiblePages } from "@/lib/pagination";
 
 type Props = {
   basePath: string;
@@ -16,12 +16,13 @@ const { basePath, currentPage, totalPages, prevUrl, nextUrl } = Astro.props;
   totalPages > 1 && (
     <nav class="pagination" aria-label="ページネーション" data-pagefind-ignore>
       {prevUrl ? <a href={prevUrl}>前へ</a> : <span aria-disabled="true">前へ</span>}
-      {getPageNumbers(totalPages).map((page) => {
-        const href = page === 1 ? `${basePath}/` : `${basePath}/page/${page}/`;
+      {visiblePages(currentPage, totalPages).map((page) => {
+        if (page === "gap") return <span class="pagination__gap" aria-hidden="true">…</span>;
+        const href = pagePath(basePath, page);
         return page === currentPage ? (
           <span aria-current="page">{page}</span>
         ) : (
-          <a href={href}>{page}</a>
+          <a href={href} aria-label={`${page}ページ目`}>{page}</a>
         );
       })}
       {nextUrl ? <a href={nextUrl}>次へ</a> : <span aria-disabled="true">次へ</span>}

@@ -1,4 +1,5 @@
 ---
+import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import ArticleCard from "@/components/ArticleCard.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { collectTags } from "@/lib/tags";
@@ -25,7 +26,8 @@ const projects = entries.filter((entry) => entry.collection === "projects") as P
 <BaseLayout title={`#${label} - Tags - しらゆラボ`} description={`#${label} が付いた記事とプロジェクト。`}>
   <header class="page-header">
     <div class="container">
-      <p class="eyebrow">Tag</p>
+      <Breadcrumbs items={[{ label: "タグ", href: "/tags/" }, { label: `#${label}` }]} />
+      <p class="eyebrow">tag</p>
       <h1 class="page-title">#{label}</h1>
       <p class="page-lead">{entries.length}件のコンテンツ</p>
     </div>
@@ -35,7 +37,7 @@ const projects = entries.filter((entry) => entry.collection === "projects") as P
       {articles.length > 0 && (
         <>
           <div class="section-head">
-            <h2>Articles</h2>
+            <h2>記事</h2>
           </div>
           <div class="listing-list">
             {articles.map((entry) => <ArticleCard entry={entry} />)}
@@ -45,7 +47,7 @@ const projects = entries.filter((entry) => entry.collection === "projects") as P
       {projects.length > 0 && (
         <>
           <div class="section-head" style="margin-top: 48px;">
-            <h2>Projects</h2>
+            <h2>つくったもの</h2>
           </div>
           <div class="project-grid">
             {projects.map((entry) => <ProjectCard entry={entry} />)}

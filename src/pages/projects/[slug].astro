@@ -1,5 +1,6 @@
 ---
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
+import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
 import { getEntrySlug, getProjects } from "@/lib/content";
 import { formatDate } from "@/lib/format";
@@ -21,18 +22,19 @@ const date = entry.data.updated ?? entry.data.started;
 ---
 
 <BaseLayout
-  title={`${entry.data.title} - Projects - しらゆラボ`}
+  title={`${entry.data.title} - つくったもの - しらゆラボ`}
   description={entry.data.description}
   image={`/og/projects/${getEntrySlug(entry)}.png`}
   type="article"
   published={entry.data.started}
   updated={entry.data.updated}
+  searchable
 >
   <header class="article-hero">
     <div class="container">
-      <Breadcrumbs items={[{ label: "Projects", href: "/projects/" }, { label: entry.data.title }]} />
+      <Breadcrumbs items={[{ label: "つくったもの", href: "/projects/" }, { label: entry.data.title }]} />
       <p class="eyebrow">Projects</p>
-      <h1 class="page-title">{entry.data.title}</h1>
+      <h1 class="page-title" data-pagefind-meta="title">{entry.data.title}</h1>
       <p class="page-lead">{entry.data.description}</p>
       <div class="article-meta">
         <span class="status">{projectStatusLabels[entry.data.status]}</span>
@@ -42,8 +44,9 @@ const date = entry.data.updated ?? entry.data.started;
       <TagList tags={entry.data.tags} />
     </div>
   </header>
-  <div class="article-shell">
-    <article class="article-main" data-pagefind-body data-pagefind-filter="category:projects">
+  <div class:list={["article-shell", { "article-shell--wide": !headings.some((heading) => heading.depth === 2 || heading.depth === 3) }]} >
+    <TableOfContents headings={headings} />
+    <article class="article-main" data-pagefind-filter="種類:つくったもの">
       <div class="article-body">
         <Content />
       </div>
@@ -52,21 +55,6 @@ const date = entry.data.updated ?? entry.data.started;
         {entry.data.demo && <a href={entry.data.demo} rel="noreferrer"><span>Demo</span>{entry.data.demo}</a>}
       </div>
     </article>
-    {
-      headings.length > 0 && (
-        <aside class="toc" aria-label="目次" data-pagefind-ignore>
-          <p class="toc__title">目次</p>
-          <ol>
-            {headings
-              .filter((heading) => heading.depth === 2 || heading.depth === 3)
-              .map((heading) => (
-                <li class={`depth-${heading.depth}`}>
-                  <a href={`#${heading.slug}`}>{heading.text}</a>
-                </li>
-              ))}
-          </ol>
-        </aside>
-      )
-    }
+
   </div>
 </BaseLayout>

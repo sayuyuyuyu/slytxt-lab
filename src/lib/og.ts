@@ -15,7 +15,7 @@ function escapeXml(value: string): string {
     .replaceAll("'", "&apos;");
 }
 
-function wrapText(value: string, maxLength = 21): string[] {
+function wrapText(value: string, maxLength = 17): string[] {
   const characters = Array.from(value);
   const lines: string[] = [];
 
@@ -23,6 +23,7 @@ function wrapText(value: string, maxLength = 21): string[] {
     lines.push(characters.slice(index, index + maxLength).join(""));
   }
 
+  if (lines.length > 3) lines[2] = Array.from(lines[2]).slice(0, maxLength - 1).join("") + "…";
   return lines.slice(0, 3);
 }
 
@@ -34,7 +35,7 @@ export function getOgDate(entry: SiteEntry): Date {
 
 export function renderOgPng(options: {
   title: string;
-  date: Date;
+  date?: Date;
   category?: keyof typeof categoryLabels;
 }): Uint8Array {
   const titleLines = wrapText(options.title);
@@ -42,30 +43,18 @@ export function renderOgPng(options: {
   const titleSpans = titleLines
     .map(
       (line, index) =>
-        `<tspan x="90" dy="${index === 0 ? 0 : 78}">${escapeXml(line)}</tspan>`
+        `<tspan x="90" dy="${index === 0 ? 0 : 76}">${escapeXml(line)}</tspan>`
     )
     .join("");
 
+  const footer = options.date ? `${formatDate(options.date)} / ${site.name}` : site.description;
   const svg = `<svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#102423"/>
-      <stop offset="0.52" stop-color="#18201f"/>
-      <stop offset="1" stop-color="#3b2319"/>
-    </linearGradient>
-    <pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse">
-      <path d="M 56 0 L 0 0 0 56" fill="none" stroke="#ffffff" stroke-opacity="0.055" stroke-width="1"/>
-    </pattern>
-  </defs>
-  <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#bg)"/>
-  <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#grid)"/>
-  <rect x="64" y="64" width="1072" height="502" rx="28" fill="#0c1110" fill-opacity="0.42" stroke="#ffffff" stroke-opacity="0.14"/>
-  <circle cx="1025" cy="142" r="72" fill="#14b8a6" fill-opacity="0.24"/>
-  <circle cx="1072" cy="488" r="110" fill="#f59e0b" fill-opacity="0.16"/>
-  <path d="M90 160h112" stroke="#5eead4" stroke-width="8" stroke-linecap="round"/>
-  <text x="90" y="128" fill="#fbbf24" font-size="30" font-weight="700" font-family="Inter, Noto Sans JP, sans-serif">${escapeXml(category)}</text>
-  <text x="90" y="278" fill="#ffffff" font-size="64" font-weight="800" font-family="Inter, Noto Sans JP, sans-serif">${titleSpans}</text>
-  <text x="90" y="512" fill="#d8e0dc" font-size="30" font-weight="600" font-family="Inter, Noto Sans JP, sans-serif">${escapeXml(formatDate(options.date))} / ${escapeXml(site.name)}</text>
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="#fdfcf8"/>
+  <path d="M90 72h1020M90 540h1020" stroke="#d9d3c7" stroke-width="2"/>
+  <path d="M90 72h88" stroke="#a43d29" stroke-width="5"/>
+  <text x="90" y="139" fill="#a43d29" font-size="28" font-family="Hiragino Sans, Noto Sans JP, sans-serif">${escapeXml(category)}</text>
+  <text x="90" y="265" fill="#292721" font-size="56" font-weight="500" font-family="Hiragino Mincho ProN, Yu Mincho, Noto Serif CJK JP, serif">${titleSpans}</text>
+  <text x="90" y="510" fill="#706a60" font-size="24" font-family="Hiragino Sans, Noto Sans JP, sans-serif">${escapeXml(footer)}</text>
 </svg>`;
 
   return new Resvg(svg, {

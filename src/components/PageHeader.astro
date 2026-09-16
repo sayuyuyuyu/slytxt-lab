@@ -1,0 +1,12 @@
+---
+type Props = { title: string; eyebrow: string; description?: string; count?: number };
+const { title, eyebrow, description, count } = Astro.props;
+---
+<header class="page-header">
+  <div class="container">
+    <p class="eyebrow">{eyebrow}</p>
+    <h1 class="page-title">{title}</h1>
+    {description && <p class="page-lead">{description}</p>}
+    {count !== undefined && <p class="page-count">{count}件</p>}
+  </div>
+</header>

@@ -9,7 +9,10 @@
     "build": "astro build --force && pagefind --site dist --glob \"**/*.html\"",
     "preview": "astro preview",
     "check": "astro check",
-    "verify": "pnpm check && pnpm build"
+    "verify": "pnpm check && pnpm test && pnpm build && pnpm run check:build",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "fixture:ui": "node scripts/prepare-ui-fixture.mjs",
+    "check:build": "node scripts/check-build.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.0",

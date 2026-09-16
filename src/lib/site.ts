@@ -12,9 +12,26 @@ export const site = {
 };
 
 export const categoryLabels = {
-  tech: "Tech",
-  life: "Life",
-  projects: "Projects"
+  tech: "技術メモ",
+  life: "日々の記録",
+  projects: "つくったもの"
+} as const;
+
+export const articleSections = {
+  tech: {
+    title: categoryLabels.tech,
+    eyebrow: "notes",
+    description: "AI、MCP、クラウド、プログラミングを試した記録です。",
+    emptyTitle: "まだ記事はありません",
+    emptyDescription: "最初の一本を書いたら、ここに並びます。"
+  },
+  life: {
+    title: categoryLabels.life,
+    eyebrow: "journal",
+    description: "旅行、ゲーム、音楽、ガジェットについての記録です。",
+    emptyTitle: "まだ記録はありません",
+    emptyDescription: "出かけたことや、気に入ったものを書いていきます。"
+  }
 } as const;
 
 export const projectStatusLabels = {

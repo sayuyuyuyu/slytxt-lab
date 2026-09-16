@@ -44,5 +44,11 @@ jobs:
       - name: Check
         run: pnpm check
 
+      - name: Test
+        run: pnpm test
+
       - name: Build
         run: pnpm build
+
+      - name: Check generated links
+        run: pnpm run check:build

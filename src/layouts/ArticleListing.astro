@@ -1,0 +1,29 @@
+---
+import ArticleCard from "@/components/ArticleCard.astro";
+import EmptyState from "@/components/EmptyState.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import Pagination from "@/components/Pagination.astro";
+import { type ArticleCollection, type ArticleEntry } from "@/lib/content";
+import { type PageData } from "@/lib/pagination";
+import { articleSections, site } from "@/lib/site";
+import BaseLayout from "./BaseLayout.astro";
+
+type Props = { collection: ArticleCollection; page: PageData<ArticleEntry> };
+const { collection, page } = Astro.props;
+const section = articleSections[collection];
+const suffix = page.currentPage > 1 ? ` ${page.currentPage}ページ目` : "";
+---
+<BaseLayout title={`${section.title}${suffix} - ${site.name}`} description={section.description}>
+  <PageHeader title={section.title} eyebrow={section.eyebrow} description={section.description} count={page.totalEntries} />
+  <section class="listing" aria-label={`${section.title}の一覧`}>
+    <div class="container">
+      <div class="listing-tools"><a href="/tags/">タグから探す <span aria-hidden="true">↗</span></a></div>
+      {page.entries.length > 0 ? (
+        <div class="listing-list">
+          {page.entries.map((entry) => <ArticleCard entry={entry} headingLevel="h2" />)}
+        </div>
+      ) : <EmptyState title={section.emptyTitle} description={section.emptyDescription} />}
+      <Pagination basePath={`/${collection}`} {...page} />
+    </div>
+  </section>
+</BaseLayout>
