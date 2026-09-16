@@ -4,18 +4,14 @@ import PageHeader from "@/components/PageHeader.astro";
 import { site } from "@/lib/site";
 ---
 
-<BaseLayout searchable title={`このサイトについて - ${site.name}`} description="しらゆが書いたことと、つくったもの。">
-  <PageHeader
-    eyebrow="about"
-    title="書いたことと、つくったもの"
-    description="日記を書きたいオタク未満。"
-  />
+<BaseLayout searchable title={`しらゆについて - ${site.name}`} description="しらゆ（slytxt）のプロフィール。">
+  <PageHeader eyebrow="about" title="しらゆについて" />
   <section class="section">
     <div class="container">
       <article class="article-main article-body">
-        <p>
-          技術メモには、AI、MCP、クラウド、プログラミングを実際に触って試したことを書く。日々の記録には、旅行、ゲーム、音楽、ガジェットの話を。
-        </p>
+        <p>しらゆ（slytxt）とは、都内某所でSEとして働いている一介のプロ社畜。2003年に爆誕し、地方都市にて私腹を肥やす。</p>
+        <p>酒とつまみを好み、爆音のクラブで暴れることを生きがいとする。</p>
+        <p>刹那的な快楽を常に求めているらしい。</p>
       </article>
     </div>
   </section>
