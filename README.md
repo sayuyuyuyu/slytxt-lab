@@ -2,7 +2,7 @@
 
 Astro / TypeScript / MDX / Tailwind CSS / Pagefind で作る個人のメモと制作物を置くサイトです。
 
-公開ページ: <https://slytxt.pages.dev/>
+公開ページ: <https://slytxt.dev/>（Cloudflare Pages の `slytxt.pages.dev` も同じものを返します）
 
 ## Commands
 
