@@ -87,24 +87,24 @@ function plist(token) {
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>${LABEL}</string>
+  <string>${xml(LABEL)}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${process.execPath}</string>
-    <string>${path.join(repoRoot, "tools", "writer", "server.mjs")}</string>
+    <string>${xml(process.execPath)}</string>
+    <string>${xml(path.join(repoRoot, "tools", "writer", "server.mjs"))}</string>
     <string>--host</string>
-    <string>${port}</string>
+    <string>${xml(port)}</string>
   </array>
   <key>WorkingDirectory</key>
-  <string>${repoRoot}</string>
+  <string>${xml(repoRoot)}</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>${searchPath}</string>
+    <string>${xml(searchPath)}</string>
     <key>HOME</key>
-    <string>${os.homedir()}</string>
+    <string>${xml(os.homedir())}</string>
     <key>SLYTXT_TOKEN</key>
-    <string>${token}</string>
+    <string>${xml(token)}</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>
@@ -113,9 +113,9 @@ function plist(token) {
   <key>ThrottleInterval</key>
   <integer>10</integer>
   <key>StandardOutPath</key>
-  <string>${logPath}</string>
+  <string>${xml(logPath)}</string>
   <key>StandardErrorPath</key>
-  <string>${logPath}</string>
+  <string>${xml(logPath)}</string>
 </dict>
 </plist>
 `;
@@ -189,6 +189,13 @@ async function uninstall() {
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** plist は XML なので、パスに & や < が入っても壊れないようにする。 */
+function xml(value) {
+  return String(value).replace(/[&<>"']/g, (char) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[char]
+  );
+}
 
 const command = process.argv[2] ?? "status";
 if (command === "install") await install();

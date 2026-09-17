@@ -64,7 +64,7 @@ function relativeTime(iso) {
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-slytxt-client": "1" },
     ...options
   });
   const payload = await response.json().catch(() => ({}));
@@ -91,7 +91,10 @@ function closeTask() {
 
 async function streamTask(path, title) {
   openTask(title);
-  const response = await fetch(path, { method: "POST" });
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "x-slytxt-client": "1" }
+  });
   if (!response.ok || !response.body) {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.error ?? `実行に失敗しました (${response.status})`);

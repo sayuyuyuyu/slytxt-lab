@@ -113,19 +113,20 @@ const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /**
  * 他のサイトから書き込みAPIを叩かせない。
- * 書き込みはブラウザからしか使わないので、Origin があれば Host と一致を求め、
- * Origin が無い相手（curl など）には JSON を要求する。
- * text/plain のフォーム送信で、気づかないうちに publish が走るのを防ぐ。
+ *
+ * 独自ヘッダを必須にするのが本体。クロスオリジンの fetch はプリフライトが走り、
+ * こちらは CORS ヘッダを返さないので、本処理まで届かない。
+ * Host から許可Originを作らないので、DNS rebinding でもすり抜けられない。
+ * Origin があれば Host との一致も見て、二重に確かめる。
  */
-function crossSiteRequest(req) {
+function stateChangingAllowed(req) {
+  if (req.headers["x-slytxt-client"] !== "1") return false;
   const origin = req.headers.origin;
-  if (!origin) {
-    return !String(req.headers["content-type"] ?? "").includes("application/json");
-  }
+  if (!origin) return true;
   try {
-    return new URL(origin).host !== (req.headers.host ?? "");
+    return new URL(origin).host === (req.headers.host ?? "");
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -223,7 +224,7 @@ const server = createServer(async (req, res) => {
     res.end("トークンが必要です。起動時に表示された URL を開いてください。");
     return;
   }
-  if (STATE_CHANGING.has(req.method ?? "") && crossSiteRequest(req)) {
+  if (STATE_CHANGING.has(req.method ?? "") && !stateChangingAllowed(req)) {
     json(res, 403, {
       error: "別のオリジンからの書き込みは受け付けません。執筆画面から操作してください。"
     });

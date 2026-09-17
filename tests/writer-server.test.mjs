@@ -42,34 +42,30 @@ test("server: 別オリジンからの書き込みを拒む", async (t) => {
   const server = await startServer();
   t.after(server.stop);
 
-  const foreign = await fetch(`${server.base}/api/drafts`, {
-    method: "POST",
-    headers: { "content-type": "application/json", origin: "https://evil.example" },
-    body: JSON.stringify({ title: "よそから", category: "tech" })
-  });
-  assert.equal(foreign.status, 403);
+  const client = { "content-type": "application/json", "x-slytxt-client": "1" };
+  const post = (headers, title) =>
+    fetch(`${server.base}/api/drafts`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ title, category: "tech" })
+    });
 
-  // Origin が無くても、フォーム送信で使われる text/plain は弾く。
-  const formPost = await fetch(`${server.base}/api/drafts`, {
-    method: "POST",
-    headers: { "content-type": "text/plain" },
-    body: JSON.stringify({ title: "フォームから", category: "tech" })
-  });
+  // 独自ヘッダが無いものは、オリジンが同じでも書き込めない。
+  const noHeader = await post({ "content-type": "application/json" }, "ヘッダ無し");
+  assert.equal(noHeader.status, 403);
+
+  // フォーム送信で使われる text/plain も、独自ヘッダが無ければ弾く。
+  const formPost = await post({ "content-type": "text/plain" }, "フォームから");
   assert.equal(formPost.status, 403);
 
-  const sameOrigin = await fetch(`${server.base}/api/drafts`, {
-    method: "POST",
-    headers: { "content-type": "application/json", origin: server.base },
-    body: JSON.stringify({ title: "自分の画面から", category: "tech" })
-  });
+  // 別オリジンは、ヘッダが揃っていても拒む。
+  const foreign = await post({ ...client, origin: "https://evil.example" }, "よそから");
+  assert.equal(foreign.status, 403);
+
+  const sameOrigin = await post({ ...client, origin: server.base }, "自分の画面から");
   assert.equal(sameOrigin.status, 201);
 
-  // Origin の無い CLI からの JSON は通す。
-  const cli = await fetch(`${server.base}/api/drafts`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ title: "コマンドから", category: "tech" })
-  });
+  const cli = await post(client, "コマンドから");
   assert.equal(cli.status, 201);
 
   const listed = await fetch(`${server.base}/api/drafts`).then((res) => res.json());
