@@ -109,6 +109,26 @@ function authorized(req, url) {
   return cookie.split(/;\s*/).includes(`slytxt_token=${token}`);
 }
 
+const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * 他のサイトから書き込みAPIを叩かせない。
+ * 書き込みはブラウザからしか使わないので、Origin があれば Host と一致を求め、
+ * Origin が無い相手（curl など）には JSON を要求する。
+ * text/plain のフォーム送信で、気づかないうちに publish が走るのを防ぐ。
+ */
+function crossSiteRequest(req) {
+  const origin = req.headers.origin;
+  if (!origin) {
+    return !String(req.headers["content-type"] ?? "").includes("application/json");
+  }
+  try {
+    return new URL(origin).host !== (req.headers.host ?? "");
+  } catch {
+    return true;
+  }
+}
+
 async function handleApi(req, res, url) {
   const segments = url.pathname.split("/").filter(Boolean); // ["api", ...]
   const [, resource, id, action] = segments;
@@ -201,6 +221,12 @@ const server = createServer(async (req, res) => {
   if (!authorized(req, url)) {
     res.writeHead(401, { "content-type": "text/plain; charset=utf-8" });
     res.end("トークンが必要です。起動時に表示された URL を開いてください。");
+    return;
+  }
+  if (STATE_CHANGING.has(req.method ?? "") && crossSiteRequest(req)) {
+    json(res, 403, {
+      error: "別のオリジンからの書き込みは受け付けません。執筆画面から操作してください。"
+    });
     return;
   }
   if (token && url.searchParams.get("token") === token) {
