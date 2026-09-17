@@ -52,7 +52,21 @@ function asTags(value) {
   return [];
 }
 
-export function normalizeDraft(id, data, body) {
+const MANAGED_KEYS = new Set(["title", "category", "status", "tags", "created", "updated", "pr"]);
+
+/**
+ * ドラフトが自分で書くキー以外と、解釈できなかった行を残す。
+ * エディタから保存したときに、手で足したキーやコメントを消さないため。
+ */
+function carriedLines(raw = []) {
+  return raw.filter((line) => {
+    if (String(line).trim() === "") return false;
+    const key = String(line).match(/^([A-Za-z0-9_-]+):/)?.[1];
+    return key ? !MANAGED_KEYS.has(key) : true;
+  });
+}
+
+export function normalizeDraft(id, data, body, raw = []) {
   const category = CATEGORIES.includes(asString(data.category)) ? String(data.category) : "tech";
   const status = STATUSES.includes(asString(data.status)) ? String(data.status) : "memo";
   return {
@@ -64,6 +78,7 @@ export function normalizeDraft(id, data, body) {
     created: asString(data.created) || nowIso(),
     updated: asString(data.updated) || nowIso(),
     pr: asString(data.pr) || "",
+    extras: carriedLines(raw),
     body: String(body ?? "")
   };
 }
@@ -79,7 +94,8 @@ export function serializeDraft(draft) {
       updated: draft.updated,
       pr: draft.pr || undefined
     },
-    draft.body
+    draft.body,
+    draft.extras ?? []
   );
 }
 
@@ -117,22 +133,27 @@ export async function listDrafts() {
 
 export async function readDraft(id) {
   const source = await readFile(draftPath(id), "utf8");
-  const { data, body } = parseFrontmatter(source);
-  return normalizeDraft(assertId(id), data, body);
+  const { data, body, raw } = parseFrontmatter(source);
+  return normalizeDraft(assertId(id), data, body, raw);
 }
 
 export async function writeDraft(id, patch) {
   const current = await readDraft(id).catch(() => null);
   const base = current ?? normalizeDraft(assertId(id), {}, "");
-  const next = normalizeDraft(assertId(id), {
-    title: patch.title ?? base.title,
-    category: patch.category ?? base.category,
-    status: patch.status ?? base.status,
-    tags: patch.tags ?? base.tags,
-    created: base.created,
-    updated: nowIso(),
-    pr: patch.pr ?? base.pr
-  }, patch.body ?? base.body);
+  const next = normalizeDraft(
+    assertId(id),
+    {
+      title: patch.title ?? base.title,
+      category: patch.category ?? base.category,
+      status: patch.status ?? base.status,
+      tags: patch.tags ?? base.tags,
+      created: base.created,
+      updated: nowIso(),
+      pr: patch.pr ?? base.pr
+    },
+    patch.body ?? base.body,
+    base.extras
+  );
   await ensureDraftsDir();
   await writeFile(draftPath(id), serializeDraft(next), "utf8");
   return next;
@@ -153,17 +174,18 @@ export async function createDraft({ title = "", category = "tech" } = {}) {
   const base = `${stamp}-${slugFragment(title)}`;
   let id = base;
   let suffix = 2;
-  while (await stat(draftPath(id)).catch(() => null)) {
-    id = `${base}-${suffix}`;
-    suffix += 1;
+  for (;;) {
+    const draft = normalizeDraft(id, { title: title || "無題", category, status: "memo" }, "");
+    try {
+      // 既にあれば EEXIST で弾かれる。stat と write の間の競合を避ける。
+      await writeFile(draftPath(id), serializeDraft(draft), { encoding: "utf8", flag: "wx" });
+      return draft;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      id = `${base}-${suffix}`;
+      suffix += 1;
+    }
   }
-  return writeDraft(id, {
-    title: title || "無題",
-    category,
-    status: "memo",
-    tags: [],
-    body: ""
-  });
 }
 
 export async function deleteDraft(id) {

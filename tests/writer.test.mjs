@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer/frontmatter.mjs";
 import { plainText, renderMarkdown } from "../tools/writer/markdown.mjs";
@@ -96,6 +99,81 @@ test("markdown: リンクと画像", () => {
 
 test("markdown: 引用", () => {
   assert.equal(renderMarkdown("> 引用\n> 二行目\n"), "<blockquote>\n<p>引用\n二行目</p>\n</blockquote>");
+});
+
+test("frontmatter: 引用符とバックスラッシュを保存のたびに増やさない", () => {
+  const data = {
+    title: 'He said "hi"',
+    windows: "C:\\Users\\slytxt",
+    mixed: 'a\\b "c" だ'
+  };
+  const first = parseFrontmatter(stringifyFrontmatter(data, "本文\n"));
+  assert.deepEqual(first.data, data);
+
+  const second = parseFrontmatter(stringifyFrontmatter(first.data, first.body));
+  assert.deepEqual(second.data, data);
+});
+
+test("frontmatter: 生の行を返す", () => {
+  const parsed = parseFrontmatter("---\ntitle: タイトル\n# メモ\nslug: my-slug\n---\n\n本文\n");
+  assert.deepEqual(parsed.raw, ["title: タイトル", "# メモ", "slug: my-slug"]);
+});
+
+test("markdown: 自動リンク", () => {
+  assert.equal(
+    renderMarkdown("<https://example.com>"),
+    '<p><a href="https://example.com">https://example.com</a></p>'
+  );
+});
+
+test("markdown: javascript: と data: のURLを無効にする", () => {
+  assert.equal(renderMarkdown("[クリック](javascript:alert(1))"), "<p>クリック</p>");
+  assert.doesNotMatch(renderMarkdown("![絵](data:text/html,boom)"), /<img/);
+  assert.match(renderMarkdown("[ok](https://example.com)"), /<a href="https:\/\/example.com">ok<\/a>/);
+});
+
+test("markdown: URL の括弧を切らない", () => {
+  assert.match(
+    renderMarkdown("[w](https://en.wikipedia.org/wiki/Foo_(bar)) です"),
+    /<a href="https:\/\/en.wikipedia.org\/wiki\/Foo_\(bar\)">w<\/a> です/
+  );
+});
+
+test("drafts: 手で足したキーとコメントを消さない", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "slytxt-drafts-"));
+  process.env.SLYTXT_DRAFTS_DIR = dir;
+  const drafts = await import(`../tools/writer/drafts.mjs?case=carry-${Date.now()}`);
+
+  await writeFile(
+    path.join(dir, "sample.md"),
+    '---\ntitle: 元のタイトル\ncategory: life\nstatus: memo\n# 作業メモ\nslug: my-slug\n---\n\n本文\n',
+    "utf8"
+  );
+
+  const loaded = await drafts.readDraft("sample");
+  assert.deepEqual(loaded.extras, ["# 作業メモ", "slug: my-slug"]);
+
+  await drafts.writeDraft("sample", { body: "書き直した本文" });
+  const saved = await readFile(path.join(dir, "sample.md"), "utf8");
+  assert.match(saved, /# 作業メモ/);
+  assert.match(saved, /slug: my-slug/);
+  assert.match(saved, /書き直した本文/);
+  assert.match(saved, /title: 元のタイトル/);
+});
+
+test("drafts: 同じタイトルを並行で作っても衝突しない", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "slytxt-drafts-"));
+  process.env.SLYTXT_DRAFTS_DIR = dir;
+  const drafts = await import(`../tools/writer/drafts.mjs?case=race-${Date.now()}`);
+
+  const made = await Promise.all([
+    drafts.createDraft({ title: "同じタイトル" }),
+    drafts.createDraft({ title: "同じタイトル" }),
+    drafts.createDraft({ title: "同じタイトル" })
+  ]);
+
+  assert.equal(new Set(made.map((draft) => draft.id)).size, 3);
+  assert.equal((await drafts.listDrafts()).length, 3);
 });
 
 test("plainText: 記号を落として1行にする", () => {

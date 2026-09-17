@@ -43,11 +43,17 @@ export function parseScalar(raw) {
   if (value.startsWith("[") && value.endsWith("]")) {
     return splitInline(value.slice(1, -1)).map((item) => parseScalar(item));
   }
-  if (
-    (value.startsWith('"') && value.endsWith('"') && value.length > 1) ||
-    (value.startsWith("'") && value.endsWith("'") && value.length > 1)
-  ) {
-    return value.slice(1, -1);
+  // JSON.stringify で書いた値は JSON.parse で戻す。
+  // 単に外側のクォートを剥がすと \" と \\ が保存のたびに増えていく。
+  if (value.startsWith('"') && value.endsWith('"') && value.length > 1) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value.slice(1, -1);
+    }
+  }
+  if (value.startsWith("'") && value.endsWith("'") && value.length > 1) {
+    return value.slice(1, -1).replace(/''/g, "'");
   }
   return value;
 }
@@ -100,7 +106,7 @@ export function parseFrontmatter(source) {
   const text = String(source ?? "").replace(/\r\n?/g, "\n");
   const lines = text.split("\n");
   if (lines[0]?.trim() !== "---") {
-    return { data: {}, body: text, hasFrontmatter: false };
+    return { data: {}, body: text, hasFrontmatter: false, raw: [] };
   }
   let end = -1;
   for (let index = 1; index < lines.length; index += 1) {
@@ -110,16 +116,19 @@ export function parseFrontmatter(source) {
     }
   }
   if (end === -1) {
-    return { data: {}, body: text, hasFrontmatter: false };
+    return { data: {}, body: text, hasFrontmatter: false, raw: [] };
   }
   return {
     data: parseBlock(lines.slice(1, end)),
+    // 生の行を持ち回る。ドラフトを保存したときに、
+    // 手で足した未知のキーやコメントが消えないようにする。
+    raw: lines.slice(1, end),
     body: lines.slice(end + 1).join("\n").replace(/^\n+/, ""),
     hasFrontmatter: true
   };
 }
 
-export function stringifyFrontmatter(data, body) {
+export function stringifyFrontmatter(data, body, extras = []) {
   const lines = Object.entries(data)
     .filter(([, value]) => {
       if (value === undefined || value === null) return false;
@@ -131,5 +140,7 @@ export function stringifyFrontmatter(data, body) {
   const clean = String(body ?? "")
     .replace(/^\n+/, "")
     .replace(/\s+$/, "");
-  return `---\n${lines.join("\n")}\n---\n\n${clean}\n`;
+  const tail = extras.filter((line) => String(line).trim() !== "");
+  const head = [...lines, ...tail].join("\n");
+  return `---\n${head}\n---\n\n${clean}\n`;
 }

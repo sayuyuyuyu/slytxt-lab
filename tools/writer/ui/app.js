@@ -275,14 +275,16 @@ function scheduleSave() {
   }, 900);
 }
 
-async function save() {
+async function save({ keepalive = false } = {}) {
   if (!state.current) return;
   clearTimeout(saveTimer);
+  saveTimer = null;
   const id = state.current.id;
   const payload = collect();
   const { draft } = await api(`/api/drafts/${encodeURIComponent(id)}`, {
     method: "PUT",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    keepalive
   });
   state.current = draft;
   els.saved.textContent = "保存しました";
@@ -313,7 +315,6 @@ async function flushSave() {
     await save().catch(() => {});
   }
 }
-
 /* ---- markdown helpers ---- */
 
 function surround(before, after = before, placeholder = "テキスト") {
@@ -514,12 +515,14 @@ async function boot() {
     if (event.key === "Escape" && !els.task.hidden) closeTask();
   });
 
+  // 画面を閉じる・隠すときは keepalive を付ける。
+  // 付けないとページ破棄でリクエストが中断され、直前の編集が消える。
   window.addEventListener("pagehide", () => {
-    save().catch(() => {});
+    save({ keepalive: true }).catch(() => {});
   });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) save().catch(() => {});
+    if (document.hidden) save({ keepalive: true }).catch(() => {});
   });
 }
 

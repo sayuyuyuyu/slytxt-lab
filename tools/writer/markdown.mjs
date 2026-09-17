@@ -21,6 +21,17 @@ function escapeHtml(text) {
   );
 }
 
+// スキーム付きのURLは、https / mailto / tel だけ通す。
+// javascript: や data: を本文から持ち込ませない。
+const SAFE_URL = /^(?:https?:|mailto:|tel:)/i;
+
+function safeUrl(raw) {
+  const url = String(raw ?? "").trim();
+  if (url === "") return null;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(url) && !SAFE_URL.test(url)) return null;
+  return url;
+}
+
 function unquoteTitle(raw) {
   return String(raw ?? "")
     .trim()
@@ -31,35 +42,49 @@ function unquoteTitle(raw) {
 
 function inline(text) {
   const codes = [];
+  const autolinks = [];
   let out = String(text).replace(/`([^`]+)`/g, (_, code) => {
     codes.push(code);
     return `\u0000${codes.length - 1}\u0000`;
   });
 
+  // エスケープ後に探すと < > が実体参照になっていて一致しない。先に退避する。
+  out = out.replace(/<((?:https?|mailto):[^>\s]+)>/g, (_, href) => {
+    autolinks.push(href);
+    return `\u0001${autolinks.length - 1}\u0001`;
+  });
+
   out = escapeHtml(out);
+  // URL 内の括弧を1段だけ入れ子で許す。https://example.com/a_(b) を切らないため。
   out = out.replace(
-    /!\[([^\]]*)\]\(([^)\s]+)(?:\s+([^)]*))?\)/g,
+    /!\[([^\]]*)\]\(([^()\s]*(?:\([^()\s]*\)[^()\s]*)*)(?:\s+([^)]*))?\)/g,
     (_, alt, src, title) => {
+      const url = safeUrl(src);
+      if (!url) return alt;
       const text = unquoteTitle(title);
-      return `<img src="${src}" alt="${alt}"${text ? ` title="${text}"` : ""} />`;
+      return `<img src="${url}" alt="${alt}"${text ? ` title="${text}"` : ""} />`;
     }
   );
   out = out.replace(
-    /\[([^\]]+)\]\(([^)\s]+)(?:\s+([^)]*))?\)/g,
+    /\[([^\]]+)\]\(([^()\s]*(?:\([^()\s]*\)[^()\s]*)*)(?:\s+([^)]*))?\)/g,
     (_, label, href, title) => {
+      const url = safeUrl(href);
+      if (!url) return label;
       const text = unquoteTitle(title);
-      return `<a href="${href}"${text ? ` title="${text}"` : ""}>${label}</a>`;
+      return `<a href="${url}"${text ? ` title="${text}"` : ""}>${label}</a>`;
     }
-  );
-  out = out.replace(
-    /<((?:https?|mailto):[^>\s]+)>/g,
-    (_, href) => `<a href="${href}">${href}</a>`
   );
   out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   out = out.replace(/__([^_]+)__/g, "<strong>$1</strong>");
   out = out.replace(/~~([^~]+)~~/g, "<del>$1</del>");
   out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
   out = out.replace(/(^|[^\w_])_([^_\n]+)_/g, "$1<em>$2</em>");
+  out = out.replace(/\u0001(\d+)\u0001/g, (_, index) => {
+    const raw = autolinks[Number(index)];
+    const label = escapeHtml(raw);
+    const url = safeUrl(raw);
+    return url ? `<a href="${url}">${label}</a>` : label;
+  });
   out = out.replace(/\u0000(\d+)\u0000/g, (_, index) => `<code>${escapeHtml(codes[Number(index)])}</code>`);
 
   return out;
