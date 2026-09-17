@@ -52,6 +52,26 @@ pnpm write:host   # Tailscale など別の端末から触れるようにする
 
 下書きはリポジトリ直下の `drafts/` に置きます（`.gitignore` 済み）。`expand` と `publish` の直前には `drafts/.history/` へ退避し、整形結果もそこに残るので、失敗しても書き直しになりません。
 
+### 出先から使う
+
+Mac を再起動しても使えるように、launchd に登録できます。
+
+```bash
+node tools/writer/service.mjs install    # 登録して Tailscale に公開する
+node tools/writer/service.mjs status     # 状態と URL を出す
+node tools/writer/service.mjs uninstall  # 登録を外す
+```
+
+`install` は以下を行います。
+
+- `~/Library/LaunchAgents/ts.slytxt.writer.plist` を書き、`launchctl` に登録する（`RunAtLoad` + `KeepAlive`）
+- token を `~/.config/slytxt-writer/token` に作る（既にあれば使う）
+- `tailscale serve --bg --https=8443 http://127.0.0.1:4326` で tailnet に出す
+
+出先からは `https://<tailnet のホスト名>:8443/?token=<token>` を開きます。初回に token を cookie に入れるので、以降は `https://<tailnet のホスト名>:8443/` だけで入れます。
+
+Mac がスリープすると届きません。電源に繋いでスリープを止めておいてください。ポートは `--port` と `--https-port` で変えられます。
+
 ### 環境変数
 
 | 変数 | 既定 | 用途 |
