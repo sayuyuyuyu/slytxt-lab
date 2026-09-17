@@ -20,6 +20,8 @@ export const CATEGORY_LABELS = { tech: "技術メモ", life: "日々の記録", 
 export const STATUSES = ["memo", "draft", "ready", "published"];
 export const STATUS_LABELS = { memo: "メモ", draft: "下書き", ready: "出せる", published: "PR済み" };
 
+export class DraftNotFound extends Error {}
+
 const ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
 
 export function assertId(id) {
@@ -52,7 +54,16 @@ function asTags(value) {
   return [];
 }
 
-const MANAGED_KEYS = new Set(["title", "category", "status", "tags", "created", "updated", "pr"]);
+const MANAGED_KEYS = new Set([
+  "title",
+  "category",
+  "status",
+  "tags",
+  "created",
+  "updated",
+  "pr",
+  "slug"
+]);
 
 /**
  * ドラフトが自分で書くキー以外と、解釈できなかった行を残す。
@@ -78,6 +89,7 @@ export function normalizeDraft(id, data, body, raw = []) {
     created: asString(data.created) || nowIso(),
     updated: asString(data.updated) || nowIso(),
     pr: asString(data.pr) || "",
+    slug: asString(data.slug) || "",
     extras: carriedLines(raw),
     body: String(body ?? "")
   };
@@ -92,7 +104,8 @@ export function serializeDraft(draft) {
       tags: draft.tags,
       created: draft.created,
       updated: draft.updated,
-      pr: draft.pr || undefined
+      pr: draft.pr || undefined,
+      slug: draft.slug || undefined
     },
     draft.body,
     draft.extras ?? []
@@ -139,7 +152,10 @@ export async function readDraft(id) {
 
 export async function writeDraft(id, patch) {
   const current = await readDraft(id).catch(() => null);
-  const base = current ?? normalizeDraft(assertId(id), {}, "");
+  // 存在しないドラフトを保存で作り直さない。
+  // 別の端末で削除したあとに古い画面から保存が飛んでくると復活してしまう。
+  if (!current) throw new DraftNotFound(`ドラフト ${assertId(id)} はありません`);
+  const base = current;
   const next = normalizeDraft(
     assertId(id),
     {
@@ -149,7 +165,8 @@ export async function writeDraft(id, patch) {
       tags: patch.tags ?? base.tags,
       created: base.created,
       updated: nowIso(),
-      pr: patch.pr ?? base.pr
+      pr: patch.pr ?? base.pr,
+      slug: patch.slug ?? base.slug
     },
     patch.body ?? base.body,
     base.extras
@@ -176,15 +193,19 @@ export async function createDraft({ title = "", category = "tech" } = {}) {
   let suffix = 2;
   for (;;) {
     const draft = normalizeDraft(id, { title: title || "無題", category, status: "memo" }, "");
-    try {
-      // 既にあれば EEXIST で弾かれる。stat と write の間の競合を避ける。
-      await writeFile(draftPath(id), serializeDraft(draft), { encoding: "utf8", flag: "wx" });
-      return draft;
-    } catch (error) {
-      if (error.code !== "EEXIST") throw error;
-      id = `${base}-${suffix}`;
-      suffix += 1;
+    // 削除して空いた id に新しいメモを置くと、前のメモの履歴を
+    // 「直前の状態に戻す」で拾ってしまう。履歴付きの id は使わない。
+    if ((await listHistory(id)).length === 0) {
+      try {
+        // 既にあれば EEXIST で弾かれる。stat と write の間の競合を避ける。
+        await writeFile(draftPath(id), serializeDraft(draft), { encoding: "utf8", flag: "wx" });
+        return draft;
+      } catch (error) {
+        if (error.code !== "EEXIST") throw error;
+      }
     }
+    id = `${base}-${suffix}`;
+    suffix += 1;
   }
 }
 
@@ -205,4 +226,33 @@ export async function snapshotDraft(id, reason = "snapshot") {
   const target = path.join(historyDir, `${assertId(id)}.${stamp}.${reason}.md`);
   await cp(source, target);
   return target;
+}
+
+/** 退避した版の一覧。新しい順。 */
+export async function listHistory(id) {
+  const prefix = `${assertId(id)}.`;
+  const names = await readdir(historyDir).catch(() => []);
+  return names
+    .filter((name) => name.startsWith(prefix) && name.endsWith(".md"))
+    .map((name) => {
+      const match = name.slice(prefix.length).match(/^(.+?)\.([a-z-]+)\.md$/);
+      return match ? { file: name, stamp: match[1], reason: match[2] } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.stamp.localeCompare(a.stamp));
+}
+
+/** 退避した版を書き戻す。AIで膨らませた結果を戻したいときに使う。 */
+export async function restoreHistory(id, file) {
+  const safe = path.basename(String(file ?? ""));
+  if (!safe.startsWith(`${assertId(id)}.`)) {
+    throw new Error("このドラフトの履歴ではありません");
+  }
+  const source = path.join(historyDir, safe);
+  if (!(await stat(source).catch(() => null))) {
+    throw new Error("履歴が見つかりません");
+  }
+  await snapshotDraft(id, "before-restore");
+  await writeFile(draftPath(id), await readFile(source, "utf8"), "utf8");
+  return readDraft(id);
 }

@@ -17,9 +17,12 @@ import {
   draftsDir,
   createDraft,
   deleteDraft,
+  DraftNotFound,
   listDrafts,
+  listHistory,
   readDraft,
   repoRoot,
+  restoreHistory,
   snapshotDraft,
   STATUSES,
   STATUS_LABELS,
@@ -180,6 +183,17 @@ async function handleApi(req, res, url) {
     return false;
   }
 
+  if (resource === "drafts" && id && action === "history" && method === "GET") {
+    json(res, 200, { history: await listHistory(id) });
+    return true;
+  }
+
+  if (resource === "drafts" && id && action === "restore" && method === "POST") {
+    const body = await readJsonBody(req);
+    json(res, 200, { draft: await restoreHistory(id, body.file) });
+    return true;
+  }
+
   if (resource === "expand" && id && method === "POST") {
     streamTask(res, async (send) => {
       const draft = await readDraft(id);
@@ -269,7 +283,13 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
-    json(res, error instanceof PublishError ? 400 : 500, { error: error?.message ?? String(error) });
+    const status =
+      error instanceof DraftNotFound
+        ? 404
+        : error instanceof PublishError
+          ? 400
+          : 500;
+    json(res, status, { error: error?.message ?? String(error) });
   }
 });
 

@@ -146,16 +146,18 @@ test("drafts: 手で足したキーとコメントを消さない", async () => 
 
   await writeFile(
     path.join(dir, "sample.md"),
-    '---\ntitle: 元のタイトル\ncategory: life\nstatus: memo\n# 作業メモ\nslug: my-slug\n---\n\n本文\n',
+    '---\ntitle: 元のタイトル\ncategory: life\nstatus: memo\n# 作業メモ\nmemo: あとで書く\nslug: my-slug\n---\n\n本文\n',
     "utf8"
   );
 
   const loaded = await drafts.readDraft("sample");
-  assert.deepEqual(loaded.extras, ["# 作業メモ", "slug: my-slug"]);
+  assert.deepEqual(loaded.extras, ["# 作業メモ", "memo: あとで書く"]);
+  assert.equal(loaded.slug, "my-slug");
 
   await drafts.writeDraft("sample", { body: "書き直した本文" });
   const saved = await readFile(path.join(dir, "sample.md"), "utf8");
   assert.match(saved, /# 作業メモ/);
+  assert.match(saved, /memo: あとで書く/);
   assert.match(saved, /slug: my-slug/);
   assert.match(saved, /書き直した本文/);
   assert.match(saved, /title: 元のタイトル/);
@@ -176,9 +178,36 @@ test("drafts: 同じタイトルを並行で作っても衝突しない", async 
   assert.equal((await drafts.listDrafts()).length, 3);
 });
 
+test("drafts: 削除して空いた id と履歴を再利用しない", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "slytxt-drafts-"));
+  process.env.SLYTXT_DRAFTS_DIR = dir;
+  const drafts = await import(`../tools/writer/drafts.mjs?case=reuse-${Date.now()}`);
+
+  const first = await drafts.createDraft({ title: "同じタイトル" });
+  await drafts.writeDraft(first.id, { body: "前のメモ" });
+  await drafts.snapshotDraft(first.id, "expand");
+  await drafts.deleteDraft(first.id);
+
+  const second = await drafts.createDraft({ title: "同じタイトル" });
+  assert.notEqual(second.id, first.id);
+  assert.deepEqual(await drafts.listHistory(second.id), []);
+});
+
 test("plainText: 記号を落として1行にする", () => {
   assert.equal(
     plainText("## 見出し\n\n本文 **強調** [リンク](https://x) です。\n\n```ts\ncode\n```"),
     "見出し 本文 強調 リンク です。"
   );
+});
+
+test("drafts: 存在しないドラフトを保存で作り直さない", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "slytxt-drafts-"));
+  process.env.SLYTXT_DRAFTS_DIR = dir;
+  const drafts = await import(`../tools/writer/drafts.mjs?case=missing-${Date.now()}`);
+
+  await assert.rejects(
+    () => drafts.writeDraft("missing", { body: "よみがえらないでほしい" }),
+    /ありません/
+  );
+  assert.deepEqual(await drafts.listDrafts(), []);
 });

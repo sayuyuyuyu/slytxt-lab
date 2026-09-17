@@ -112,24 +112,56 @@ export async function publishDraft({ id, onLog = () => {} }) {
   const description = requireField(data, "description");
   const published = String(data.published ?? "").trim() || today();
   const tags = (Array.isArray(data.tags) ? data.tags : []).map((tag) => String(tag).trim()).filter(Boolean).slice(0, 6);
-  const slug = normalizeSlug(data.slug, published.replace(/-/g, ""));
+  const slug = draft.slug || normalizeSlug(data.slug, published.replace(/-/g, ""));
   const category = draft.category;
   const relativeFile = path.join("src", "content", category, `${slug}.md`);
   const absoluteFile = path.join(repoRoot, relativeFile);
 
-  if (await stat(absoluteFile).catch(() => null)) {
-    throw new PublishError(`${relativeFile} は既にあります。slug を変えてください。`);
+  const branch = `write/${slug}`;
+
+  // 一度出した PR をもう一度流したときは、同じブランチに積んで PR を更新する。
+  // 誤字を直したいだけのときに、新しい PR を立てずに済む。
+  const updating = Boolean(draft.pr && draft.slug);
+  if (updating) {
+    await run("git", ["fetch", "origin", branch], { onLog });
+    const remote = await run("git", ["rev-parse", "--verify", `origin/${branch}`], {
+      onLog,
+      allowFailure: true
+    });
+    if (remote.code !== 0) {
+      throw new PublishError(
+        `${branch} がリモートにありません。PR ${draft.pr} を閉じてから、もう一度出し直してください。`
+      );
+    }
+    const local = await run("git", ["rev-parse", "--verify", branch], { allowFailure: true });
+    if (local.code === 0) {
+      const ahead = (
+        await run("git", ["log", "--oneline", `origin/${branch}..${branch}`], { allowFailure: true })
+      ).stdout.trim();
+      if (ahead) {
+        throw new PublishError(
+          `${branch} に push していないコミットがあります。先に片付けてください。\n${ahead}`
+        );
+      }
+    }
+  } else {
+    if (await stat(absoluteFile).catch(() => null)) {
+      throw new PublishError(`${relativeFile} は既にあります。slug を変えてください。`);
+    }
+    const existingBranch = (await run("git", ["branch", "--list", branch], { onLog })).stdout.trim();
+    if (existingBranch) throw new PublishError(`ブランチ ${branch} が既にあります。`);
   }
 
-  const branch = `write/${slug}`;
-  const existingBranch = (
-    await run("git", ["branch", "--list", branch], { onLog })
-  ).stdout.trim();
-  if (existingBranch) throw new PublishError(`ブランチ ${branch} が既にあります。`);
-
-  await snapshotDraft(id, "publish");
-  await run("git", ["switch", "-c", branch, base], { onLog });
-  onLog(`ブランチ ${branch} を作成しました（origin/main から）`);
+  await snapshotDraft(id, updating ? "republish" : "publish");
+  const startPoint = updating ? `origin/${branch}` : base;
+  // -C は既存のローカルブランチをリモートに合わせ直す。
+  // 前回の実行で残っているブランチをそのまま使うため。
+  await run("git", ["switch", "-C", branch, startPoint], { onLog });
+  onLog(
+    updating
+      ? `ブランチ ${branch} に積みます（${draft.pr} を更新）`
+      : `ブランチ ${branch} を作成しました（origin/main から）`
+  );
 
   let committed = false;
   try {
@@ -148,9 +180,22 @@ export async function publishDraft({ id, onLog = () => {} }) {
       await run("pnpm", ["run", "check"], { onLog });
     }
 
-    await run("git", ["commit", "-m", `post: ${title}`], { onLog });
+    const changed = (await run("git", ["status", "--porcelain"], { onLog })).stdout.trim();
+    if (!changed) {
+      await run("git", ["switch", originalBranch], { onLog });
+      onLog("内容に変更がありませんでした。PR はそのままです。");
+      return { branch, file: relativeFile, prUrl: draft.pr, slug, title, updated: false };
+    }
+
+    await run("git", ["commit", "-m", updating ? `post: ${title} を修正` : `post: ${title}`], { onLog });
     committed = true;
     await run("git", ["push", "-u", "origin", branch], { onLog });
+
+    if (updating) {
+      await writeDraft(id, { status: "published", title, tags, pr: draft.pr, slug });
+      await run("git", ["switch", originalBranch], { onLog });
+      return { branch, file: relativeFile, prUrl: draft.pr, slug, title, updated: true };
+    }
 
     const prBody = [
       "## 概要",
@@ -187,10 +232,10 @@ export async function publishDraft({ id, onLog = () => {} }) {
       .map((line) => line.trim())
       .find((line) => line.startsWith("http")) ?? "";
 
-    await writeDraft(id, { status: "published", title, tags, pr: prUrl });
+    await writeDraft(id, { status: "published", title, tags, pr: prUrl, slug });
     await run("git", ["switch", originalBranch], { onLog });
 
-    return { branch, file: relativeFile, prUrl, slug, title };
+    return { branch, file: relativeFile, prUrl, slug, title, updated: false };
   } catch (error) {
     if (!committed) {
       onLog("失敗したのでブランチを元に戻します");
