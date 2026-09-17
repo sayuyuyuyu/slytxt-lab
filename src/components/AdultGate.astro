@@ -6,7 +6,7 @@ type Props = {
 const { storageKey = "adult-content-consent" } = Astro.props;
 ---
 
-<div class="adult-gate" data-adult-gate data-adult-key={storageKey} data-locked="true">
+<div class="adult-gate" data-adult-gate data-adult-key={storageKey} data-locked="true" data-pagefind-ignore>
   <p>
     <strong>成人向け作品に関するレビューを含みます</strong>
     閲覧を続ける場合は同意してください。同意はこのブラウザに保存されます。
@@ -19,12 +19,13 @@ const { storageKey = "adult-content-consent" } = Astro.props;
   </p>
 </noscript>
 
-<script is:inline>
+<script>
   (() => {
     const gates = document.querySelectorAll("[data-adult-gate]");
-    const lockedContents = document.querySelectorAll("[data-adult-content]");
 
     gates.forEach((gate) => {
+      const content = gate.closest("article")?.querySelector<HTMLElement>("[data-adult-content]");
+      if (!content) return;
       const key = gate.getAttribute("data-adult-key") || "adult-content-consent";
       const accepted = (() => {
         try {
@@ -34,9 +35,13 @@ const { storageKey = "adult-content-consent" } = Astro.props;
         }
       })();
 
-      const unlock = () => {
+      const unlock = (moveFocus = false) => {
         gate.setAttribute("data-locked", "false");
-        lockedContents.forEach((content) => content.setAttribute("data-locked", "false"));
+        content.setAttribute("data-locked", "false");
+        if (moveFocus) {
+          content.setAttribute("tabindex", "-1");
+          content.focus();
+        }
       };
 
       if (accepted) {
@@ -50,7 +55,7 @@ const { storageKey = "adult-content-consent" } = Astro.props;
         } catch {
           // Ignore storage errors; the current page can still be unlocked.
         }
-        unlock();
+        unlock(true);
       });
     });
   })();

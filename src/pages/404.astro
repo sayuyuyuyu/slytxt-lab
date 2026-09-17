@@ -1,0 +1,12 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import { site } from "@/lib/site";
+---
+<BaseLayout title={`ページが見つかりません - ${site.name}`} noindex>
+  <PageHeader title="ページが見つかりません" eyebrow="404 / not found" />
+  <section class="listing"><div class="container section-links">
+    <a class="button button--primary" href="/">ホームに戻る</a>
+    <a class="button" href="/search/">検索する</a>
+  </div></section>
+</BaseLayout>

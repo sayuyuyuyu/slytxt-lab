@@ -6,9 +6,10 @@ import TagList from "./TagList.astro";
 
 type Props = {
   entry: ProjectEntry;
+  headingLevel?: "h2" | "h3";
 };
 
-const { entry } = Astro.props;
+const { entry, headingLevel: Heading = "h3" } = Astro.props;
 const date = entry.data.updated ?? entry.data.started;
 ---
 
@@ -18,12 +19,12 @@ const date = entry.data.updated ?? entry.data.started;
     <span aria-hidden="true"> / </span>
     <time datetime={date.toISOString()}>{formatDate(date)}</time>
   </div>
-  <h3>
+  <Heading class="project-card__title">
     <a href={getEntryPath(entry)}>{entry.data.title}</a>
-  </h3>
+  </Heading>
   <p>{entry.data.description}</p>
   <TagList tags={entry.data.tags} />
   <div class="project-card__footer">
-    <a class="link-button" href={getEntryPath(entry)}>詳細</a>
+    <a class="link-button" href={getEntryPath(entry)} aria-label={`${entry.data.title}の詳細`}>詳しく見る <span aria-hidden="true">↗</span></a>
   </div>
 </article>

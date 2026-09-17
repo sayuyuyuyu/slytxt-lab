@@ -1,4 +1,4 @@
-<button class="theme-toggle" type="button" aria-label="テーマを切り替える" data-theme-toggle>
+<button class="theme-toggle" type="button" aria-label="ダークモード" aria-pressed="false" data-theme-toggle hidden>
   <span class="theme-toggle__icon" aria-hidden="true" data-theme-icon>◐</span>
 </button>
 
@@ -10,7 +10,10 @@
     if (!button || !icon) return;
 
     const setIcon = () => {
-      icon.textContent = document.documentElement.classList.contains("dark") ? "☾" : "☼";
+      const dark = document.documentElement.classList.contains("dark");
+      icon.textContent = dark ? "☾" : "☼";
+      button.setAttribute("aria-pressed", String(dark));
+      button.setAttribute("title", dark ? "ライトモードに切り替える" : "ダークモードに切り替える");
     };
 
     button.addEventListener("click", () => {
@@ -24,6 +27,18 @@
       setIcon();
     });
 
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+      try { if (localStorage.getItem("theme")) return; } catch { /* Follow the system without storage. */ }
+      document.documentElement.classList.toggle("dark", event.matches);
+      setIcon();
+    });
+    window.addEventListener("storage", (event) => {
+      if (event.key !== "theme" && event.key !== null) return;
+      const dark = event.newValue ? event.newValue === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+      setIcon();
+    });
     setIcon();
+    button.hidden = false;
   })();
 </script>

@@ -1,33 +1,7 @@
 ---
-import ArticleCard from "@/components/ArticleCard.astro";
-import EmptyState from "@/components/EmptyState.astro";
-import Pagination from "@/components/Pagination.astro";
-import { getArticles, paginateEntries } from "@/lib/content";
-import BaseLayout from "@/layouts/BaseLayout.astro";
-
+import { getArticles } from "@/lib/content";
+import { paginateEntries } from "@/lib/pagination";
+import ArticleListing from "@/layouts/ArticleListing.astro";
 const page = paginateEntries(await getArticles("tech"), "/tech");
 ---
-
-<BaseLayout title="技術メモ - しらゆラボ" description="AI、MCP、クラウド、プログラミングを試した記録です。">
-  <header class="page-header">
-    <div class="container">
-      <p class="eyebrow">notes</p>
-      <h1 class="page-title">技術メモ</h1>
-      <p class="page-lead">AI、MCP、クラウド、プログラミングを試した記録です。</p>
-    </div>
-  </header>
-  <section class="listing">
-    <div class="container">
-      {
-        page.entries.length > 0 ? (
-          <div class="listing-list">
-            {page.entries.map((entry) => <ArticleCard entry={entry} />)}
-          </div>
-        ) : (
-          <EmptyState title="まだ記事はありません" description="最初の一本を書いたら、ここに並びます。" />
-        )
-      }
-      <Pagination basePath="/tech" {...page} />
-    </div>
-  </section>
-</BaseLayout>
+<ArticleListing collection="tech" page={page} />

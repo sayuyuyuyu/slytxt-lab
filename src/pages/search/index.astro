@@ -1,24 +1,36 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import { site } from "@/lib/site";
 ---
-
-<BaseLayout title="Search - しらゆラボ" description="Tech、Life、Projects を横断検索します。">
-  <header class="page-header">
-    <div class="container">
-      <p class="eyebrow">Search</p>
-      <h1 class="page-title">サイト内検索</h1>
-      <p class="page-lead">Tech、Life、Projects の本文を Pagefind で全文検索します。</p>
+<BaseLayout title={`サイト内検索 - ${site.name}`} description="記事とつくったものを、書いてある言葉から探せます。" noindex>
+  <PageHeader title="サイト内検索" eyebrow="search" />
+  <section class="listing" aria-label="検索"><div class="container">
+    <div class="search-box">
+      <div id="search"></div>
+      <p id="search-status" class="muted" role="status">検索を読み込んでいます。</p>
+      <noscript><p>検索にはJavaScriptが必要です。<a href="/tags/">タグ一覧</a>からも探せます。</p></noscript>
     </div>
-  </header>
-  <section class="listing">
-    <div class="container">
-      <div class="search-box">
-        <pagefind-input placeholder="キーワードを入力"></pagefind-input>
-        <pagefind-summary></pagefind-summary>
-        <pagefind-results></pagefind-results>
-      </div>
-    </div>
-  </section>
-  <link href="/pagefind/pagefind-component-ui.css" rel="stylesheet" />
-  <script is:inline src="/pagefind/pagefind-component-ui.js" type="module"></script>
+    <p class="search-help">短い言葉のほうが引っかかります。</p>
+  </div></section>
+  <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
+  <script is:inline>
+    (() => {
+      const status = document.getElementById("search-status");
+      const fail = () => { status.textContent = "検索を読み込めませんでした。ページを再読み込みするか、タグ一覧から辿ってください。"; };
+      const script = document.createElement("script");
+      script.src = "/pagefind/pagefind-ui.js";
+      script.onload = () => {
+        try {
+          new PagefindUI({ element: "#search", showSubResults: true, showImages: false,
+            translations: { placeholder: "言葉で探す", zero_results: "「[SEARCH_TERM]」に一致するものはありません" }
+          });
+          status.hidden = true;
+        } catch { fail(); }
+      };
+      script.onerror = fail;
+      document.head.appendChild(script);
+    })();
+  </script>
+  <noscript><style>#search-status { display: none; }</style></noscript>
 </BaseLayout>

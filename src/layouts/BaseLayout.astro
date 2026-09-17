@@ -12,6 +12,7 @@ type Props = {
   published?: Date;
   updated?: Date;
   noindex?: boolean;
+  searchable?: boolean;
 };
 
 const {
@@ -21,7 +22,8 @@ const {
   type = "website",
   published,
   updated,
-  noindex = false
+  noindex = false,
+  searchable = false
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -67,12 +69,14 @@ const imageUrl = new URL(image, Astro.site);
     {site.twitter && <meta name="twitter:site" content={site.twitter} />}
     {published && <meta property="article:published_time" content={published.toISOString()} />}
     {updated && <meta property="article:modified_time" content={updated.toISOString()} />}
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="theme-color" content="#fdfcf8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1d1b18" media="(prefers-color-scheme: dark)" />
   </head>
-  <body>
+  <body data-pagefind-ignore={searchable ? undefined : "all"}>
+    <a class="skip-link" href="#main-content">本文へ移動</a>
+    <SiteHeader />
     <div class="site-shell">
-      <SiteHeader />
-      <main class="site-main">
+      <main id="main-content" class="site-main" tabindex="-1" data-pagefind-body={searchable || undefined}>
         <slot />
       </main>
       <SiteFooter />

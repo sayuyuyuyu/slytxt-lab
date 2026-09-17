@@ -1,4 +1,5 @@
 import type { APIContext } from "astro";
+import { pageCount } from "@/lib/pagination";
 import {
   getAllEntries,
   getArticles,
@@ -29,10 +30,10 @@ export async function GET(context: APIContext) {
     getArticles("life")
   ]);
   const tags = collectTags(entries);
-  const staticPaths = ["/", "/tech/", "/life/", "/projects/", "/search/", "/about/", "/rss.xml"];
+  const staticPaths = ["/", "/tech/", "/life/", "/projects/", "/tags/", "/about/", "/rss.xml"];
   const pagePaths = [
-    ...Array.from({ length: Math.max(0, Math.ceil(tech.length / 10) - 1) }, (_, index) => `/tech/page/${index + 2}/`),
-    ...Array.from({ length: Math.max(0, Math.ceil(life.length / 10) - 1) }, (_, index) => `/life/page/${index + 2}/`)
+    ...Array.from({ length: Math.max(0, pageCount(tech.length) - 1) }, (_, index) => `/tech/page/${index + 2}/`),
+    ...Array.from({ length: Math.max(0, pageCount(life.length) - 1) }, (_, index) => `/life/page/${index + 2}/`)
   ];
 
   const urls = [
