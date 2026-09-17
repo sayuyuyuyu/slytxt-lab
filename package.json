@@ -12,7 +12,10 @@
     "verify": "pnpm check && pnpm test && pnpm build && pnpm run check:build",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "fixture:ui": "node scripts/prepare-ui-fixture.mjs",
-    "check:build": "node scripts/check-build.mjs"
+    "check:build": "node scripts/check-build.mjs",
+    "write": "node tools/writer/server.mjs",
+    "write:host": "node tools/writer/server.mjs --host",
+    "write:publish": "node tools/writer/publish.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.0.0",
