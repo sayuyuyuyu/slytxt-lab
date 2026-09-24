@@ -5,6 +5,8 @@ export function GET(context: APIContext) {
 
   return new Response(`User-agent: *
 Allow: /
+Disallow: /bm/
+Disallow: /api/
 
 Sitemap: ${new URL("/sitemap.xml", site).href}
 `);
