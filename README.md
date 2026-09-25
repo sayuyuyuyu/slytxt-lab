@@ -31,6 +31,38 @@ Build command: pnpm build
 Output directory: dist
 ```
 
+## Xのブックマーク
+
+自分のXブックマークの最新15件を、推測不能なURLの下で一覧・RSS・JSONとして配信します。仕事のエージェントにURLを渡して読ませる用途です。
+
+```text
+/bm/<BOOKMARKS_SECRET>/                 一覧
+/bm/<BOOKMARKS_SECRET>/rss.xml          RSS
+/bm/<BOOKMARKS_SECRET>/bookmarks.json   JSON
+```
+
+初回だけ、ブラウザで次を開いてXの認可を通します。`key` は `BOOKMARKS_ADMIN_TOKEN` です。
+
+```text
+https://slytxt.dev/api/bookmarks/connect?key=<BOOKMARKS_ADMIN_TOKEN>
+```
+
+Xのアプリ設定では、コールバックURLに `https://slytxt.dev/api/bookmarks/callback` を登録し、スコープに `tweet.read` `users.read` `bookmark.read` `offline.access` を付けます。
+
+### Cloudflare Pages の設定
+
+- KV 名前空間を1つ作り、`BOOKMARKS` としてバインドする
+- 環境変数を登録する
+
+```text
+BOOKMARKS_SECRET        URL に使うランダム文字列
+BOOKMARKS_ADMIN_TOKEN   認可を始めるときの合言葉
+X_CLIENT_ID             X アプリの Client ID
+X_CLIENT_SECRET         X アプリの Client Secret
+```
+
+取得は1日1回、朝9時（JST）以降の最初のアクセスで走ります。失敗しても10分は再試行せず、前回の内容を残すので一覧が空にはなりません。投稿者は KV にキャッシュし、毎回の再取得課金を避けています。
+
 ## Development Flow
 
 `main` への直接 push は禁止です。変更は作業ブランチから Pull Request を作成し、CI が通ってから merge します。
@@ -90,7 +122,7 @@ cover:
 Node.js 22以降で実行してください。追加のテスト依存関係は不要です。
 
 ```sh
-pnpm test          # ページ送りの境界・大規模一覧のテスト
+pnpm test          # ページ送りとブックマークのテスト
 pnpm run verify    # 型チェック、テスト、ビルド、生成物のリンク検証
 ```
 
