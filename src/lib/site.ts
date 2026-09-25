@@ -42,17 +42,20 @@ export const projectStatusLabels = {
   completed: "Done"
 } as const;
 
-// The menu is grouped by level: what I write, how to browse it, and the rest.
+// The menu is grouped by level: written pieces, works, browsing, and the rest.
 export type NavItem = { href: string; label: string };
 
 export const navGroups: { label: string; items: NavItem[] }[] = [
   {
-    label: "content",
+    label: "articles",
     items: [
       { href: "/tech/", label: categoryLabels.tech },
-      { href: "/life/", label: categoryLabels.life },
-      { href: "/projects/", label: categoryLabels.projects }
+      { href: "/life/", label: categoryLabels.life }
     ]
+  },
+  {
+    label: "works",
+    items: [{ href: "/projects/", label: categoryLabels.projects }]
   },
   {
     label: "browse",
