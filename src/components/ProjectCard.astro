@@ -13,7 +13,7 @@ const { entry, headingLevel: Heading = "h3" } = Astro.props;
 const date = entry.data.updated ?? entry.data.started;
 ---
 
-<article class="project-card">
+<article class="project-card" data-motion>
   <div class="project-card__meta">
     <span class="status">{projectStatusLabels[entry.data.status]}</span>
     <span aria-hidden="true"> / </span>
