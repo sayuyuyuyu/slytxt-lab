@@ -51,6 +51,10 @@ function authorLabel(item: BookmarkItem): string {
   return [item.author.name, handle].filter(Boolean).join(" ");
 }
 
+function initialOf(name: string): string {
+  return [...name.trim()][0] ?? "?";
+}
+
 export function renderJson(snapshot: BookmarkSnapshot | null): string {
   return JSON.stringify(
     {
@@ -98,24 +102,48 @@ export function renderRss(snapshot: BookmarkSnapshot | null, options: RenderOpti
   return lines.join("\n");
 }
 
+function avatarHtml(item: BookmarkItem): string {
+  if (item.author.avatar) {
+    return `<img class="card__avatar" src="${escapeHtml(item.author.avatar)}" alt="" width="40" height="40" loading="lazy" decoding="async">`;
+  }
+  return `<span class="card__avatar card__avatar--fallback" aria-hidden="true">${escapeHtml(initialOf(item.author.name))}</span>`;
+}
+
+function cardHtml(item: BookmarkItem): string {
+  const handle = item.author.username
+    ? `<p class="card__handle">@${escapeHtml(item.author.username)}</p>`
+    : "";
+  return `<li class="card">
+<div class="card__head">${avatarHtml(item)}<div class="card__who"><p class="card__name">${escapeHtml(item.author.name)}</p>${handle}</div><time class="card__time" datetime="${escapeHtml(item.createdAt)}">${formatJst(item.createdAt)}</time></div>
+<p class="card__text">${renderText(item.text)}</p>
+<div class="card__foot"><a class="card__open" href="${escapeHtml(item.url)}" rel="noreferrer noopener" target="_blank">Xで開く</a></div>
+</li>`;
+}
+
 const STYLE = `
-:root{--bg:#fdfcf8;--surface:#f4f0e8;--text:#292721;--text-muted:#706a60;--border:#d9d3c7;--accent:#a43d29}
-@media (prefers-color-scheme:dark){:root{--bg:#1d1b18;--surface:#292621;--text:#f2eee5;--text-muted:#b8b0a1;--border:#4b453c;--accent:#ee947d}}
+:root{--bg:#fdfcf8;--surface:#f4f0e8;--card:#ffffff;--text:#292721;--text-muted:#706a60;--border:#e2dcd0;--accent:#a43d29}
+@media (prefers-color-scheme:dark){:root{--bg:#1d1b18;--surface:#292621;--card:#292621;--text:#f2eee5;--text-muted:#b8b0a1;--border:#413b33;--accent:#ee947d}}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.9 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
 a{color:var(--accent)}
-.wrap{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+.wrap{max-width:680px;margin:0 auto;padding:48px 20px 80px}
 .eyebrow{margin:0;color:var(--text-muted);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase}
 h1{margin:8px 0 0;font:500 1.9rem/1.4 Georgia,"Hiragino Mincho ProN",serif}
 .lead{margin:16px 0 0;color:var(--text-muted);font-size:.92rem}
 .links{display:flex;flex-wrap:wrap;gap:16px;margin:20px 0 0;font-size:.85rem}
-.notice{margin:24px 0 0;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:14px 16px;font-size:.85rem;color:var(--text-muted)}
-.items{list-style:none;margin:32px 0 0;padding:0}
-.item{border-top:1px solid var(--border);padding:22px 0}
-.item__meta{margin:0;color:var(--text-muted);font-size:.8rem}
-.item__meta .name{color:var(--text)}
-.item__text{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem}
-.item__link{margin:10px 0 0;font-size:.8rem}
+.notice{margin:24px 0 0;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px 16px;font-size:.85rem;color:var(--text-muted)}
+.cards{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:14px}
+.card{margin:0;border:1px solid var(--border);border-radius:14px;background:var(--card);padding:16px 16px 12px}
+.card__head{display:flex;align-items:center;gap:10px}
+.card__avatar{width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover}
+.card__avatar--fallback{display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--text);font-weight:600;font-size:.95rem}
+.card__who{min-width:0}
+.card__name{margin:0;font-weight:600;font-size:.92rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card__handle{margin:0;color:var(--text-muted);font-size:.78rem;line-height:1.35}
+.card__time{margin-left:auto;color:var(--text-muted);font-size:.74rem;white-space:nowrap;align-self:flex-start}
+.card__text{margin:12px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem;line-height:1.85}
+.card__foot{display:flex;justify-content:flex-end;margin:10px 0 0}
+.card__open{font-size:.8rem}
 .empty{margin:32px 0 0;color:var(--text-muted);font-size:.9rem}
 `;
 
@@ -129,15 +157,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
   } else if (items.length === 0) {
     body = `<p class="empty">ブックマークがまだありません。</p>`;
   } else {
-    body = `<ol class="items">${items
-      .map(
-        (item) => `<li class="item">
-<p class="item__meta"><span class="name">${escapeHtml(item.author.name)}</span>${item.author.username ? ` <span class="handle">@${escapeHtml(item.author.username)}</span>` : ""} <time datetime="${escapeHtml(item.createdAt)}">${formatJst(item.createdAt)}</time></p>
-<p class="item__text">${renderText(item.text)}</p>
-<p class="item__link"><a href="${escapeHtml(item.url)}" rel="noreferrer noopener">Xで開く</a></p>
-</li>`
-      )
-      .join("\n")}</ol>`;
+    body = `<ol class="cards">${items.map(cardHtml).join("\n")}</ol>`;
   }
 
   const notice = snapshot?.error
@@ -174,26 +194,33 @@ const EMBED_STYLE = `
 :host{display:block;color:var(--xb-text,#292721);font:15px/1.8 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
 @media (prefers-color-scheme:dark){:host{color:var(--xb-text,#f2eee5)}}
 *,*::before,*::after{box-sizing:border-box}
-.head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid var(--xb-border,#d9d3c7);padding:0 0 10px}
+a{color:var(--xb-accent,#a43d29)}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 14px}
 .title{font-weight:600}
 .meta{display:flex;gap:12px;color:var(--xb-muted,#706a60);font-size:.78rem}
-a{color:var(--xb-accent,#a43d29)}
-.items{list-style:none;margin:0;padding:0}
-.item{border-bottom:1px solid var(--xb-border,#d9d3c7);padding:16px 0}
-.item-meta{display:flex;flex-wrap:wrap;gap:8px;margin:0;color:var(--xb-muted,#706a60);font-size:.78rem}
-.item-meta .name{font-weight:600;color:var(--xb-text,#292721)}
-.item-text{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
-.item-link{margin:8px 0 0;font-size:.78rem}
+.cards{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.card{border:1px solid var(--xb-border,#e2dcd0);border-radius:14px;background:var(--xb-card,transparent);padding:16px 16px 12px}
+.card__head{display:flex;align-items:center;gap:10px}
+.card__avatar{width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover}
+.card__avatar--fallback{display:inline-flex;align-items:center;justify-content:center;background:var(--xb-surface,rgba(127,127,127,.14));color:var(--xb-text,#292721);font-weight:600;font-size:.95rem}
+.card__who{min-width:0}
+.card__name{margin:0;font-weight:600;font-size:.92rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card__handle{margin:0;color:var(--xb-muted,#706a60);font-size:.78rem;line-height:1.35}
+.card__time{margin-left:auto;color:var(--xb-muted,#706a60);font-size:.74rem;white-space:nowrap;align-self:flex-start}
+.card__text{margin:12px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem;line-height:1.85}
+.card__foot{display:flex;justify-content:flex-end;margin:10px 0 0}
+.card__open{font-size:.8rem}
 .notice,.empty{margin:14px 0 0;color:var(--xb-muted,#706a60);font-size:.85rem}
 `;
 
-/** `<script src=".../embed.js">` で一覧をその場に描く。データは取得済みのものを埋め込むので追加の通信も CORS も要らない。 */
+/** `<script src=".../embed.js">` で一覧をカードで描く。データは取得済みのものを埋め込むので追加の通信も CORS も要らない。 */
 export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOptions): string {
   const items = (snapshot?.items ?? []).map((item) => ({
     text: item.text,
     url: item.url,
     name: item.author.name,
     username: item.author.username,
+    avatar: item.author.avatar ?? null,
     createdAt: item.createdAt,
     displayAt: formatJst(item.createdAt)
   }));
@@ -245,6 +272,51 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
     return wrap;
   }
 
+  function avatar(item) {
+    if (item.avatar) {
+      var img = el("img", "card__avatar");
+      img.src = item.avatar;
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.width = 40;
+      img.height = 40;
+      return img;
+    }
+    var fallback = el("span", "card__avatar card__avatar--fallback", item.name ? item.name.charAt(0) : "?");
+    fallback.setAttribute("aria-hidden", "true");
+    return fallback;
+  }
+
+  function card(item) {
+    var li = el("li", "card");
+
+    var head = el("div", "card__head");
+    head.appendChild(avatar(item));
+    var who = el("div", "card__who");
+    who.appendChild(el("p", "card__name", item.name));
+    if (item.username) who.appendChild(el("p", "card__handle", "@" + item.username));
+    head.appendChild(who);
+    var time = el("time", "card__time", item.displayAt);
+    time.dateTime = item.createdAt;
+    head.appendChild(time);
+    li.appendChild(head);
+
+    var body = el("p", "card__text");
+    body.appendChild(linked(item.text));
+    li.appendChild(body);
+
+    var foot = el("div", "card__foot");
+    var open = el("a", "card__open", "Xで開く");
+    open.href = item.url;
+    open.rel = "noreferrer noopener";
+    open.target = "_blank";
+    foot.appendChild(open);
+    li.appendChild(foot);
+
+    return li;
+  }
+
   var head = el("div", "head");
   head.appendChild(el("span", "title", "Xのブックマーク"));
   var meta = el("span", "meta");
@@ -262,30 +334,9 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
   if (!DATA.items.length) {
     mount.appendChild(el("p", "empty", DATA.connected ? "ブックマークがまだありません。" : "まだXと接続していません。"));
   } else {
-    var list = el("ol", "items");
+    var list = el("ol", "cards");
     DATA.items.forEach(function (item) {
-      var li = el("li", "item");
-      var line = el("p", "item-meta");
-      line.appendChild(el("span", "name", item.name));
-      if (item.username) line.appendChild(el("span", "handle", "@" + item.username));
-      var time = el("time", null, item.displayAt);
-      time.dateTime = item.createdAt;
-      line.appendChild(time);
-      li.appendChild(line);
-
-      var body = el("p", "item-text");
-      body.appendChild(linked(item.text));
-      li.appendChild(body);
-
-      var linkLine = el("p", "item-link");
-      var open = el("a", null, "Xで開く");
-      open.href = item.url;
-      open.rel = "noreferrer noopener";
-      open.target = "_blank";
-      linkLine.appendChild(open);
-      li.appendChild(linkLine);
-
-      list.appendChild(li);
+      list.appendChild(card(item));
     });
     mount.appendChild(list);
   }

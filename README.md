@@ -50,7 +50,7 @@ Output directory: dist
 <script src="https://slytxt.dev/bm/<BOOKMARKS_SECRET>/embed.js" async></script>
 ```
 
-`id="x-bookmarks"` の要素があればその中に描き、無ければ script の位置に挿入します。`data-target` でセレクタを指定することもできます。Shadow DOM に描くので、埋め込み先の CSS と干渉しません。色は `--xb-text` `--xb-muted` `--xb-border` `--xb-accent` で上書きできます。
+`id="x-bookmarks"` の要素があればその中に描き、無ければ script の位置に挿入します。`data-target` でセレクタを指定することもできます。投稿はアイコン付きのカードで並びます。Shadow DOM に描くので、埋め込み先の CSS と干渉しません。色は `--xb-text` `--xb-muted` `--xb-border` `--xb-card` `--xb-accent` で上書きできます。
 
 初回だけ、ブラウザで次を開いてXの認可を通します。`key` は `BOOKMARKS_ADMIN_TOKEN` です。
 

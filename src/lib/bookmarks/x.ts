@@ -162,16 +162,17 @@ export function createXClient(store: KeyValueStore, options: XClientOptions): XC
       if (ids.length === 0) return [];
       const params = new URLSearchParams({
         ids: ids.slice(0, 100).join(","),
-        "user.fields": "username,name"
+        "user.fields": "username,name,profile_image_url"
       });
-      const payload = await request<{ data?: { id: string; username?: string; name?: string }[] }>(
-        `/2/users?${params}`
-      );
+      const payload = await request<{
+        data?: { id: string; username?: string; name?: string; profile_image_url?: string }[];
+      }>(`/2/users?${params}`);
 
       return (payload.data ?? []).map((user) => ({
         id: user.id,
         username: user.username ?? "",
-        name: user.name ?? ""
+        name: user.name ?? "",
+        avatar: user.profile_image_url
       }));
     }
   };

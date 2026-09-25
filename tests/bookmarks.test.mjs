@@ -217,7 +217,7 @@ test("rendering escapes markup, linkifies bare URLs, and hides the page", () => 
         text: "<script>alert(1)</script> https://example.com?a=1&b=2",
         createdAt: "2026-09-24T23:00:00Z",
         url: "https://x.com/alice/status/1",
-        author: { id: "u1", username: "alice", name: "Alice & Bob" },
+        author: { id: "u1", username: "alice", name: "Alice & Bob", avatar: "https://pbs.twimg.com/a.jpg" },
       },
     ],
   };
@@ -228,6 +228,9 @@ test("rendering escapes markup, linkifies bare URLs, and hides the page", () => 
   assert.ok(html.includes('<a href="https://example.com?a=1&amp;b=2"'));
   assert.ok(html.includes("Alice &amp; Bob"));
   assert.ok(html.includes('name="robots" content="noindex"'));
+  assert.ok(html.includes('<li class="card">'));
+  assert.ok(html.includes('<img class="card__avatar" src="https://pbs.twimg.com/a.jpg"'));
+  assert.ok(html.includes('<p class="card__text">'));
 
   const rss = renderRss(snapshot, RENDER_OPTIONS);
   assert.ok(rss.includes("<dc:creator>Alice &amp; Bob @alice</dc:creator>"));
@@ -237,6 +240,29 @@ test("rendering escapes markup, linkifies bare URLs, and hides the page", () => 
   const json = JSON.parse(renderJson(snapshot));
   assert.equal(json.items[0].author.username, "alice");
   assert.equal(json.error, null);
+});
+
+test("an author without an avatar falls back to an initial", () => {
+  const snapshot = {
+    updatedAt: "2026-09-25T00:00:00Z",
+    attemptedAt: "2026-09-25T00:00:00Z",
+    items: [
+      {
+        id: "1",
+        text: "hello",
+        createdAt: "2026-09-24T23:00:00Z",
+        url: "https://x.com/alice/status/1",
+        author: { id: "u1", username: "alice", name: "Alice" },
+      },
+    ],
+  };
+  const html = renderHtml(snapshot, RENDER_OPTIONS);
+  assert.ok(html.includes('class="card__avatar card__avatar--fallback"'));
+  assert.ok(html.includes('aria-hidden="true">A<'));
+
+  const code = renderEmbed(snapshot, RENDER_OPTIONS);
+  assert.doesNotThrow(() => new Function(code));
+  assert.ok(code.includes("card__avatar--fallback"));
 });
 
 test("rendering an unconnected feed says so instead of failing", () => {
@@ -255,7 +281,7 @@ test("embed script is valid JS and carries the feed data", () => {
         text: "</script> と https://example.com?a=1&b=2",
         createdAt: "2026-09-24T23:00:00Z",
         url: "https://x.com/alice/status/1",
-        author: { id: "u1", username: "alice", name: "Alice" },
+        author: { id: "u1", username: "alice", name: "Alice", avatar: "https://pbs.twimg.com/a.jpg" },
       },
     ],
   };
@@ -263,6 +289,7 @@ test("embed script is valid JS and carries the feed data", () => {
 
   assert.doesNotThrow(() => new Function(code));
   assert.ok(code.includes("https://x.com/alice/status/1"));
+  assert.ok(code.includes("https://pbs.twimg.com/a.jpg"));
   assert.ok(code.includes("x-bookmarks"));
   assert.ok(code.includes("2026-09-25 08:00"));
 });
