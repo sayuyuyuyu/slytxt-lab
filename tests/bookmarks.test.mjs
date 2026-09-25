@@ -9,7 +9,7 @@ import {
 } from "../src/lib/bookmarks/feed.ts";
 import { lastJstBoundary, formatJst, formatRfc822 } from "../src/lib/bookmarks/format.ts";
 import { matchesSecret } from "../src/lib/bookmarks/secret.ts";
-import { renderHtml, renderJson, renderRss } from "../src/lib/bookmarks/render.ts";
+import { renderEmbed, renderHtml, renderJson, renderRss } from "../src/lib/bookmarks/render.ts";
 
 function memoryStore() {
   const map = new Map();
@@ -243,4 +243,32 @@ test("rendering an unconnected feed says so instead of failing", () => {
   const html = renderHtml(null, RENDER_OPTIONS);
   assert.ok(html.includes("まだXと接続していません"));
   assert.equal(JSON.parse(renderJson(null)).items.length, 0);
+});
+
+test("embed script is valid JS and carries the feed data", () => {
+  const snapshot = {
+    updatedAt: "2026-09-25T00:00:00Z",
+    attemptedAt: "2026-09-25T00:00:00Z",
+    items: [
+      {
+        id: "1",
+        text: "</script> と https://example.com?a=1&b=2",
+        createdAt: "2026-09-24T23:00:00Z",
+        url: "https://x.com/alice/status/1",
+        author: { id: "u1", username: "alice", name: "Alice" },
+      },
+    ],
+  };
+  const code = renderEmbed(snapshot, RENDER_OPTIONS);
+
+  assert.doesNotThrow(() => new Function(code));
+  assert.ok(code.includes("https://x.com/alice/status/1"));
+  assert.ok(code.includes("x-bookmarks"));
+  assert.ok(code.includes("2026-09-25 08:00"));
+});
+
+test("unconnected embed still produces runnable JS", () => {
+  const code = renderEmbed(null, RENDER_OPTIONS);
+  assert.doesNotThrow(() => new Function(code));
+  assert.ok(code.includes("まだXと接続していません"));
 });

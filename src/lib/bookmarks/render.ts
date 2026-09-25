@@ -168,3 +168,139 @@ ${body}
 </html>
 `;
 }
+
+/** 埋め込み先の CSS と干渉しないよう Shadow DOM に描くスタイル。 */
+const EMBED_STYLE = `
+:host{display:block;color:var(--xb-text,#292721);font:15px/1.8 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+@media (prefers-color-scheme:dark){:host{color:var(--xb-text,#f2eee5)}}
+*,*::before,*::after{box-sizing:border-box}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid var(--xb-border,#d9d3c7);padding:0 0 10px}
+.title{font-weight:600}
+.meta{display:flex;gap:12px;color:var(--xb-muted,#706a60);font-size:.78rem}
+a{color:var(--xb-accent,#a43d29)}
+.items{list-style:none;margin:0;padding:0}
+.item{border-bottom:1px solid var(--xb-border,#d9d3c7);padding:16px 0}
+.item-meta{display:flex;flex-wrap:wrap;gap:8px;margin:0;color:var(--xb-muted,#706a60);font-size:.78rem}
+.item-meta .name{font-weight:600;color:var(--xb-text,#292721)}
+.item-text{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.item-link{margin:8px 0 0;font-size:.78rem}
+.notice,.empty{margin:14px 0 0;color:var(--xb-muted,#706a60);font-size:.85rem}
+`;
+
+/** `<script src=".../embed.js">` で一覧をその場に描く。データは取得済みのものを埋め込むので追加の通信も CORS も要らない。 */
+export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOptions): string {
+  const items = (snapshot?.items ?? []).map((item) => ({
+    text: item.text,
+    url: item.url,
+    name: item.author.name,
+    username: item.author.username,
+    createdAt: item.createdAt,
+    displayAt: formatJst(item.createdAt)
+  }));
+
+  const data = JSON.stringify({
+    siteName: options.siteName,
+    siteUrl: options.siteUrl,
+    rssUrl: options.rssUrl,
+    updatedAt: snapshot ? formatJst(snapshot.updatedAt) : null,
+    error: snapshot?.error ?? null,
+    connected: snapshot !== null,
+    count: options.count,
+    items
+  });
+
+  return `(function () {
+  var DATA = ${data};
+  var script = document.currentScript;
+  var root = document.createElement("div");
+  root.className = "x-bookmarks";
+
+  var mount = root.attachShadow ? root.attachShadow({ mode: "open" }) : root;
+  var style = document.createElement("style");
+  style.textContent = ${JSON.stringify(EMBED_STYLE)};
+  mount.appendChild(style);
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function linked(value) {
+    var wrap = document.createDocumentFragment();
+    var parts = String(value).split(/(https?:\\/\\/[^\\s]+)/g);
+    for (var i = 0; i < parts.length; i += 1) {
+      var part = parts[i];
+      if (/^https?:\\/\\//.test(part)) {
+        var a = el("a", null, part);
+        a.href = part;
+        a.rel = "noreferrer noopener";
+        a.target = "_blank";
+        wrap.appendChild(a);
+      } else if (part) {
+        wrap.appendChild(document.createTextNode(part));
+      }
+    }
+    return wrap;
+  }
+
+  var head = el("div", "head");
+  head.appendChild(el("span", "title", "Xのブックマーク"));
+  var meta = el("span", "meta");
+  if (DATA.updatedAt) meta.appendChild(document.createTextNode("更新 " + DATA.updatedAt));
+  var rss = el("a", null, "RSS");
+  rss.href = DATA.rssUrl;
+  meta.appendChild(rss);
+  head.appendChild(meta);
+  mount.appendChild(head);
+
+  if (DATA.error) {
+    mount.appendChild(el("p", "notice", "最新の取得に失敗しました（" + (DATA.updatedAt || "") + " 時点の内容）"));
+  }
+
+  if (!DATA.items.length) {
+    mount.appendChild(el("p", "empty", DATA.connected ? "ブックマークがまだありません。" : "まだXと接続していません。"));
+  } else {
+    var list = el("ol", "items");
+    DATA.items.forEach(function (item) {
+      var li = el("li", "item");
+      var line = el("p", "item-meta");
+      line.appendChild(el("span", "name", item.name));
+      if (item.username) line.appendChild(el("span", "handle", "@" + item.username));
+      var time = el("time", null, item.displayAt);
+      time.dateTime = item.createdAt;
+      line.appendChild(time);
+      li.appendChild(line);
+
+      var body = el("p", "item-text");
+      body.appendChild(linked(item.text));
+      li.appendChild(body);
+
+      var linkLine = el("p", "item-link");
+      var open = el("a", null, "Xで開く");
+      open.href = item.url;
+      open.rel = "noreferrer noopener";
+      open.target = "_blank";
+      linkLine.appendChild(open);
+      li.appendChild(linkLine);
+
+      list.appendChild(li);
+    });
+    mount.appendChild(list);
+  }
+
+  var target = null;
+  if (script && script.getAttribute("data-target")) {
+    target = document.querySelector(script.getAttribute("data-target"));
+  }
+  if (!target) target = document.getElementById("x-bookmarks");
+  if (target) {
+    target.innerHTML = "";
+    target.appendChild(root);
+  } else if (script && script.parentNode) {
+    script.parentNode.insertBefore(root, script);
+  }
+})();
+`;
+}
