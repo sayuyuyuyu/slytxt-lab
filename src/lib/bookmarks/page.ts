@@ -78,7 +78,8 @@ export async function handleFeed(
     x: createXClient(context.env.BOOKMARKS as KeyValueStore, {
       clientId: context.env.X_CLIENT_ID,
       clientSecret: context.env.X_CLIENT_SECRET,
-      fetch,
+      // Workers では fetch を裸で渡すと this がずれて Illegal invocation になる。
+      fetch: fetch.bind(globalThis),
       now: () => Date.now()
     }),
     now,
