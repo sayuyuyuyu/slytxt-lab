@@ -98,6 +98,21 @@ test("refresh policy waits for the boundary and the retry window", () => {
     shouldRefresh(attempted, new Date("2026-09-25T00:11:00Z"), boundary, policy),
     true,
   );
+
+  // 同じ日に成功済みなら、次は境界をまたぐまで取り直さない。
+  const done = { ...snapshot, attemptedAt: "2026-09-25T01:00:00.000Z" };
+  assert.equal(shouldRefresh(done, new Date("2026-09-25T05:00:00Z"), boundary, policy), false);
+
+  // 失敗していれば、同じ日でも retryMinutes 後に取り直す。
+  const failed = { ...done, error: "X API が 500 を返しました。" };
+  assert.equal(
+    shouldRefresh(failed, new Date("2026-09-25T01:05:00Z"), boundary, policy),
+    false,
+  );
+  assert.equal(
+    shouldRefresh(failed, new Date("2026-09-25T01:11:00Z"), boundary, policy),
+    true,
+  );
 });
 
 test("secret comparison rejects missing, short, and wrong values", () => {

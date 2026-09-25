@@ -20,7 +20,7 @@ export type RefreshPolicy = {
   retryMinutes: number;
 };
 
-/** boundary をまたいでいれば取得し直す。失敗が続いても毎回は叩かない。 */
+/** boundary をまたいでいれば取り直す。失敗した内容は同じ日でも再試行し、叩きすぎは retryMinutes で抑える。 */
 export function shouldRefresh(
   snapshot: BookmarkSnapshot | null,
   now: Date,
@@ -28,11 +28,12 @@ export function shouldRefresh(
   policy: RefreshPolicy
 ): boolean {
   if (!snapshot) return true;
-  if (new Date(snapshot.attemptedAt) >= boundary) return false;
-  if (now.getTime() - new Date(snapshot.attemptedAt).getTime() < policy.retryMinutes * 60_000) {
-    return false;
-  }
-  return true;
+  const attempted = new Date(snapshot.attemptedAt).getTime();
+  if (Number.isNaN(attempted)) return true;
+  if (now.getTime() - attempted < policy.retryMinutes * 60_000) return false;
+  // 前回が失敗なら、同じ日でも取り直して直り次第反映する。
+  if (snapshot.error) return true;
+  return attempted < boundary.getTime();
 }
 
 export function postUrl(author: BookmarkAuthor, id: string): string {
