@@ -4,7 +4,8 @@ import type { PagesEnv, PagesFunction } from "../../../src/lib/bookmarks/types.t
 const FORMATS: Record<string, FeedFormat> = {
   "": "html",
   "rss.xml": "rss",
-  "bookmarks.json": "json"
+  "bookmarks.json": "json",
+  "embed.js": "js"
 };
 
 export const onRequest: PagesFunction<PagesEnv> = (context) => {

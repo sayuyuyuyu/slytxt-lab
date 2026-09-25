@@ -1,6 +1,6 @@
 import { readFeed } from "./feed.ts";
 import { lastJstBoundary } from "./format.ts";
-import { renderHtml, renderJson, renderRss } from "./render.ts";
+import { renderEmbed, renderHtml, renderJson, renderRss } from "./render.ts";
 import { matchesSecret } from "./secret.ts";
 import { site } from "../site.ts";
 import type { BookmarkSnapshot, KeyValueStore, PagesContext, PagesEnv } from "./types.ts";
@@ -10,7 +10,7 @@ import { createXClient } from "./x.ts";
 export const FEED_COUNT = 15;
 export const REFRESH_HOUR = 9;
 
-export type FeedFormat = "html" | "rss" | "json";
+export type FeedFormat = "html" | "rss" | "json" | "js";
 
 function notFound(): Response {
   return new Response("Not Found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
@@ -41,6 +41,16 @@ function render(format: FeedFormat, snapshot: BookmarkSnapshot | null, origin: s
     return new Response(renderJson(snapshot), {
       headers: {
         "content-type": "application/json; charset=utf-8",
+        "cache-control": "public, max-age=300",
+        "x-robots-tag": "noindex"
+      }
+    });
+  }
+
+  if (format === "js") {
+    return new Response(renderEmbed(snapshot, options), {
+      headers: {
+        "content-type": "text/javascript; charset=utf-8",
         "cache-control": "public, max-age=300",
         "x-robots-tag": "noindex"
       }

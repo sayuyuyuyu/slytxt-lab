@@ -39,7 +39,18 @@ Output directory: dist
 /bm/<BOOKMARKS_SECRET>/                 一覧
 /bm/<BOOKMARKS_SECRET>/rss.xml          RSS
 /bm/<BOOKMARKS_SECRET>/bookmarks.json   JSON
+/bm/<BOOKMARKS_SECRET>/embed.js         埋め込み用
 ```
+
+### 埋め込み
+
+別のページに一覧を埋め込むときは、次のスニペットを置きます。
+
+```html
+<script src="https://slytxt.dev/bm/<BOOKMARKS_SECRET>/embed.js" async></script>
+```
+
+`id="x-bookmarks"` の要素があればその中に描き、無ければ script の位置に挿入します。`data-target` でセレクタを指定することもできます。Shadow DOM に描くので、埋め込み先の CSS と干渉しません。色は `--xb-text` `--xb-muted` `--xb-border` `--xb-accent` で上書きできます。
 
 初回だけ、ブラウザで次を開いてXの認可を通します。`key` は `BOOKMARKS_ADMIN_TOKEN` です。
 
