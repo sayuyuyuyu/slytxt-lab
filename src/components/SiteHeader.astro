@@ -21,8 +21,9 @@ function isCurrent(href: string) {
 <header class="site-header" data-site-header data-pagefind-ignore>
   <div class="site-header__inner">
     <a class="brand" href="/" aria-label={`${site.name} ホーム`}>
-      <span class="brand__mark" aria-hidden="true">し</span>
-      <span>{site.name}</span>
+      <span class="brand__mark" aria-hidden="true">❯</span>
+      <span class="brand__name">{site.name}</span>
+      <span class="brand__cursor" aria-hidden="true"></span>
     </a>
     <div class="site-header__actions">
       <button

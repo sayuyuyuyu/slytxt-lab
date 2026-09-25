@@ -1,4 +1,4 @@
-<button class="theme-toggle" type="button" aria-label="ダークモード" aria-pressed="false" data-theme-toggle hidden>
+<button class="theme-toggle" type="button" aria-label="テーマを切り替える" aria-pressed="false" data-theme-toggle hidden>
   <span class="theme-toggle__icon" aria-hidden="true" data-theme-icon>◐</span>
 </button>
 
@@ -10,19 +10,21 @@
     if (!button || !icon) return;
 
     const setIcon = () => {
-      const dark = document.documentElement.classList.contains("dark");
-      icon.textContent = dark ? "☾" : "☼";
-      button.setAttribute("aria-pressed", String(dark));
-      button.setAttribute("title", dark ? "ライトモードに切り替える" : "ダークモードに切り替える");
+      const light = document.documentElement.classList.contains("light");
+      const next = light ? "ダークモードに切り替える" : "ライトモードに切り替える";
+      icon.textContent = light ? "☼" : "☾";
+      button.setAttribute("aria-pressed", String(!light));
+      button.setAttribute("aria-label", next);
+      button.setAttribute("title", next);
     };
 
     button.addEventListener("click", () => {
-      const nextTheme = document.documentElement.classList.contains("dark") ? "light" : "dark";
+      const nextTheme = document.documentElement.classList.contains("light") ? "dark" : "light";
       const root = document.documentElement;
       // Animate the colour change only while switching, so scrolling stays cheap.
       root.classList.add("theme-switching");
       window.setTimeout(() => root.classList.remove("theme-switching"), 420);
-      root.classList.toggle("dark", nextTheme === "dark");
+      root.classList.toggle("light", nextTheme === "light");
       try {
         localStorage.setItem("theme", nextTheme);
       } catch {
@@ -31,15 +33,9 @@
       setIcon();
     });
 
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
-      try { if (localStorage.getItem("theme")) return; } catch { /* Follow the system without storage. */ }
-      document.documentElement.classList.toggle("dark", event.matches);
-      setIcon();
-    });
     window.addEventListener("storage", (event) => {
       if (event.key !== "theme" && event.key !== null) return;
-      const dark = event.newValue ? event.newValue === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.classList.toggle("light", event.newValue === "light");
       setIcon();
     });
     setIcon();

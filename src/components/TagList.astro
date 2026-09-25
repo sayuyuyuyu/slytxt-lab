@@ -14,7 +14,7 @@ const { tags } = Astro.props;
       {tags.map((tag) => (
         <li>
           <a class="tag" href={tagPath(tag)}>
-            #{tag}
+            <span class="tag__hash" aria-hidden="true">#</span>{tag}
           </a>
         </li>
       ))}
