@@ -36,7 +36,7 @@ const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
   updated={entry.data.updated}
   searchable
 >
-  <header class="article-hero">
+  <header class="article-hero" data-motion>
     <div class="container">
       <Breadcrumbs
         items={[
@@ -64,7 +64,7 @@ const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
         <slot />
       </div>
 
-      <nav class="article-nav" aria-label="前後の記事" data-pagefind-ignore>
+      <nav class="article-nav" aria-label="前後の記事" data-pagefind-ignore data-motion>
         {
           previous ? (
             <a href={getEntryPath(previous)}>

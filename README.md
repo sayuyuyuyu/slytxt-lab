@@ -124,6 +124,8 @@ cover:
 ## UI と構成
 
 - 共通の配色・文字・余白は `src/styles/global.css` に集約しています。
+- スクロール出現と入場のアニメーションは Motion（`motion`）で行います。動かしたい要素に `data-motion` を付けます。JS が無い・動かない環境では2秒後に必ず表示されるようにしてあります。
+- 動きは `prefers-reduced-motion` を尊重します。
 - 技術メモと日々の一覧は `ArticleListing.astro`、ページ数・URL計算は `src/lib/pagination.ts` で共有します。
 - 記事・制作物・このサイトの説明を検索対象にし、一覧・検索・404は検索結果から除外します。
 - タグ一覧は `/tags/`、存在しないURLは `404.astro` から各ページへ戻れます。

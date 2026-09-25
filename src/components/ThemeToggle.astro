@@ -18,7 +18,11 @@
 
     button.addEventListener("click", () => {
       const nextTheme = document.documentElement.classList.contains("dark") ? "light" : "dark";
-      document.documentElement.classList.toggle("dark", nextTheme === "dark");
+      const root = document.documentElement;
+      // Animate the colour change only while switching, so scrolling stays cheap.
+      root.classList.add("theme-switching");
+      window.setTimeout(() => root.classList.remove("theme-switching"), 420);
+      root.classList.toggle("dark", nextTheme === "dark");
       try {
         localStorage.setItem("theme", nextTheme);
       } catch {

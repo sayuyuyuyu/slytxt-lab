@@ -12,6 +12,6 @@ const tags = Array.from(collectTags(entries), ([slug, label]) => ({ slug, label,
 <BaseLayout title={`タグから探す - ${site.name}`} description="技術メモ、日々の記録、つくったものをタグから辿れます。">
   <PageHeader title="タグから探す" eyebrow="tags" count={tags.length} />
   <section class="listing" aria-label="タグ一覧"><div class="container">
-    {tags.length ? <ul class="tag-directory">{tags.map((tag) => <li><a href={`/tags/${tag.slug}/`}>#{tag.label}<span>{tag.count}件</span></a></li>)}</ul> : <EmptyState title="まだタグはありません" description="記事が増えたら、ここに並びます。" />}
+    {tags.length ? <ul class="tag-directory">{tags.map((tag) => <li data-motion><a href={`/tags/${tag.slug}/`}>#{tag.label}<span>{tag.count}件</span></a></li>)}</ul> : <EmptyState title="まだタグはありません" description="記事が増えたら、ここに並びます。" />}
   </div></section>
 </BaseLayout>

@@ -9,7 +9,7 @@ const [tech, life, projects] = await Promise.all([getArticles("tech"), getArticl
 const recent = sortArticles([...tech, ...life]).slice(0, 6);
 ---
 <BaseLayout>
-  <section class="container home-hero" aria-labelledby="intro-title">
+  <section class="container home-hero" aria-labelledby="intro-title" data-motion>
     <h1 id="intro-title">{site.name}</h1>
     <nav class="home-hero__links" aria-label="記事と制作物">
       <a href="/tech/">技術メモ <span>{tech.length}件</span></a>
@@ -18,7 +18,7 @@ const recent = sortArticles([...tech, ...life]).slice(0, 6);
       <a href="/tags/">タグ</a>
     </nav>
   </section>
-  <section class="section" aria-labelledby="recent-title">
+  <section class="section" aria-labelledby="recent-title" data-motion>
     <div class="container">
       <div class="section-head">
         <div><p class="eyebrow">recent notes</p><h2 id="recent-title">最近書いたこと</h2></div>
@@ -27,7 +27,7 @@ const recent = sortArticles([...tech, ...life]).slice(0, 6);
       {recent.length ? <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="まだ記事はありません" description="試したことや、気に入ったものをここに置きます。" />}
     </div>
   </section>
-  <section class="section" aria-labelledby="projects-title">
+  <section class="section" aria-labelledby="projects-title" data-motion>
     <div class="container">
       <div class="section-head">
         <div><p class="eyebrow">projects</p><h2 id="projects-title">つくったもの</h2></div>

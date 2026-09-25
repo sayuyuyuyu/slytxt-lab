@@ -11,7 +11,7 @@ type Props = {
 };
 const { title, eyebrow, description, count, breadcrumbs } = Astro.props;
 ---
-<header class="page-header">
+<header class="page-header" data-motion>
   <div class="container">
     {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
     <p class="eyebrow">{eyebrow}</p>

@@ -844,3 +844,121 @@ html.js [data-adult-content][data-locked="true"] {
     gap: 8px;
   }
 }
+
+/* Motion. Reveal targets stay hidden only while scripting is on, so a broken script still shows the page. */
+html {
+  scroll-behavior: smooth;
+}
+html.js [data-motion] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.site-header {
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.site-header[data-scrolled="true"] {
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow: 0 12px 30px -28px color-mix(in srgb, var(--text) 90%, transparent);
+}
+
+.site-menu {
+  animation: menu-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.entry-card,
+.project-card {
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease;
+}
+.entry-card:hover,
+.project-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+.entry-card:hover .entry-card__title a,
+.project-card:hover .project-card__title a {
+  color: var(--accent-strong);
+}
+
+.button,
+.link-button,
+.pagination a,
+.tag-directory a,
+.tag {
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.25s ease,
+    border-color 0.25s ease,
+    background-color 0.25s ease;
+}
+.button:hover,
+.link-button:hover {
+  transform: translateY(-1px);
+}
+.pagination a:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+.tag-directory a:hover {
+  transform: translateX(3px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.brand__mark {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.brand:hover .brand__mark {
+  transform: rotate(-8deg) scale(1.08);
+}
+.theme-toggle__icon {
+  display: inline-block;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.theme-toggle[aria-pressed="true"] .theme-toggle__icon {
+  transform: rotate(-180deg);
+}
+
+/* Animate colours only during a theme swap. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    color 0.35s ease,
+    fill 0.35s ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.js [data-motion] {
+    opacity: 1;
+    transform: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

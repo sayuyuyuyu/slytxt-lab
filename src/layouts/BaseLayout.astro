@@ -50,6 +50,19 @@ const imageUrl = new URL(image, Astro.site);
         }
       })();
     </script>
+    <script is:inline>
+      // Motion が読み込めない・動かない場合でも内容が消えないように。
+      window.addEventListener("load", () => {
+        window.setTimeout(() => {
+          document.querySelectorAll("[data-motion]").forEach((el) => {
+            if (Number(getComputedStyle(el).opacity) < 0.05) {
+              el.style.opacity = "1";
+              el.style.transform = "none";
+            }
+          });
+        }, 2000);
+      });
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
@@ -81,5 +94,37 @@ const imageUrl = new URL(image, Astro.site);
       </main>
       <SiteFooter />
     </div>
+    <script>
+      import { animate, inView } from "motion";
+
+      const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+      const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-motion]"));
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      const show = (el: HTMLElement, delay: number) => {
+        animate(el, { opacity: 1, y: 0 }, { duration: 0.7, delay, ease: EASE });
+      };
+
+      if (reduce) {
+        for (const el of targets) {
+          el.style.opacity = "1";
+          el.style.transform = "none";
+        }
+      } else {
+        for (const el of targets) {
+          const siblings = el.parentElement ? Array.from(el.parentElement.children) : [];
+          const delay = Math.min(Math.max(siblings.indexOf(el), 0), 6) * 0.045;
+          let stop = () => {};
+          stop = inView(
+            el,
+            () => {
+              show(el, delay);
+              stop();
+            },
+            { amount: 0.12, margin: "0px 0px -8% 0px" }
+          );
+        }
+      }
+    </script>
   </body>
 </html>

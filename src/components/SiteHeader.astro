@@ -94,12 +94,14 @@ function isCurrent(href: string) {
     const update = () => {
       frame = 0;
       const y = window.scrollY;
+      header.dataset.scrolled = String(y > 8);
       const delta = y - lastY;
       if (Math.abs(delta) < 6) return;
       const hide = delta > 0 && y > REVEAL_ABOVE && !isOpen();
       header.dataset.hidden = String(hide);
       lastY = y;
     };
+    update();
     window.addEventListener(
       "scroll",
       () => {
