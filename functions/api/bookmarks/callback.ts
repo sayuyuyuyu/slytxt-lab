@@ -38,16 +38,18 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   await context.env.BOOKMARKS.delete(`${STATE_KEY}${state}`);
 
   try {
+    // Workers では fetch を裸で渡すと this がずれて Illegal invocation になる。
+    const doFetch = fetch.bind(globalThis);
     const tokens = await exchangeCode({
       clientId,
       clientSecret: context.env.X_CLIENT_SECRET,
       code,
       redirectUri: new URL("/api/bookmarks/callback", url.origin).href,
       verifier,
-      fetch,
+      fetch: doFetch,
       now: () => Date.now()
     });
-    tokens.userId = await fetchUserId(fetch, tokens.accessToken);
+    tokens.userId = await fetchUserId(doFetch, tokens.accessToken);
     await context.env.BOOKMARKS.put(TOKEN_KEY, JSON.stringify(tokens));
   } catch (error) {
     const message = error instanceof Error ? error.message : "不明なエラー";
