@@ -1,4 +1,5 @@
 import { exchangeCode, fetchUserId } from "../../../src/lib/bookmarks/oauth.ts";
+import { SNAPSHOT_KEY } from "../../../src/lib/bookmarks/feed.ts";
 import { escapeHtml } from "../../../src/lib/bookmarks/render.ts";
 import { TOKEN_KEY } from "../../../src/lib/bookmarks/x.ts";
 import type { PagesEnv, PagesFunction } from "../../../src/lib/bookmarks/types.ts";
@@ -51,6 +52,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     });
     tokens.userId = await fetchUserId(doFetch, tokens.accessToken);
     await context.env.BOOKMARKS.put(TOKEN_KEY, JSON.stringify(tokens));
+    // 接続前に失敗した内容が残っていると次の朝まで更新されないので、消して取り直させる。
+    await context.env.BOOKMARKS.delete(SNAPSHOT_KEY);
   } catch (error) {
     const message = error instanceof Error ? error.message : "不明なエラー";
     return page("接続できませんでした", `<p>${escapeHtml(message)}</p>`);
