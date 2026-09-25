@@ -377,11 +377,29 @@ samp,
 .site-menu > nav {
   width: min(100% - 48px, var(--content-width));
   margin-inline: auto;
+  padding: 4px 0 12px;
+}
+.site-menu__group + .site-menu__group {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-strong);
+}
+.site-menu__label {
+  margin: 10px 0 2px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.site-menu__label::before {
+  content: "// ";
+  color: var(--accent-3);
 }
 .site-menu ul {
   list-style: none;
   margin: 0;
-  padding: 4px 0 12px;
+  padding: 0;
 }
 .site-menu a {
   display: block;
@@ -758,8 +776,9 @@ samp,
 }
 .tag-directory a {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 10px;
   padding: 20px 0;
   border-top: 1px solid var(--border);
   font-family: var(--font-mono);
@@ -767,10 +786,10 @@ samp,
 }
 .tag-directory a::before {
   content: ">";
-  margin-right: 8px;
   color: var(--accent-5);
 }
 .tag-directory span {
+  margin-left: auto;
   flex: none;
   white-space: nowrap;
   color: var(--text-muted);

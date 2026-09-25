@@ -1,4 +1,4 @@
-<button class="theme-toggle" type="button" aria-label="テーマを切り替える" aria-pressed="false" data-theme-toggle hidden>
+<button class="theme-toggle" type="button" aria-label="Toggle theme" aria-pressed="false" data-theme-toggle hidden>
   <span class="theme-toggle__icon" aria-hidden="true" data-theme-icon>◐</span>
 </button>
 
@@ -11,7 +11,7 @@
 
     const setIcon = () => {
       const light = document.documentElement.classList.contains("light");
-      const next = light ? "ダークモードに切り替える" : "ライトモードに切り替える";
+      const next = light ? "Switch to dark mode" : "Switch to light mode";
       icon.textContent = light ? "☼" : "☾";
       button.setAttribute("aria-pressed", String(!light));
       button.setAttribute("aria-label", next);

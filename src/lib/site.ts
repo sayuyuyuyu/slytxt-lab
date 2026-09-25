@@ -12,9 +12,9 @@ export const site = {
 };
 
 export const categoryLabels = {
-  tech: "技術メモ",
-  life: "日々の記録",
-  projects: "つくったもの"
+  tech: "Tech",
+  life: "Life",
+  projects: "Projects"
 } as const;
 
 export const articleSections = {
@@ -22,22 +22,47 @@ export const articleSections = {
     title: categoryLabels.tech,
     eyebrow: "notes",
     description: "AI、MCP、クラウド、プログラミングを試した記録。",
-    emptyTitle: "まだ記事はありません",
-    emptyDescription: "最初の一本を書いたら、ここに並びます。"
+    emptyTitle: "No notes yet",
+    emptyDescription: "The first one will show up here."
   },
   life: {
     title: categoryLabels.life,
     eyebrow: "journal",
     description: "旅行、ゲーム、音楽、ガジェットの話。",
-    emptyTitle: "まだ記録はありません",
-    emptyDescription: "出かけたことや、気に入ったものを書きます。"
+    emptyTitle: "No entries yet",
+    emptyDescription: "Trips, games, music and gadgets will show up here."
   }
 } as const;
 
 export const projectStatusLabels = {
-  planning: "計画中",
-  active: "進行中",
-  maintenance: "保守中",
-  paused: "休止中",
-  completed: "完了"
+  planning: "Planning",
+  active: "Active",
+  maintenance: "Maintenance",
+  paused: "Paused",
+  completed: "Done"
 } as const;
+
+// The menu is grouped by level: what I write, how to browse it, and the rest.
+export type NavItem = { href: string; label: string };
+
+export const navGroups: { label: string; items: NavItem[] }[] = [
+  {
+    label: "content",
+    items: [
+      { href: "/tech/", label: categoryLabels.tech },
+      { href: "/life/", label: categoryLabels.life },
+      { href: "/projects/", label: categoryLabels.projects }
+    ]
+  },
+  {
+    label: "browse",
+    items: [
+      { href: "/tags/", label: "Tags" },
+      { href: "/search/", label: "Search" }
+    ]
+  },
+  {
+    label: "meta",
+    items: [{ href: "/about/", label: "About" }]
+  }
+];

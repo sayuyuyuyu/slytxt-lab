@@ -1,17 +1,8 @@
 ---
-import { site } from "@/lib/site";
+import { navGroups, site } from "@/lib/site";
 import ThemeToggle from "./ThemeToggle.astro";
 
 const currentPath = Astro.url.pathname;
-
-const navItems = [
-  { href: "/tech/", label: "技術メモ" },
-  { href: "/life/", label: "日々の記録" },
-  { href: "/projects/", label: "つくったもの" },
-  { href: "/tags/", label: "タグ" },
-  { href: "/search/", label: "検索" },
-  { href: "/about/", label: "しらゆ" }
-];
 
 function isCurrent(href: string) {
   return currentPath === href || currentPath.startsWith(href);
@@ -20,7 +11,7 @@ function isCurrent(href: string) {
 
 <header class="site-header" data-site-header data-pagefind-ignore>
   <div class="site-header__inner">
-    <a class="brand" href="/" aria-label={`${site.name} ホーム`}>
+    <a class="brand" href="/" aria-label={`${site.name} home`}>
       <span class="brand__mark" aria-hidden="true">❯</span>
       <span class="brand__name">{site.name}</span>
       <span class="brand__cursor" aria-hidden="true"></span>
@@ -29,7 +20,7 @@ function isCurrent(href: string) {
       <button
         class="menu-button"
         type="button"
-        aria-label="メニューを開く"
+        aria-label="Open menu"
         aria-expanded="false"
         aria-controls="site-menu"
         data-menu-button
@@ -41,18 +32,23 @@ function isCurrent(href: string) {
     </div>
   </div>
   <div class="site-menu" id="site-menu" data-menu hidden>
-    <nav aria-label="メインナビゲーション">
-      <ul>
-        {
-          navItems.map((item) => (
-            <li>
-              <a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>
-                {item.label}
-              </a>
-            </li>
-          ))
-        }
-      </ul>
+    <nav aria-label="Main">
+      {
+        navGroups.map((group) => (
+          <div class="site-menu__group">
+            <p class="site-menu__label" aria-hidden="true">{group.label}</p>
+            <ul>
+              {group.items.map((item) => (
+                <li>
+                  <a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
     </nav>
   </div>
 </header>
@@ -68,7 +64,7 @@ function isCurrent(href: string) {
 
     const setOpen = (open: boolean) => {
       button.setAttribute("aria-expanded", String(open));
-      button.setAttribute("aria-label", open ? "メニューを閉じる" : "メニューを開く");
+      button.setAttribute("aria-label", open ? "Close menu" : "Open menu");
       menu.hidden = !open;
       header.dataset.open = String(open);
       if (open) header.dataset.hidden = "false";

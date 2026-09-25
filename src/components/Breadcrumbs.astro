@@ -11,8 +11,8 @@ type Props = {
 const { items } = Astro.props;
 ---
 
-<nav class="breadcrumbs" aria-label="パンくずリスト" data-pagefind-ignore>
-  <a href="/">ホーム</a>
+<nav class="breadcrumbs" aria-label="Breadcrumb" data-pagefind-ignore>
+  <a href="/">Home</a>
   {items.map((item) => (
     <>
       <span aria-hidden="true">/</span>

@@ -18,7 +18,7 @@ const date = entry.data.updated ?? entry.data.published;
     <span>{categoryLabels[entry.collection]}</span>
     <span aria-hidden="true"> / </span>
     <time datetime={date.toISOString()}>{formatDate(date)}</time>
-    {entry.data.adult && <span aria-label="成人向け作品レビューを含む"> / 🔞</span>}
+    {entry.data.adult && <span aria-label="Includes an adult content review"> / 🔞</span>}
   </div>
   <Heading class="entry-card__title">
     <a href={getEntryPath(entry)}>{entry.data.title}</a>

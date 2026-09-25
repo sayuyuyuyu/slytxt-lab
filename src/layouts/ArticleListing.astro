@@ -11,13 +11,13 @@ import BaseLayout from "./BaseLayout.astro";
 type Props = { collection: ArticleCollection; page: PageData<ArticleEntry> };
 const { collection, page } = Astro.props;
 const section = articleSections[collection];
-const suffix = page.currentPage > 1 ? ` ${page.currentPage}ページ目` : "";
+const suffix = page.currentPage > 1 ? ` (page ${page.currentPage})` : "";
 ---
 <BaseLayout title={`${section.title}${suffix} - ${site.name}`} description={section.description}>
-  <PageHeader title={section.title} eyebrow={section.eyebrow} count={page.totalEntries} />
-  <section class="listing" aria-label={`${section.title}の一覧`}>
+  <PageHeader title={section.title} eyebrow={section.eyebrow} count={page.totalEntries} countLabel="entries" countLabelOne="entry" />
+  <section class="listing" aria-label={`${section.title} listing`}>
     <div class="container">
-      <div class="listing-tools"><a href="/tags/">タグから探す <span aria-hidden="true">↗</span></a></div>
+      <div class="listing-tools"><a href="/tags/">Browse tags <span aria-hidden="true">↗</span></a></div>
       {page.entries.length > 0 ? (
         <div class="listing-list">
           {page.entries.map((entry) => <ArticleCard entry={entry} headingLevel="h2" />)}
