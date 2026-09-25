@@ -4,6 +4,8 @@ export type BookmarkAuthor = {
   id: string;
   username: string;
   name: string;
+  /** プロフィール画像の URL。取得できなければ未設定。 */
+  avatar?: string;
 };
 
 export type BookmarkItem = {

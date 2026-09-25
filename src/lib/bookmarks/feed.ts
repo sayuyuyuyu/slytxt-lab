@@ -6,8 +6,9 @@ import type {
 } from "./types.ts";
 import type { XClient } from "./x.ts";
 
-export const SNAPSHOT_KEY = "snapshot";
-export const AUTHORS_KEY = "authors";
+/** アイコン付きのカード表示に変えたので、古いキャッシュは読まずに取り直す。 */
+export const SNAPSHOT_KEY = "snapshot:v2";
+export const AUTHORS_KEY = "authors:v2";
 export const LOCK_KEY = "refresh-lock";
 
 /** 取得時刻の記録が古い投稿者から落とす上限。 */
