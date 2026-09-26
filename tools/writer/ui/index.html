@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>執筆 - slytxt.lab</title>
+    <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <script>
+      (() => {
+        document.documentElement.classList.add("js");
+        try {
+          const stored = localStorage.getItem("theme");
+          const dark = stored
+            ? stored === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.toggle("dark", dark);
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body>
+    <header class="bar">
+      <div class="bar__brand">
+        <span class="bar__mark" aria-hidden="true">し</span>
+        <span class="bar__label">執筆</span>
+      </div>
+
+      <button id="save" class="save" type="button" data-state="idle">
+        <span class="save__dot" aria-hidden="true"></span>
+        <span class="save__text" id="saveText">保存済み</span>
+      </button>
+
+      <div class="bar__views" role="tablist" aria-label="表示の切り替え">
+        <button role="tab" data-view="list" aria-selected="false">一覧</button>
+        <button role="tab" data-view="editor" aria-selected="true">書く</button>
+        <button role="tab" data-view="preview" aria-selected="false">プレビュー</button>
+      </div>
+
+      <div class="bar__actions">
+        <button id="new" class="button button--primary">新規メモ</button>
+        <button id="theme" class="button button--icon" aria-label="テーマを切り替える">◐</button>
+      </div>
+    </header>
+
+    <main class="app" data-view="editor">
+      <aside class="pane pane--list" aria-label="メモの一覧">
+        <div class="list__tools">
+          <input id="search" type="search" class="field" placeholder="絞り込み" autocomplete="off" />
+          <div class="filter" role="group" aria-label="状態で絞る">
+            <button type="button" data-filter="all" aria-pressed="true">すべて</button>
+            <button type="button" data-filter="memo" aria-pressed="false">メモ</button>
+            <button type="button" data-filter="draft" aria-pressed="false">下書き</button>
+            <button type="button" data-filter="ready" aria-pressed="false">出せる</button>
+            <button type="button" data-filter="published" aria-pressed="false">PR済み</button>
+          </div>
+        </div>
+
+        <button id="newInline" class="list__new" type="button">＋ 新しいメモ</button>
+
+        <ul id="drafts" class="drafts"></ul>
+        <p class="pane__foot" id="draftCount"></p>
+      </aside>
+
+      <section class="pane pane--editor" aria-label="本文">
+        <div class="editor">
+          <input
+            id="title"
+            class="editor__title"
+            placeholder="タイトル（あとで決めてもいい）"
+            autocomplete="off"
+          />
+
+          <div class="editor__meta">
+            <label class="meta">
+              <span class="meta__label">カテゴリ</span>
+              <select id="category" class="field"></select>
+            </label>
+            <label class="meta">
+              <span class="meta__label">状態</span>
+              <select id="status" class="field"></select>
+            </label>
+            <div class="meta meta--tags">
+              <span class="meta__label">タグ</span>
+              <ul id="tagList" class="tags"></ul>
+              <input
+                id="tagInput"
+                class="field tags__input"
+                list="tagOptions"
+                placeholder="追加"
+                autocomplete="off"
+                aria-label="タグを追加"
+              />
+              <datalist id="tagOptions"></datalist>
+            </div>
+            <a id="prLink" class="pr-link" hidden target="_blank" rel="noreferrer">PR を開く</a>
+          </div>
+
+          <div class="editor__tools" role="toolbar" aria-label="書式">
+            <button type="button" data-insert="h2" title="見出し">H2</button>
+            <button type="button" data-insert="h3" title="小見出し">H3</button>
+            <button type="button" data-insert="bold" title="強調"><b>B</b></button>
+            <button type="button" data-insert="code" title="インラインコード"><code>`x`</code></button>
+            <button type="button" data-insert="pre" title="コードブロック">```</button>
+            <button type="button" data-insert="link" title="リンク">リンク</button>
+            <button type="button" data-insert="ul" title="箇条書き">・</button>
+            <button type="button" data-insert="ol" title="番号付き">1.</button>
+            <button type="button" data-insert="quote" title="引用">引用</button>
+            <button type="button" data-insert="table" title="表">表</button>
+
+            <details class="menu" id="menu">
+              <summary aria-label="その他の操作">⋯</summary>
+              <ul>
+                <li><button type="button" id="revert">直前の状態に戻す</button></li>
+                <li><button type="button" id="duplicate">複製する</button></li>
+                <li><button type="button" id="remove" class="menu__danger">削除する</button></li>
+              </ul>
+            </details>
+          </div>
+
+          <textarea
+            id="body"
+            class="editor__body"
+            placeholder="雑に書く。整形はあとで。"
+            spellcheck="false"
+          ></textarea>
+
+          <div class="editor__foot">
+            <span id="count" class="editor__count"></span>
+            <div class="editor__run">
+              <button id="expand" class="button">AIで膨らます</button>
+              <button id="publish" class="button button--primary">整形してPR</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="empty" class="empty" hidden>
+          <p class="empty__title">メモがまだありません</p>
+          <p class="empty__text">思いついたことをそのまま書くところから始めます。</p>
+          <button id="emptyNew" class="button button--primary" type="button">＋ 新しいメモ</button>
+        </div>
+      </section>
+
+      <section class="pane pane--preview" aria-label="プレビュー">
+        <div class="preview">
+          <p class="preview__note">公開したときの見え方に近いものです。実際の表示は PR のプレビューで確かめてください。</p>
+          <article class="preview__article">
+            <p class="preview__category" id="previewCategory"></p>
+            <h1 class="preview__title" id="previewTitle"></h1>
+            <p class="preview__date" id="previewDate"></p>
+            <ul class="preview__tags" id="previewTags"></ul>
+            <div class="preview__body" id="previewBody"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <section id="task" class="task" hidden aria-live="polite">
+      <div class="task__head">
+        <span class="task__spinner" aria-hidden="true"></span>
+        <strong id="taskTitle">実行中</strong>
+        <span id="taskElapsed" class="task__elapsed">0:00</span>
+        <button id="taskToggle" class="button button--icon" aria-label="ログを開閉する">⌃</button>
+        <button id="taskClose" class="button button--icon" aria-label="閉じる">×</button>
+      </div>
+      <div id="taskResult" class="task__result" hidden></div>
+      <pre id="taskLog" class="task__log"></pre>
+    </section>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <noscript>
+      <p style="padding: 24px">この画面は JavaScript が必要です。`pnpm write` でサーバーを起動し直してください。</p>
+    </noscript>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
