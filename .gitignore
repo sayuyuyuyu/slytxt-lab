@@ -9,3 +9,6 @@ dist
 # Local-only content samples. Real published content should use normal .mdx files.
 src/content/**/*.sample.mdx
 src/content/**/sample-*.mdx
+
+# 執筆ツールのドラフト。ローカルの下書きなのでコミットしない。
+drafts/
