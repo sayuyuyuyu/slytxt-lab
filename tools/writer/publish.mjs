@@ -10,13 +10,16 @@ import { AgentError, runAgent, stripCodeFence } from "./agent.mjs";
 import { historyDir, readDraft, repoRoot, snapshotDraft, writeDraft } from "./drafts.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText } from "./markdown.mjs";
-import { polishPrompt, today } from "./prompt.mjs";
+import { notePrompt, polishPrompt, today } from "./prompt.mjs";
 
 export class PublishError extends Error {}
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /** 一覧に出す説明。エージェントに書かせず、本文の書き出しから最小限だけ作る。 */
 export function deriveDescription(body, limit = 90) {
-  const text = plainText(String(body ?? "")).replace(/\s+/g, " ").trim();
+  const withoutHeadings = String(body ?? "").replace(/^\s{0,3}#{1,6}\s+.*$/gm, "");
+  const text = plainText(withoutHeadings).replace(/\s+/g, " ").trim();
   if (!text) return "";
   return text.length <= limit ? text : `${text.slice(0, limit - 1).trimEnd()}…`;
 }
@@ -255,6 +258,130 @@ export async function publishDraft({ id, onLog = () => {} }) {
     } else {
       onLog(`コミットは ${branch} に残っています。手動で push してください。`);
     }
+    throw error;
+  }
+}
+
+/**
+ * note は誤字だけ直し、CI が通ったらそのまま merge する。
+ * 記事のように PR を開いたままにせず、公開まで一度で終える。
+ */
+export async function publishNote({ id, onLog = () => {} }) {
+  const draft = await readDraft(id);
+  if (!draft.body.trim()) throw new PublishError("本文が空です。何か書いてから流してください。");
+
+  const originalBranch = (
+    await run("git", ["rev-parse", "--abbrev-ref", "HEAD"], { onLog })
+  ).stdout.trim();
+  if (originalBranch === "HEAD") throw new PublishError("detached HEAD では実行できません。");
+
+  const dirty = (await run("git", ["status", "--porcelain"], { onLog })).stdout.trim();
+  if (dirty) {
+    throw new PublishError(
+      `コミットされていない変更があります。先に片付けてから実行してください。\n${dirty}`
+    );
+  }
+
+  await run("git", ["fetch", "origin", "main"], { onLog });
+  const base = (await run("git", ["rev-parse", "origin/main"], { onLog })).stdout.trim();
+
+  onLog("誤字を確認しています…");
+  const { stdout } = await runAgent({ prompt: await notePrompt(draft), onLog });
+  const body = stripCodeFence(stdout).trim();
+  if (!body) throw new PublishError("誤字チェックの出力が空でした。");
+
+  const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
+  const title = draft.title === "無題" ? firstLine.slice(0, 40) : draft.title;
+  const description = deriveDescription(body) || title;
+  const tags = draft.tags.slice(0, 6);
+  const published = today();
+  const slug = normalizeSlug(draft.id, published.replace(/-/g, "")) || draft.id;
+  const relativeFile = path.join("src", "content", "notes", `${slug}.md`);
+  const absoluteFile = path.join(repoRoot, relativeFile);
+  const branch = `note/${slug}`;
+
+  await snapshotDraft(id, "note");
+  await run("git", ["switch", "-C", branch, base], { onLog });
+  onLog(`ブランチ ${branch} を作成しました`);
+
+  let committed = false;
+  try {
+    await mkdir(path.dirname(absoluteFile), { recursive: true });
+    await writeFile(
+      absoluteFile,
+      stringifyFrontmatter({ title, description, published, tags }, body),
+      "utf8"
+    );
+    onLog(`書き出しました: ${relativeFile}`);
+    await run("git", ["add", relativeFile], { onLog });
+
+    if (process.env.SLYTXT_SKIP_CHECK !== "1") {
+      onLog("型チェック中…");
+      await run("pnpm", ["run", "check"], { onLog });
+    }
+
+    await run("git", ["commit", "-m", `note: ${title}`], { onLog });
+    committed = true;
+    await run("git", ["push", "-u", "origin", branch], { onLog });
+
+    const pr = await run(
+      "gh",
+      ["pr", "create", "--base", "main", "--head", branch, "--title", title, "--body", `note: ${title}`],
+      { onLog }
+    );
+    const prUrl =
+      pr.stdout
+        .split("\n")
+        .map((line) => line.trim())
+        .find((line) => line.startsWith("http")) ?? "";
+
+    onLog("CI を待っています…");
+    const deadline = Date.now() + 12 * 60 * 1000;
+    let ready = false;
+    while (Date.now() < deadline) {
+      const view = await run(
+        "gh",
+        ["pr", "view", prUrl, "--json", "state,mergeStateStatus", "--jq", '.state + " " + .mergeStateStatus'],
+        { onLog, allowFailure: true }
+      );
+      const [prState, mergeState] = view.stdout.trim().split(/\s+/);
+      if (prState === "MERGED") {
+        ready = true;
+        break;
+      }
+      if (mergeState === "CLEAN") {
+        ready = true;
+        break;
+      }
+      if (mergeState === "DIRTY") throw new PublishError(`PR が conflict しています: ${prUrl}`);
+      if (mergeState === "UNSTABLE") throw new PublishError(`CI が失敗しました: ${prUrl}`);
+      await sleep(8000);
+    }
+    if (!ready) throw new PublishError(`CI が終わりませんでした。PR を確認してください: ${prUrl}`);
+
+    await run("gh", ["pr", "merge", prUrl, "--squash", "--delete-branch"], { onLog, allowFailure: true });
+    const merged = await run("gh", ["pr", "view", prUrl, "--json", "state", "--jq", ".state"], {
+      onLog,
+      allowFailure: true
+    });
+    if (merged.stdout.trim() !== "MERGED") {
+      throw new PublishError(
+        `merge できませんでした。PR を確認してください: ${prUrl}\n${(merged.stderr || merged.stdout).slice(-2000)}`
+      );
+    }
+
+    await run("git", ["switch", originalBranch], { onLog });
+    await run("git", ["branch", "-D", branch], { onLog, allowFailure: true });
+    await writeDraft(id, { status: "published", title, tags, pr: prUrl, slug });
+    return { branch, file: relativeFile, prUrl, slug, title, merged: true };
+  } catch (error) {
+    if (!committed) {
+      onLog("失敗したのでブランチを元に戻します");
+      await run("git", ["reset"], { onLog, allowFailure: true });
+      await rm(absoluteFile, { force: true });
+      await run("git", ["branch", "-D", branch], { onLog, allowFailure: true });
+    }
+    await run("git", ["switch", originalBranch], { onLog, allowFailure: true });
     throw error;
   }
 }

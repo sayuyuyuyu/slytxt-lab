@@ -39,7 +39,8 @@
       </div>
 
       <div class="bar__actions">
-        <button id="new" class="button button--primary">新規メモ</button>
+        <button id="newArticle" class="button button--primary">＋ 記事</button>
+        <button id="newNote" class="button">＋ note</button>
         <button id="theme" class="button button--icon" aria-label="テーマを切り替える">◐</button>
       </div>
     </header>
@@ -57,7 +58,10 @@
           </div>
         </div>
 
-        <button id="newInline" class="list__new" type="button">＋ 新しいメモ</button>
+        <div class="list__new-row">
+          <button id="newArticleInline" class="list__new" type="button">＋ 記事</button>
+          <button id="newNoteInline" class="list__new" type="button">＋ note</button>
+        </div>
 
         <ul id="drafts" class="drafts"></ul>
         <p class="pane__foot" id="draftCount"></p>
@@ -68,7 +72,7 @@
           <input
             id="title"
             class="editor__title"
-            placeholder="タイトル（あとで決めてもいい）"
+            placeholder="タイトル"
             autocomplete="off"
           />
 
@@ -123,15 +127,14 @@
           <textarea
             id="body"
             class="editor__body"
-            placeholder="雑に書く。整形はあとで。"
             spellcheck="false"
           ></textarea>
 
           <div class="editor__foot">
             <span id="count" class="editor__count"></span>
             <div class="editor__run">
-              <button id="expand" class="button">AIで膨らます</button>
-              <button id="publish" class="button button--primary">整形してPR</button>
+              <button id="expand" class="button">下書き</button>
+              <button id="publish" class="button button--primary">PRを作る</button>
             </div>
           </div>
         </div>
@@ -139,15 +142,14 @@
         <div id="empty" class="empty" hidden>
           <p class="empty__cmd" aria-hidden="true">ls drafts/</p>
           <p class="empty__title">メモがまだありません</p>
-          <p class="empty__text">思いついたことをそのまま書くところから始めます。</p>
-          <button id="emptyNew" class="button button--primary" type="button">＋ 新しいメモ</button>
+          <button id="emptyArticle" class="button button--primary" type="button">＋ 記事</button>
+          <button id="emptyNote" class="button" type="button">＋ note</button>
         </div>
       </section>
 
       <section class="pane pane--preview" aria-label="プレビュー">
         <div class="preview">
           <p class="preview__cmd" aria-hidden="true">cat article.md</p>
-          <p class="preview__note">公開したときの見え方に近いものです。実際の表示は PR のプレビューで確かめてください。</p>
           <article class="preview__article">
             <p class="preview__category" id="previewCategory"></p>
             <h1 class="preview__title" id="previewTitle"></h1>
