@@ -28,6 +28,7 @@ const els = {
   count: $("#count"),
   expand: $("#expand"),
   publish: $("#publish"),
+  removeDraft: $("#removeDraft"),
   remove: $("#remove"),
   revert: $("#revert"),
   duplicate: $("#duplicate"),
@@ -403,6 +404,7 @@ function applyDraft(draft) {
   const note = draft.category === "notes";
   document.body.dataset.mode = note ? "note" : "article";
   els.expand.hidden = note;
+  els.removeDraft.hidden = !note;
   els.publish.textContent = note ? "投稿" : (draft.pr ? "PRを更新" : "PRを作る");
   if (note && els.app.dataset.view === "preview") setView("editor");
 
@@ -598,6 +600,7 @@ function setBusy(busy) {
   state.busy = busy;
   els.expand.disabled = busy || !state.current;
   els.publish.disabled = busy || !state.current;
+  els.removeDraft.disabled = busy || !state.current;
 }
 
 async function runExpand() {
@@ -840,6 +843,7 @@ async function boot() {
   els.expand.addEventListener("click", runExpand);
   els.publish.addEventListener("click", runPublish);
   els.remove.addEventListener("click", removeCurrent);
+  els.removeDraft.addEventListener("click", removeCurrent);
   els.revert.addEventListener("click", revertCurrent);
   els.duplicate.addEventListener("click", duplicateCurrent);
   els.theme.addEventListener("click", toggleTheme);

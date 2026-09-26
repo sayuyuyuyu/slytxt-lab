@@ -1291,4 +1291,22 @@ body[data-mode="note"] .app {
 
 body[data-mode="note"] .editor {
   grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.button--danger {
+  color: var(--accent-red);
+  border-color: color-mix(in srgb, var(--accent-red) 40%, var(--border));
+}
+
+.editor__run .button--danger::before {
+  color: var(--accent-red);
+}
+
+.button--danger:hover:not(:disabled) {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  box-shadow: 0 0 22px -12px color-mix(in srgb, var(--accent-red) 60%, transparent);
 }
