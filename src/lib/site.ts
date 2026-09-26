@@ -13,26 +13,59 @@ export const site = {
 
 export const categoryLabels = {
   tech: "Tech",
-  life: "Life",
+  journal: "Journal",
+  notes: "Notes",
   projects: "Projects"
 } as const;
 
-export const articleSections = {
+/** Where each collection lives in the URL space. */
+export const categoryPaths = {
+  tech: "/articles/tech/",
+  journal: "/articles/journal/",
+  notes: "/notes/",
+  projects: "/projects/"
+} as const;
+
+export type ArticleSection = {
+  title: string;
+  eyebrow: string;
+  description: string;
+  emptyTitle: string;
+  emptyDescription: string;
+};
+
+export const articleSections: Record<"tech" | "journal" | "notes", ArticleSection> = {
   tech: {
     title: categoryLabels.tech,
-    eyebrow: "notes",
+    eyebrow: "tech",
     description: "AI、MCP、クラウド、プログラミングを試した記録。",
-    emptyTitle: "No notes yet",
+    emptyTitle: "No tech articles yet",
     emptyDescription: "The first one will show up here."
   },
-  life: {
-    title: categoryLabels.life,
+  journal: {
+    title: categoryLabels.journal,
     eyebrow: "journal",
     description: "旅行、ゲーム、音楽、ガジェットの話。",
-    emptyTitle: "No entries yet",
+    emptyTitle: "No journal entries yet",
     emptyDescription: "Trips, games, music and gadgets will show up here."
+  },
+  notes: {
+    title: categoryLabels.notes,
+    eyebrow: "notes",
+    description: "あとで記事にする前の、短いメモ。",
+    emptyTitle: "No notes yet",
+    emptyDescription: "Short memos will show up here."
   }
-} as const;
+};
+
+/** The index page that gathers Tech and Journal. */
+export const articlesIndex: ArticleSection = {
+  title: "Articles",
+  eyebrow: "articles",
+  description: "技術系の記事と、それ以外の記事。",
+  emptyTitle: "No articles yet",
+  emptyDescription: "Longer write-ups will show up here."
+};
 
 export const projectStatusLabels = {
   planning: "Planning",
@@ -42,15 +75,23 @@ export const projectStatusLabels = {
   completed: "Done"
 } as const;
 
-// The menu is grouped by level: written pieces, works, browsing, and the rest.
-export type NavItem = { href: string; label: string };
+export type NavItem = { href: string; label: string; children?: NavItem[] };
 
+// The menu is a small tree: Articles holds its two collections, and the rest
+// sit beside it. Lists of writing come first, then the ways to browse them.
 export const navGroups: { label: string; items: NavItem[] }[] = [
   {
-    label: "articles",
+    label: "writing",
     items: [
-      { href: "/tech/", label: categoryLabels.tech },
-      { href: "/life/", label: categoryLabels.life }
+      {
+        href: "/articles/",
+        label: "Articles",
+        children: [
+          { href: "/articles/tech/", label: categoryLabels.tech },
+          { href: "/articles/journal/", label: categoryLabels.journal }
+        ]
+      },
+      { href: "/notes/", label: categoryLabels.notes }
     ]
   },
   {

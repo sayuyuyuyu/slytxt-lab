@@ -2,7 +2,8 @@ import type { CollectionEntry } from "astro:content";
 
 export type TaggedEntry =
   | CollectionEntry<"tech">
-  | CollectionEntry<"life">
+  | CollectionEntry<"journal">
+  | CollectionEntry<"notes">
   | CollectionEntry<"projects">;
 
 export function slugifyTag(tag: string): string {

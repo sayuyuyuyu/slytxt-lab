@@ -1,10 +1,12 @@
 import type { APIContext } from "astro";
 import { pageCount } from "@/lib/pagination";
 import {
+  getAllArticles,
   getAllEntries,
   getArticles,
   getEntryDate,
-  getEntryPath
+  getEntryPath,
+  getNotes
 } from "@/lib/content";
 import { collectTags, tagPath } from "@/lib/tags";
 
@@ -24,16 +26,37 @@ function urlNode(site: URL, path: string, lastmod?: Date): string {
 
 export async function GET(context: APIContext) {
   const site = context.site ?? new URL("https://slytxt.dev");
-  const [entries, tech, life] = await Promise.all([
+  const [entries, articles, tech, journal, notes] = await Promise.all([
     getAllEntries(),
+    getAllArticles(),
     getArticles("tech"),
-    getArticles("life")
+    getArticles("journal"),
+    getNotes()
   ]);
   const tags = collectTags(entries);
-  const staticPaths = ["/", "/tech/", "/life/", "/projects/", "/tags/", "/about/", "/rss.xml"];
+  const staticPaths = [
+    "/",
+    "/articles/",
+    "/articles/tech/",
+    "/articles/journal/",
+    "/notes/",
+    "/projects/",
+    "/tags/",
+    "/about/",
+    "/rss.xml"
+  ];
+
+  const paged = (count: number, base: string) =>
+    Array.from(
+      { length: Math.max(0, pageCount(count) - 1) },
+      (_, index) => `${base}/page/${index + 2}/`
+    );
+
   const pagePaths = [
-    ...Array.from({ length: Math.max(0, pageCount(tech.length) - 1) }, (_, index) => `/tech/page/${index + 2}/`),
-    ...Array.from({ length: Math.max(0, pageCount(life.length) - 1) }, (_, index) => `/life/page/${index + 2}/`)
+    ...paged(articles.length, "/articles"),
+    ...paged(tech.length, "/articles/tech"),
+    ...paged(journal.length, "/articles/journal"),
+    ...paged(notes.length, "/notes")
   ];
 
   const urls = [

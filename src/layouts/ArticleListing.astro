@@ -3,14 +3,17 @@ import ArticleCard from "@/components/ArticleCard.astro";
 import EmptyState from "@/components/EmptyState.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import Pagination from "@/components/Pagination.astro";
-import { type ArticleCollection, type ArticleEntry } from "@/lib/content";
+import { type ArticleEntry } from "@/lib/content";
 import { type PageData } from "@/lib/pagination";
-import { articleSections, site } from "@/lib/site";
+import { type ArticleSection, site } from "@/lib/site";
 import BaseLayout from "./BaseLayout.astro";
 
-type Props = { collection: ArticleCollection; page: PageData<ArticleEntry> };
-const { collection, page } = Astro.props;
-const section = articleSections[collection];
+type Props = {
+  section: ArticleSection;
+  basePath: string;
+  page: PageData<ArticleEntry>;
+};
+const { section, basePath, page } = Astro.props;
 const suffix = page.currentPage > 1 ? ` (page ${page.currentPage})` : "";
 ---
 <BaseLayout title={`${section.title}${suffix} - ${site.name}`} description={section.description}>
@@ -23,7 +26,7 @@ const suffix = page.currentPage > 1 ? ` (page ${page.currentPage})` : "";
           {page.entries.map((entry) => <ArticleCard entry={entry} headingLevel="h2" />)}
         </div>
       ) : <EmptyState title={section.emptyTitle} description={section.emptyDescription} />}
-      <Pagination basePath={`/${collection}`} {...page} />
+      <Pagination basePath={basePath} {...page} />
     </div>
   </section>
 </BaseLayout>

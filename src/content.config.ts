@@ -27,6 +27,7 @@ const projectSchema = z.object({
 
 export const collections = {
   tech: defineCollection({ type: "content", schema: articleSchema }),
-  life: defineCollection({ type: "content", schema: articleSchema }),
+  journal: defineCollection({ type: "content", schema: articleSchema }),
+  notes: defineCollection({ type: "content", schema: articleSchema }),
   projects: defineCollection({ type: "content", schema: projectSchema })
 };

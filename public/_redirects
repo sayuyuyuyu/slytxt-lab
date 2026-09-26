@@ -1,0 +1,5 @@
+# Old collection paths moved under /articles/.
+/tech/     /articles/tech/     301
+/tech/*    /articles/tech/:splat  301
+/life/     /articles/journal/  301
+/life/*    /articles/journal/:splat  301

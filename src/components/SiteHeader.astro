@@ -39,10 +39,21 @@ function isCurrent(href: string) {
             <p class="site-menu__label" aria-hidden="true">{group.label}</p>
             <ul>
               {group.items.map((item) => (
-                <li>
+                <li class:list={["site-menu__item", { "site-menu__item--branch": item.children }]}>
                   <a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>
                     {item.label}
                   </a>
+                  {item.children && (
+                    <ul class="site-menu__sub">
+                      {item.children.map((child) => (
+                        <li>
+                          <a href={child.href} aria-current={isCurrent(child.href) ? "page" : undefined}>
+                            {child.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>

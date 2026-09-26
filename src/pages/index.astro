@@ -2,11 +2,12 @@
 import ArticleCard from "@/components/ArticleCard.astro";
 import EmptyState from "@/components/EmptyState.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
-import { getArticles, getProjects, sortArticles } from "@/lib/content";
+import { getAllArticles, getNotes, getProjects } from "@/lib/content";
 import { site } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-const [tech, life, projects] = await Promise.all([getArticles("tech"), getArticles("life"), getProjects()]);
-const recent = sortArticles([...tech, ...life]).slice(0, 6);
+const [articles, notes, projects] = await Promise.all([getAllArticles(), getNotes(), getProjects()]);
+const recent = articles.slice(0, 6);
+const recentNotes = notes.slice(0, 4);
 ---
 <BaseLayout>
   <section class="home-hero" aria-labelledby="intro-title" data-motion>
@@ -29,8 +30,8 @@ const recent = sortArticles([...tech, ...life]).slice(0, 6);
             <span aria-hidden="true" data-typing={site.description}>{site.description}</span><span class="cursor" aria-hidden="true"></span>
           </p>
           <nav class="home-hero__links" aria-label="Writing and projects">
-            <a href="/tech/">Tech <span>{tech.length}</span></a>
-            <a href="/life/">Life <span>{life.length}</span></a>
+            <a href="/articles/">Articles <span>{articles.length}</span></a>
+            <a href="/notes/">Notes <span>{notes.length}</span></a>
             <a href="/projects/">Projects <span>{projects.length}</span></a>
             <a href="/tags/">Tags</a>
           </nav>
@@ -41,10 +42,19 @@ const recent = sortArticles([...tech, ...life]).slice(0, 6);
   <section class="section" aria-labelledby="recent-title" data-motion>
     <div class="container">
       <div class="section-head">
-        <div><p class="eyebrow">recent notes</p><h2 id="recent-title">Recent</h2></div>
-        <div class="section-links"><a href="/tech/">Tech</a><a href="/life/">Life</a><a href="/rss.xml">RSS</a></div>
+        <div><p class="eyebrow">recent articles</p><h2 id="recent-title">Recent</h2></div>
+        <div class="section-links"><a href="/articles/">Articles</a><a href="/rss.xml">RSS</a></div>
       </div>
-      {recent.length ? <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="No notes yet" description="Things I tried and liked will show up here." />}
+      {recent.length ? <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="No articles yet" description="Longer write-ups will show up here." />}
+    </div>
+  </section>
+  <section class="section" aria-labelledby="notes-title" data-motion>
+    <div class="container">
+      <div class="section-head">
+        <div><p class="eyebrow">notes</p><h2 id="notes-title">Notes</h2></div>
+        <a class="link-button" href="/notes/">All notes <span aria-hidden="true">↗</span></a>
+      </div>
+      {recentNotes.length ? <div class="listing-list">{recentNotes.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="No notes yet" description="Short memos will show up here." />}
     </div>
   </section>
   <section class="section" aria-labelledby="projects-title" data-motion>

@@ -1,10 +1,10 @@
 ---
-import { getArticles, getAdjacentArticles, getEntrySlug } from "@/lib/content";
+import { getAdjacentArticles, getEntrySlug, getNotes } from "@/lib/content";
 import ArticleLayout from "@/layouts/ArticleLayout.astro";
 import { render } from "astro:content";
 
 export async function getStaticPaths() {
-  const entries = await getArticles("life");
+  const entries = await getNotes();
   return entries.map((entry) => ({
     params: { slug: getEntrySlug(entry) },
     props: { entry }
@@ -13,7 +13,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
-const entries = await getArticles("life");
+const entries = await getNotes();
 const { previous, next } = getAdjacentArticles(entries, entry.id);
 ---
 
