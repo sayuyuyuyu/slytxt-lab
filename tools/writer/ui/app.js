@@ -401,10 +401,10 @@ function applyDraft(draft) {
   }
 
   const note = draft.category === "notes";
+  document.body.dataset.mode = note ? "note" : "article";
   els.expand.hidden = note;
-  els.publish.textContent = note
-    ? (draft.pr ? "再公開" : "誤字を直して公開")
-    : (draft.pr ? "PRを更新" : "PRを作る");
+  els.publish.textContent = note ? "投稿" : (draft.pr ? "PRを更新" : "PRを作る");
+  if (note && els.app.dataset.view === "preview") setView("editor");
 
   // 別のメモの保存が失敗したまま残っているときは、その状態を消さない。
   if (!save.pending || save.pending.id === draft.id) {

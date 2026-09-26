@@ -47,7 +47,7 @@ await writeFile(
 );
 await writeFile(
   path.join(target, "src/content/notes/memo.md"),
-  `---\ntitle: メモの表示確認\ndescription: メモ一覧と記事への導線を確認します。\npublished: 2026-08-22\ntags: [検証]\n---\n${body}`,
+  `---\ntitle: メモの表示確認\npublished: 2026-08-22\ntags: [検証]\n---\n改行はそのまま出す。\nタイトルは出さない。\n**Markdown** もそのまま。\n`,
 );
 await writeFile(
   path.join(target, "src/content/projects/example.md"),

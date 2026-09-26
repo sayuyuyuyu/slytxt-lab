@@ -1,0 +1,26 @@
+---
+import { getEntryPath, type ArticleEntry } from "@/lib/content";
+import { formatDate } from "@/lib/format";
+import { categoryLabels } from "@/lib/site";
+
+type Props = {
+  entry: ArticleEntry;
+};
+
+const { entry } = Astro.props;
+const date = entry.data.updated ?? entry.data.published;
+const lines = (entry.body ?? "")
+  .trim()
+  .split("\n")
+  .filter((line) => line.trim());
+const preview = lines.slice(0, 3).join("\n");
+---
+
+<article class="note-card" data-motion>
+  <div class="note-card__meta">
+    <span>{categoryLabels.notes}</span>
+    <span aria-hidden="true"> / </span>
+    <time datetime={date.toISOString()}>{formatDate(date)}</time>
+  </div>
+  <a class="note-card__text" href={getEntryPath(entry)}>{preview}</a>
+</article>

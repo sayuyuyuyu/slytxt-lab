@@ -1,0 +1,64 @@
+---
+import Breadcrumbs from "@/components/Breadcrumbs.astro";
+import TagList from "@/components/TagList.astro";
+import { getEntryPath, type ArticleEntry } from "@/lib/content";
+import { formatDate } from "@/lib/format";
+import { categoryLabels, categoryPaths, site } from "@/lib/site";
+import BaseLayout from "./BaseLayout.astro";
+
+type Props = {
+  entry: ArticleEntry;
+  previous?: ArticleEntry;
+  next?: ArticleEntry;
+};
+
+const { entry, previous, next } = Astro.props;
+const date = entry.data.updated ?? entry.data.published;
+const text = (entry.body ?? "").trim();
+const firstLine = text.split("\n").find((line) => line.trim()) ?? categoryLabels.notes;
+const label = firstLine.slice(0, 80);
+
+const navTitle = (target: ArticleEntry) =>
+  (target.body ?? "").trim().split("\n").find((line) => line.trim()) ?? categoryLabels.notes;
+---
+
+<BaseLayout
+  title={`${label} - ${categoryLabels.notes} - ${site.name}`}
+  description={entry.data.description ?? label}
+  type="article"
+  published={entry.data.published}
+  updated={entry.data.updated}
+  searchable
+>
+  <article class="note">
+    <div class="container note__inner">
+      <Breadcrumbs items={[{ label: "Notes", href: categoryPaths.notes }, { label }]} />
+      <h1 class="sr-only">{firstLine}</h1>
+      <p class="note__meta">
+        <span>{categoryLabels.notes}</span>
+        <span aria-hidden="true"> / </span>
+        <time datetime={date.toISOString()}>{formatDate(date)}</time>
+      </p>
+      <pre class="note__text">{text}</pre>
+      <TagList tags={entry.data.tags} />
+      <nav class="article-nav" aria-label="Note navigation" data-pagefind-ignore data-motion>
+        {previous ? (
+          <a href={getEntryPath(previous)}>
+            <span>Previous</span>
+            {navTitle(previous)}
+          </a>
+        ) : (
+          <span></span>
+        )}
+        {next ? (
+          <a href={getEntryPath(next)}>
+            <span>Next</span>
+            {navTitle(next)}
+          </a>
+        ) : (
+          <span></span>
+        )}
+      </nav>
+    </div>
+  </article>
+</BaseLayout>
