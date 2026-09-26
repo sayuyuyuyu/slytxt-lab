@@ -3,9 +3,10 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { normalizeDraft } from "../tools/writer/drafts.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer/frontmatter.mjs";
 import { plainText, renderMarkdown } from "../tools/writer/markdown.mjs";
-import { normalizeSlug } from "../tools/writer/publish.mjs";
+import { deriveDescription, normalizeSlug } from "../tools/writer/publish.mjs";
 
 test("frontmatter: 往復しても値が変わらない", () => {
   const data = {
@@ -210,4 +211,17 @@ test("drafts: 存在しないドラフトを保存で作り直さない", async 
     /ありません/
   );
   assert.deepEqual(await drafts.listDrafts(), []);
+});
+
+test("description: 本文の書き出しから最小限だけ作る", () => {
+  assert.equal(deriveDescription("## 見出し\n\n本文の1行目。\n2行目。"), "本文の1行目。 2行目。");
+  assert.equal(deriveDescription(""), "");
+  const long = deriveDescription("あ".repeat(200));
+  assert.equal(long.length, 90);
+  assert.ok(long.endsWith("…"));
+});
+
+test("drafts: 旧 life は journal として読む", () => {
+  assert.equal(normalizeDraft("x", { category: "life" }, "").category, "journal");
+  assert.equal(normalizeDraft("y", { category: "notes" }, "").category, "notes");
 });

@@ -1074,7 +1074,7 @@ body {
 
 /* ---- ボタン ---- */
 
-.button:not(.button--icon)::before {
+.editor__run .button:not(.button--icon)::before {
   content: "> ";
   color: var(--accent-5);
 }
@@ -1090,6 +1090,19 @@ body {
 
 .button--primary:not(.button--icon)::before {
   color: color-mix(in srgb, #04121c 70%, transparent);
+}
+
+.list__new-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 10px 12px 0;
+}
+
+.list__new {
+  margin: 0;
+  padding: 9px 12px;
+  text-align: center;
 }
 
 .button--primary:hover:not(:disabled) {
@@ -1133,11 +1146,6 @@ body {
 }
 
 /* ---- 一覧 ---- */
-
-.list__new::before {
-  content: "$ ";
-  color: var(--accent-5);
-}
 
 .drafts__item {
   border: 1px solid transparent;

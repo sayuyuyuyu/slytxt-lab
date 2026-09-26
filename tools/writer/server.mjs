@@ -29,10 +29,9 @@ import {
   writeDraft
 } from "./drafts.mjs";
 import { expandPrompt } from "./prompt.mjs";
-import { PublishError, publishDraft } from "./publish.mjs";
+import { PublishError, publishDraft, publishNote } from "./publish.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const uiDir = path.join(here, "ui");
 
 const args = process.argv.slice(2);
 const remote = args.includes("--host");
@@ -219,6 +218,17 @@ async function handleApi(req, res, url) {
   if (resource === "publish" && id && method === "POST") {
     streamTask(res, async (send) => {
       const result = await publishDraft({
+        id,
+        onLog: (message) => send({ type: "log", message })
+      });
+      return result;
+    });
+    return true;
+  }
+
+  if (resource === "note" && id && method === "POST") {
+    streamTask(res, async (send) => {
+      const result = await publishNote({
         id,
         onLog: (message) => send({ type: "log", message })
       });

@@ -11,9 +11,12 @@ const els = {
   draftCount: $("#draftCount"),
   search: $("#search"),
   filter: $(".filter"),
-  newInline: $("#newInline"),
-  new: $("#new"),
-  emptyNew: $("#emptyNew"),
+  newArticle: $("#newArticle"),
+  newNote: $("#newNote"),
+  newArticleInline: $("#newArticleInline"),
+  newNoteInline: $("#newNoteInline"),
+  emptyArticle: $("#emptyArticle"),
+  emptyNote: $("#emptyNote"),
   title: $("#title"),
   category: $("#category"),
   status: $("#status"),
@@ -230,8 +233,8 @@ function renderList() {
     empty.className = "drafts__empty";
     empty.textContent =
       state.drafts.length === 0
-        ? "まだ何もありません。上の「新しいメモ」から始めます。"
-        : "条件に合うメモがありません。";
+        ? "まだありません。"
+        : "見つかりません。";
     els.drafts.append(empty);
   }
 
@@ -298,7 +301,6 @@ function fillSelect(select, values, labels) {
 
 function showEmpty(empty) {
   els.editorPane.dataset.empty = empty ? "true" : "false";
-  els.emptyNew.hidden = !empty;
 }
 
 function renderTags() {
@@ -398,7 +400,11 @@ function applyDraft(draft) {
     els.prLink.hidden = true;
   }
 
-  els.publish.textContent = draft.pr ? "PRを更新" : "整形してPR";
+  const note = draft.category === "notes";
+  els.expand.hidden = note;
+  els.publish.textContent = note
+    ? (draft.pr ? "再公開" : "誤字を直して公開")
+    : (draft.pr ? "PRを更新" : "PRを作る");
 
   // 別のメモの保存が失敗したまま残っているときは、その状態を消さない。
   if (!save.pending || save.pending.id === draft.id) {
@@ -612,7 +618,7 @@ async function runExpand() {
       }
     }
     await loadDrafts();
-    toast("下書きができました。手を入れてから整形してください。");
+    toast("下書きにしました。");
   } catch (error) {
     finishTask();
     appendLog(`失敗: ${error.message}`);
@@ -629,37 +635,45 @@ async function runPublish() {
     toast("本文が空です。", "error");
     return;
   }
-  const updating = Boolean(state.current.pr);
-  const label = updating ? "更新" : "作成";
-  if (!window.confirm(`整形して Pull Request を${label}します。よろしいですか。`)) return;
+  const note = state.current.category === "notes";
+  if (!note && !window.confirm("Pull Request を作ります。")) return;
 
   await flushSave().catch(() => {});
   setBusy(true);
+  const id = encodeURIComponent(state.current.id);
   try {
-    const result = await streamTask(
-      `/api/publish/${encodeURIComponent(state.current.id)}`,
-      updating ? "整形して PR を更新中" : "整形して PR を作成中"
-    );
-    finishTask();
-    if (result?.updated === false && result?.prUrl) {
+    if (note) {
+      const result = await streamTask(`/api/note/${id}`, "誤字を直して公開");
+      finishTask();
       showResult([
-        { label: "内容に変更がありませんでした。" },
-        { href: result.prUrl, label: "PR を開く" }
+        { label: result.file },
+        { href: result.prUrl, label: "PR" }
       ]);
+      toast("公開しました。");
     } else {
-      showResult([
-        { label: `${result.file} / ${result.branch}` },
-        { href: result.prUrl, label: "PR を開く" }
-      ]);
-      toast(updating ? "PR を更新しました。" : "PR を作成しました。");
+      const updating = Boolean(state.current.pr);
+      const result = await streamTask(`/api/publish/${id}`, updating ? "PR を更新" : "PR を作成");
+      finishTask();
+      if (result?.updated === false && result?.prUrl) {
+        showResult([
+          { label: "変更はありません。" },
+          { href: result.prUrl, label: "PR" }
+        ]);
+      } else {
+        showResult([
+          { label: `${result.file} / ${result.branch}` },
+          { href: result.prUrl, label: "PR" }
+        ]);
+        toast(updating ? "PR を更新しました。" : "PR を作成しました。");
+      }
     }
-    const { draft } = await api(`/api/drafts/${encodeURIComponent(state.current.id)}`);
+    const { draft } = await api(`/api/drafts/${id}`);
     applyDraft(draft);
     await loadDrafts();
   } catch (error) {
     finishTask();
     appendLog(`失敗: ${error.message}`);
-    showResult([{ label: "失敗しました。ログを確認してください。" }]);
+    showResult([{ label: "失敗しました。" }]);
     toast(error.message, "error");
   } finally {
     setBusy(false);
@@ -688,6 +702,10 @@ async function createDraft({ title = "", category, body = "" } = {}) {
   if (window.matchMedia("(max-width: 1000px)").matches) setView("editor");
   els.body.focus();
   return saved;
+}
+
+function newDraft(category) {
+  createDraft({ category }).catch((error) => toast(error.message, "error"));
 }
 
 async function revertCurrent() {
@@ -813,9 +831,12 @@ async function boot() {
     button.addEventListener("click", () => INSERTERS[button.dataset.insert]?.());
   }
 
-  els.new.addEventListener("click", () => createDraft().catch((error) => toast(error.message, "error")));
-  els.newInline.addEventListener("click", () => createDraft().catch((error) => toast(error.message, "error")));
-  els.emptyNew.addEventListener("click", () => createDraft().catch((error) => toast(error.message, "error")));
+  els.newArticle.addEventListener("click", () => newDraft("tech"));
+  els.newNote.addEventListener("click", () => newDraft("notes"));
+  els.newArticleInline.addEventListener("click", () => newDraft("tech"));
+  els.newNoteInline.addEventListener("click", () => newDraft("notes"));
+  els.emptyArticle.addEventListener("click", () => newDraft("tech"));
+  els.emptyNote.addEventListener("click", () => newDraft("notes"));
   els.expand.addEventListener("click", runExpand);
   els.publish.addEventListener("click", runPublish);
   els.remove.addEventListener("click", removeCurrent);
