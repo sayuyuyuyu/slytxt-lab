@@ -9,9 +9,17 @@ import { fileURLToPath } from "node:url";
 import { AgentError, runAgent, stripCodeFence } from "./agent.mjs";
 import { historyDir, readDraft, repoRoot, snapshotDraft, writeDraft } from "./drafts.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
+import { plainText } from "./markdown.mjs";
 import { polishPrompt, today } from "./prompt.mjs";
 
 export class PublishError extends Error {}
+
+/** 一覧に出す説明。エージェントに書かせず、本文の書き出しから最小限だけ作る。 */
+export function deriveDescription(body, limit = 90) {
+  const text = plainText(String(body ?? "")).replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  return text.length <= limit ? text : `${text.slice(0, limit - 1).trimEnd()}…`;
+}
 
 function run(command, args, { cwd = repoRoot, onLog = () => {}, allowFailure = false, timeoutMs = 10 * 60 * 1000 } = {}) {
   onLog(`$ ${command} ${args.join(" ")}`);
@@ -109,7 +117,8 @@ export async function publishDraft({ id, onLog = () => {} }) {
   const { data, body, hasFrontmatter } = parseFrontmatter(document);
   if (!hasFrontmatter) throw new PublishError("出力に frontmatter がありません。");
   const title = requireField(data, "title");
-  const description = requireField(data, "description");
+  const provided = typeof data.description === "string" ? data.description.trim() : "";
+  const description = provided || deriveDescription(body) || title;
   const published = String(data.published ?? "").trim() || today();
   const tags = (Array.isArray(data.tags) ? data.tags : []).map((tag) => String(tag).trim()).filter(Boolean).slice(0, 6);
   const slug = draft.slug || normalizeSlug(data.slug, published.replace(/-/g, ""));

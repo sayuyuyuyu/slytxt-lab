@@ -28,7 +28,8 @@ function categoryLine(category) {
   const label = CATEGORY_LABELS[category] ?? CATEGORY_LABELS.tech;
   const scope = {
     tech: "AI、MCP、クラウド、プログラミングを実際に触って試したこと",
-    life: "旅行、ゲーム、音楽、ガジェット、日々の出来事",
+    journal: "旅行、ゲーム、音楽、ガジェット、日々の出来事",
+    notes: "短いメモ。あとで記事にする前の走り書き",
     projects: "つくったものの紹介"
   }[category];
   return `${category}（${label}）— ${scope}`;
@@ -42,7 +43,6 @@ frontmatter はこのキーだけを、この順で書く。キーを増やさ�
 \`\`\`yaml
 ---
 title: 記事のタイトル（日本語。長くしない）
-description: 一覧に出す1文（60〜90字。煽らない。何の話か具体的に書く）
 published: ${today()}
 tags: [タグ, タグ, タグ]
 slug: english-hyphen-slug
@@ -50,6 +50,7 @@ slug: english-hyphen-slug
 \`\`\`
 
 - カテゴリは ${categoryLine(category)}。slug はこのカテゴリのディレクトリ名にだけ使い、本文には残さない。
+- \`description\` は書かない。一覧に出す説明は本文から自動で作る。
 - \`slug\` は半角英小文字とハイフンだけ。タイトルの内容を英語にした2〜5語。例: \`mcp-server-first-try\`
 - \`tags\` は2〜4個。日本語でも英語でもよい。記事の中で実際に扱っている対象だけを書く。
 - \`published\` は ${today()} をそのまま使う。

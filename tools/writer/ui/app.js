@@ -753,10 +753,10 @@ function setView(view) {
 }
 
 function toggleTheme() {
-  const dark = !document.documentElement.classList.contains("dark");
-  document.documentElement.classList.toggle("dark", dark);
+  const light = !document.documentElement.classList.contains("light");
+  document.documentElement.classList.toggle("light", light);
   try {
-    localStorage.setItem("theme", dark ? "dark" : "light");
+    localStorage.setItem("theme", light ? "light" : "dark");
   } catch {}
 }
 

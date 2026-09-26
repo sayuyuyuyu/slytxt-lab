@@ -56,7 +56,7 @@ async function themeCss() {
   const info = await stat(file);
   if (themeCache && themeCache.mtime === info.mtimeMs) return themeCache.css;
   const source = await readFile(file, "utf8");
-  const css = [...source.matchAll(/:root(?:\.dark)?\s*\{[^}]*\}/g)].map((match) => match[0]).join("\n");
+  const css = [...source.matchAll(/:root(?:\.light)?\s*\{[^}]*\}/g)].map((match) => match[0]).join("\n");
   themeCache = { mtime: info.mtimeMs, css };
   return css;
 }
