@@ -822,6 +822,15 @@ samp,
   border-top: 1px solid var(--border);
   color: var(--text-muted);
 }
+.empty-state__cmd {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+.empty-state__cmd::before {
+  content: "$ ";
+  color: var(--accent-5);
+}
 .empty-state p {
   margin: 0;
 }
@@ -831,7 +840,14 @@ samp,
 }
 .empty-state__title {
   color: var(--text);
+  font-family: var(--font-mono);
   font-weight: 600;
+}
+.empty-state__title::after {
+  content: "_";
+  margin-left: 2px;
+  color: var(--accent);
+  animation: cursor-blink 1.05s steps(1) infinite;
 }
 .pagination {
   display: flex;

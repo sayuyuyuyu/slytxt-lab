@@ -45,7 +45,7 @@ const recentNotes = notes.slice(0, 4);
         <div><p class="eyebrow">recent articles</p><h2 id="recent-title">Recent</h2></div>
         <div class="section-links"><a href="/articles/">Articles</a><a href="/rss.xml">RSS</a></div>
       </div>
-      {recent.length ? <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="No articles yet" description="Longer write-ups will show up here." />}
+      {recent.length ? <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="Content not found" description="Longer write-ups will show up here." />}
     </div>
   </section>
   <section class="section" aria-labelledby="notes-title" data-motion>
@@ -54,7 +54,7 @@ const recentNotes = notes.slice(0, 4);
         <div><p class="eyebrow">notes</p><h2 id="notes-title">Notes</h2></div>
         <a class="link-button" href="/notes/">All notes <span aria-hidden="true">↗</span></a>
       </div>
-      {recentNotes.length ? <div class="listing-list">{recentNotes.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="No notes yet" description="Short memos will show up here." />}
+      {recentNotes.length ? <div class="listing-list">{recentNotes.map((entry) => <ArticleCard entry={entry} />)}</div> : <EmptyState title="Content not found" description="Short memos will show up here." />}
     </div>
   </section>
   <section class="section" aria-labelledby="projects-title" data-motion>
@@ -63,7 +63,7 @@ const recentNotes = notes.slice(0, 4);
         <div><p class="eyebrow">projects</p><h2 id="projects-title">Projects</h2></div>
         <a class="link-button" href="/projects/">All projects <span aria-hidden="true">↗</span></a>
       </div>
-      {projects.length ? <div class="project-grid">{projects.slice(0, 4).map((entry) => <ProjectCard entry={entry} />)}</div> : <EmptyState title="Nothing public yet" description="Finished work will show up here with its status." />}
+      {projects.length ? <div class="project-grid">{projects.slice(0, 4).map((entry) => <ProjectCard entry={entry} />)}</div> : <EmptyState title="Content not found" description="Finished work will show up here with its status." />}
     </div>
   </section>
 </BaseLayout>

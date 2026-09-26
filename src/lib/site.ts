@@ -39,21 +39,21 @@ export const articleSections: Record<"tech" | "journal" | "notes", ArticleSectio
     title: categoryLabels.tech,
     eyebrow: "tech",
     description: "AI、MCP、クラウド、プログラミングを試した記録。",
-    emptyTitle: "No tech articles yet",
+    emptyTitle: "Content not found",
     emptyDescription: "The first one will show up here."
   },
   journal: {
     title: categoryLabels.journal,
     eyebrow: "journal",
     description: "旅行、ゲーム、音楽、ガジェットの話。",
-    emptyTitle: "No journal entries yet",
+    emptyTitle: "Content not found",
     emptyDescription: "Trips, games, music and gadgets will show up here."
   },
   notes: {
     title: categoryLabels.notes,
     eyebrow: "notes",
     description: "あとで記事にする前の、短いメモ。",
-    emptyTitle: "No notes yet",
+    emptyTitle: "Content not found",
     emptyDescription: "Short memos will show up here."
   }
 };
@@ -63,7 +63,7 @@ export const articlesIndex: ArticleSection = {
   title: "Articles",
   eyebrow: "articles",
   description: "技術系の記事と、それ以外の記事。",
-  emptyTitle: "No articles yet",
+  emptyTitle: "Content not found",
   emptyDescription: "Longer write-ups will show up here."
 };
 

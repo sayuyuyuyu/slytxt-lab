@@ -25,7 +25,7 @@ const projects = await getProjects();
             {projects.map((entry) => <ProjectCard entry={entry} headingLevel="h2" />)}
           </div>
         ) : (
-          <EmptyState title="Nothing public yet" description="Finished work will show up here." />
+          <EmptyState title="Content not found" description="Finished work will show up here." />
         )
       }
     </div>
