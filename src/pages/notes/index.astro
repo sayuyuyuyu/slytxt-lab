@@ -5,4 +5,4 @@ import { articleSections } from "@/lib/site";
 import ArticleListing from "@/layouts/ArticleListing.astro";
 const page = paginateEntries(await getNotes(), "/notes");
 ---
-<ArticleListing section={articleSections.notes} basePath="/notes" page={page} />
+<ArticleListing section={articleSections.notes} basePath="/notes" page={page} variant="note" />

@@ -1274,3 +1274,21 @@ body {
     animation: none;
   }
 }
+
+/* ---- note は入力欄と投稿だけ ---- */
+
+body[data-mode="note"] .editor__title,
+body[data-mode="note"] .editor__meta,
+body[data-mode="note"] .editor__tools,
+body[data-mode="note"] .pane--preview,
+body[data-mode="note"] .bar__views button[data-view="preview"] {
+  display: none;
+}
+
+body[data-mode="note"] .app {
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+body[data-mode="note"] .editor {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}

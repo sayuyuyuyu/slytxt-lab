@@ -1103,6 +1103,57 @@ samp,
   font-family: var(--font-mono);
   font-size: 0.78rem;
 }
+
+/* Notes: plain text, no title. */
+.note__inner {
+  max-width: var(--article-width);
+  padding-block: 40px 64px;
+}
+.note__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+.note__text {
+  margin: 20px 0 28px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 1.03rem/1.95 var(--font-body);
+  color: var(--text);
+}
+.note-card {
+  position: relative;
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding: 20px 18px 20px 20px;
+  transition: background-color 0.3s ease;
+}
+.note-card:hover {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.note-card__meta {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+.note-card__text {
+  display: block;
+  margin-top: 8px;
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  text-decoration: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.note-card:hover .note-card__text {
+  color: var(--accent-strong);
+}
 .adult-gate {
   display: none;
   padding: 20px;
