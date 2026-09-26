@@ -121,27 +121,6 @@ const imageUrl = new URL(image, Astro.site);
           );
         }
       }
-
-      // Hero typing. The server renders the full text; scripting only replaces it.
-      const typed = document.querySelectorAll<HTMLElement>("[data-typing]");
-      if (!reduce) {
-        for (const el of typed) {
-          const full = el.dataset.typing || el.textContent || "";
-          el.textContent = "";
-          el.classList.add("is-typing");
-          let index = 0;
-          const tick = () => {
-            index += 1;
-            el.textContent = full.slice(0, index);
-            if (index < full.length) {
-              window.setTimeout(tick, 26);
-            } else {
-              el.classList.remove("is-typing");
-            }
-          };
-          window.setTimeout(tick, 420);
-        }
-      }
     </script>
   </body>
 </html>
