@@ -52,7 +52,7 @@ const crumbs =
       <Breadcrumbs items={crumbs} />
       <p class="eyebrow">{categoryLabels[entry.collection]}</p>
       <h1 class="page-title" data-pagefind-meta="title">{entry.data.title}</h1>
-      <p class="page-lead">{entry.data.description}</p>
+      {entry.data.description && <p class="page-lead">{entry.data.description}</p>}
       <div class="article-meta">
         <span>Published <time datetime={entry.data.published.toISOString()}>{formatDate(entry.data.published)}</time></span>
         {entry.data.updated && <span>Updated <time datetime={date.toISOString()}>{formatDate(date)}</time></span>}
