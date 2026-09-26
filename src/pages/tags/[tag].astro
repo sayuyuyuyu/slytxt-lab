@@ -20,33 +20,48 @@ export async function getStaticPaths() {
 const { tag } = Astro.params;
 const { label } = Astro.props;
 const entries = getEntriesByTag(await getAllEntries(), tag ?? "");
-const articles = entries.filter((entry) => entry.collection !== "projects") as ArticleEntry[];
+const articles = entries.filter(
+  (entry) => entry.collection === "tech" || entry.collection === "journal"
+) as ArticleEntry[];
+const notes = entries.filter((entry) => entry.collection === "notes") as ArticleEntry[];
 const projects = entries.filter((entry) => entry.collection === "projects") as ProjectEntry[];
 ---
 
-<BaseLayout title={`#${label} - タグ - ${site.name}`} description={`#${label} が付いた記事と、つくったもの。`}>
+<BaseLayout title={`#${label} - Tags - ${site.name}`} description={`#${label} が付いた記事と、つくったもの。`}>
   <PageHeader
     eyebrow="tag"
     title={`#${label}`}
     count={entries.length}
-    breadcrumbs={[{ label: "タグ", href: "/tags/" }, { label: `#${label}` }]}
+    countLabel="entries"
+    countLabelOne="entry"
+    breadcrumbs={[{ label: "Tags", href: "/tags/" }, { label: `#${label}` }]}
   />
   <section class="listing">
     <div class="container">
       {articles.length > 0 && (
         <>
           <div class="section-head">
-            <h2>記事</h2>
+            <h2>Articles</h2>
           </div>
           <div class="listing-list">
             {articles.map((entry) => <ArticleCard entry={entry} />)}
           </div>
         </>
       )}
+      {notes.length > 0 && (
+        <>
+          <div class="section-head" style="margin-top: 48px;">
+            <h2>Notes</h2>
+          </div>
+          <div class="listing-list">
+            {notes.map((entry) => <ArticleCard entry={entry} />)}
+          </div>
+        </>
+      )}
       {projects.length > 0 && (
         <>
           <div class="section-head" style="margin-top: 48px;">
-            <h2>つくったもの</h2>
+            <h2>Projects</h2>
           </div>
           <div class="project-grid">
             {projects.map((entry) => <ProjectCard entry={entry} />)}

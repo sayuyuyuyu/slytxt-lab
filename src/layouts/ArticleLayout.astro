@@ -5,7 +5,7 @@ import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
 import { getEntryPath, getEntrySlug, type ArticleEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
-import { categoryLabels, site } from "@/lib/site";
+import { categoryLabels, categoryPaths, site } from "@/lib/site";
 import BaseLayout from "./BaseLayout.astro";
 
 type Heading = {
@@ -25,6 +25,17 @@ const { entry, headings, previous, next } = Astro.props;
 const date = entry.data.updated ?? entry.data.published;
 const title = `${entry.data.title} - ${categoryLabels[entry.collection]} - ${site.name}`;
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
+const crumbs =
+  entry.collection === "notes"
+    ? [
+        { label: categoryLabels.notes, href: categoryPaths.notes },
+        { label: entry.data.title }
+      ]
+    : [
+        { label: "Articles", href: "/articles/" },
+        { label: categoryLabels[entry.collection], href: categoryPaths[entry.collection] },
+        { label: entry.data.title }
+      ];
 ---
 
 <BaseLayout
@@ -38,19 +49,14 @@ const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
 >
   <header class="article-hero" data-motion>
     <div class="container">
-      <Breadcrumbs
-        items={[
-          { label: categoryLabels[entry.collection], href: `/${entry.collection}/` },
-          { label: entry.data.title }
-        ]}
-      />
+      <Breadcrumbs items={crumbs} />
       <p class="eyebrow">{categoryLabels[entry.collection]}</p>
       <h1 class="page-title" data-pagefind-meta="title">{entry.data.title}</h1>
       <p class="page-lead">{entry.data.description}</p>
       <div class="article-meta">
-        <span>公開 <time datetime={entry.data.published.toISOString()}>{formatDate(entry.data.published)}</time></span>
-        {entry.data.updated && <span>更新 <time datetime={date.toISOString()}>{formatDate(date)}</time></span>}
-        {entry.data.adult && <span aria-label="成人向け作品レビューを含む"> / 🔞</span>}
+        <span>Published <time datetime={entry.data.published.toISOString()}>{formatDate(entry.data.published)}</time></span>
+        {entry.data.updated && <span>Updated <time datetime={date.toISOString()}>{formatDate(date)}</time></span>}
+        {entry.data.adult && <span aria-label="Includes an adult content review"> / 🔞</span>}
       </div>
       <TagList tags={entry.data.tags} />
     </div>
@@ -58,17 +64,17 @@ const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
 
   <div class:list={["article-shell", { "article-shell--wide": !headings.some((heading) => heading.depth === 2 || heading.depth === 3) }]}>
     <TableOfContents headings={headings} />
-    <article class="article-main" data-pagefind-filter={`種類:${categoryLabels[entry.collection]}`}>
+    <article class="article-main" data-pagefind-filter={`category:${categoryLabels[entry.collection]}`}>
       {entry.data.adult && <AdultGate storageKey="adult-content-consent" />}
       <div class="article-body" data-adult-content data-locked={entry.data.adult ? "true" : "false"}>
         <slot />
       </div>
 
-      <nav class="article-nav" aria-label="前後の記事" data-pagefind-ignore data-motion>
+      <nav class="article-nav" aria-label="Article navigation" data-pagefind-ignore data-motion>
         {
           previous ? (
             <a href={getEntryPath(previous)}>
-              <span>前の記事</span>
+              <span>Previous</span>
               {previous.data.title}
             </a>
           ) : (
@@ -78,7 +84,7 @@ const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
         {
           next ? (
             <a href={getEntryPath(next)}>
-              <span>次の記事</span>
+              <span>Next</span>
               {next.data.title}
             </a>
           ) : (

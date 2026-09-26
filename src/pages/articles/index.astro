@@ -1,0 +1,8 @@
+---
+import { getAllArticles } from "@/lib/content";
+import { paginateEntries } from "@/lib/pagination";
+import { articlesIndex } from "@/lib/site";
+import ArticleListing from "@/layouts/ArticleListing.astro";
+const page = paginateEntries(await getAllArticles(), "/articles");
+---
+<ArticleListing section={articlesIndex} basePath="/articles" page={page} />

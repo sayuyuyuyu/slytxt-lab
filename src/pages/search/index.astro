@@ -3,27 +3,27 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import { site } from "@/lib/site";
 ---
-<BaseLayout title={`サイト内検索 - ${site.name}`} description="記事とつくったものを、書いてある言葉から探せます。" noindex>
-  <PageHeader title="サイト内検索" eyebrow="search" />
-  <section class="listing" aria-label="検索"><div class="container">
+<BaseLayout title={`Search - ${site.name}`} description="記事とつくったものを、書いてある言葉から探せます。" noindex>
+  <PageHeader title="Search" eyebrow="search" />
+  <section class="listing" aria-label="Search"><div class="container">
     <div class="search-box">
       <div id="search"></div>
-      <p id="search-status" class="muted" role="status">検索を読み込んでいます。</p>
-      <noscript><p>検索にはJavaScriptが必要です。<a href="/tags/">タグ一覧</a>からも探せます。</p></noscript>
+      <p id="search-status" class="muted" role="status">Loading search…</p>
+      <noscript><p>Search needs JavaScript. You can also browse <a href="/tags/">Tags</a>.</p></noscript>
     </div>
-    <p class="search-help">短い言葉のほうが引っかかります。</p>
+    <p class="search-help">Short words match more.</p>
   </div></section>
   <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
   <script is:inline>
     (() => {
       const status = document.getElementById("search-status");
-      const fail = () => { status.textContent = "検索を読み込めませんでした。ページを再読み込みするか、タグ一覧から辿ってください。"; };
+      const fail = () => { status.textContent = "Could not load search. Reload the page or browse Tags."; };
       const script = document.createElement("script");
       script.src = "/pagefind/pagefind-ui.js";
       script.onload = () => {
         try {
           new PagefindUI({ element: "#search", showSubResults: true, showImages: false,
-            translations: { placeholder: "言葉で探す", zero_results: "「[SEARCH_TERM]」に一致するものはありません" }
+            translations: { placeholder: "Search", zero_results: "No results for \"[SEARCH_TERM]\"" }
           });
           status.hidden = true;
         } catch { fail(); }

@@ -25,6 +25,6 @@ const date = entry.data.updated ?? entry.data.started;
   <p>{entry.data.description}</p>
   <TagList tags={entry.data.tags} />
   <div class="project-card__footer">
-    <a class="link-button" href={getEntryPath(entry)} aria-label={`${entry.data.title}の詳細`}>詳しく見る <span aria-hidden="true">↗</span></a>
+    <a class="link-button" href={getEntryPath(entry)} aria-label={`${entry.data.title} details`}>Details <span aria-hidden="true">↗</span></a>
   </div>
 </article>

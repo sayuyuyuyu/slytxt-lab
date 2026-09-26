@@ -10,11 +10,11 @@ const { tags } = Astro.props;
 
 {
   tags.length > 0 && (
-    <ul class="tag-list" aria-label="タグ">
+    <ul class="tag-list" aria-label="Tags">
       {tags.map((tag) => (
         <li>
           <a class="tag" href={tagPath(tag)}>
-            #{tag}
+            <span class="tag__hash" aria-hidden="true">#</span>{tag}
           </a>
         </li>
       ))}

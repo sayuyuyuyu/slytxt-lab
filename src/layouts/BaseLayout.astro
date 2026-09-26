@@ -38,15 +38,11 @@ const imageUrl = new URL(image, Astro.site);
     <script is:inline>
       (() => {
         document.documentElement.classList.add("js");
+        // Blue-black terminal is the default look. `light` is an explicit opt-in.
         try {
-          const stored = localStorage.getItem("theme");
-          const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          document.documentElement.classList.toggle("dark", stored ? stored === "dark" : systemDark);
+          document.documentElement.classList.toggle("light", localStorage.getItem("theme") === "light");
         } catch {
-          document.documentElement.classList.toggle(
-            "dark",
-            window.matchMedia("(prefers-color-scheme: dark)").matches
-          );
+          // Storage unavailable: stay on the default dark palette.
         }
       })();
     </script>
@@ -82,11 +78,11 @@ const imageUrl = new URL(image, Astro.site);
     {site.twitter && <meta name="twitter:site" content={site.twitter} />}
     {published && <meta property="article:published_time" content={published.toISOString()} />}
     {updated && <meta property="article:modified_time" content={updated.toISOString()} />}
-    <meta name="theme-color" content="#fdfcf8" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1d1b18" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eef3fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#05070f" media="(prefers-color-scheme: dark)" />
   </head>
   <body data-pagefind-ignore={searchable ? undefined : "all"}>
-    <a class="skip-link" href="#main-content">本文へ移動</a>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <SiteHeader />
     <div class="site-shell">
       <main id="main-content" class="site-main" tabindex="-1" data-pagefind-body={searchable || undefined}>
@@ -123,6 +119,27 @@ const imageUrl = new URL(image, Astro.site);
             },
             { amount: 0.12, margin: "0px 0px -8% 0px" }
           );
+        }
+      }
+
+      // Hero typing. The server renders the full text; scripting only replaces it.
+      const typed = document.querySelectorAll<HTMLElement>("[data-typing]");
+      if (!reduce) {
+        for (const el of typed) {
+          const full = el.dataset.typing || el.textContent || "";
+          el.textContent = "";
+          el.classList.add("is-typing");
+          let index = 0;
+          const tick = () => {
+            index += 1;
+            el.textContent = full.slice(0, index);
+            if (index < full.length) {
+              window.setTimeout(tick, 26);
+            } else {
+              el.classList.remove("is-typing");
+            }
+          };
+          window.setTimeout(tick, 420);
         }
       }
     </script>

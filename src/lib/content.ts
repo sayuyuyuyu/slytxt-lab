@@ -1,10 +1,20 @@
 import { getCollection, type CollectionEntry } from "astro:content";
 import { slugifyTag } from "./tags";
 
-export type ArticleCollection = "tech" | "life";
-export type ArticleEntry = CollectionEntry<"tech"> | CollectionEntry<"life">;
+export type ArticleCollection = "tech" | "journal" | "notes";
+export type ArticleEntry =
+  | CollectionEntry<"tech">
+  | CollectionEntry<"journal">
+  | CollectionEntry<"notes">;
 export type ProjectEntry = CollectionEntry<"projects">;
 export type SiteEntry = ArticleEntry | ProjectEntry;
+
+/** URL segment for each article collection. `notes` sits outside `articles`. */
+const ARTICLE_BASE: Record<ArticleCollection, string> = {
+  tech: "articles/tech",
+  journal: "articles/journal",
+  notes: "notes"
+};
 
 function isPublished<T extends SiteEntry>(entry: T): boolean {
   return !entry.data.draft;
@@ -30,14 +40,31 @@ export function sortProjects<T extends ProjectEntry>(entries: T[]): T[] {
   );
 }
 
-export async function getArticles(collection: ArticleCollection): Promise<ArticleEntry[]> {
+export async function getArticles(
+  collection: "tech" | "journal"
+): Promise<ArticleEntry[]> {
   const entries = await getCollection(collection, isPublished);
   return sortArticles(entries as ArticleEntry[]);
 }
 
+/** Tech and Journal together. Notes are deliberately left out. */
 export async function getAllArticles(): Promise<ArticleEntry[]> {
-  const [tech, life] = await Promise.all([getArticles("tech"), getArticles("life")]);
-  return sortArticles([...tech, ...life]);
+  const [tech, journal] = await Promise.all([
+    getArticles("tech"),
+    getArticles("journal")
+  ]);
+  return sortArticles([...tech, ...journal]);
+}
+
+export async function getNotes(): Promise<ArticleEntry[]> {
+  const entries = await getCollection("notes", isPublished);
+  return sortArticles(entries as ArticleEntry[]);
+}
+
+/** Everything written: articles and notes. */
+export async function getAllWriting(): Promise<ArticleEntry[]> {
+  const [articles, notes] = await Promise.all([getAllArticles(), getNotes()]);
+  return sortArticles([...articles, ...notes]);
 }
 
 export async function getProjects(): Promise<ProjectEntry[]> {
@@ -46,8 +73,12 @@ export async function getProjects(): Promise<ProjectEntry[]> {
 }
 
 export async function getAllEntries(): Promise<SiteEntry[]> {
-  const [articles, projects] = await Promise.all([getAllArticles(), getProjects()]);
-  return [...articles, ...projects];
+  const [articles, notes, projects] = await Promise.all([
+    getAllArticles(),
+    getNotes(),
+    getProjects()
+  ]);
+  return [...articles, ...notes, ...projects];
 }
 
 export function getEntryDate(entry: SiteEntry): Date {
@@ -59,11 +90,13 @@ export function getEntrySlug(entry: SiteEntry): string {
 }
 
 export function getEntryPath(entry: SiteEntry): string {
-  return `/${entry.collection}/${getEntrySlug(entry)}/`;
+  if (entry.collection === "projects") return `/projects/${getEntrySlug(entry)}/`;
+  return `/${ARTICLE_BASE[entry.collection]}/${getEntrySlug(entry)}/`;
 }
 
 export function getEntryKind(entry: SiteEntry): string {
-  return entry.collection === "projects" ? "project" : "article";
+  if (entry.collection === "projects") return "project";
+  return entry.collection === "notes" ? "note" : "article";
 }
 
 export function getEntriesByTag(entries: SiteEntry[], tagSlug: string): SiteEntry[] {

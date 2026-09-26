@@ -22,7 +22,7 @@ const date = entry.data.updated ?? entry.data.started;
 ---
 
 <BaseLayout
-  title={`${entry.data.title} - つくったもの - ${site.name}`}
+  title={`${entry.data.title} - Projects - ${site.name}`}
   description={entry.data.description}
   image={`/og/projects/${getEntrySlug(entry)}.png`}
   type="article"
@@ -32,7 +32,7 @@ const date = entry.data.updated ?? entry.data.started;
 >
   <header class="article-hero">
     <div class="container">
-      <Breadcrumbs items={[{ label: "つくったもの", href: "/projects/" }, { label: entry.data.title }]} />
+      <Breadcrumbs items={[{ label: "Projects", href: "/projects/" }, { label: entry.data.title }]} />
       <p class="eyebrow">{categoryLabels.projects}</p>
       <h1 class="page-title" data-pagefind-meta="title">{entry.data.title}</h1>
       <p class="page-lead">{entry.data.description}</p>
@@ -46,7 +46,7 @@ const date = entry.data.updated ?? entry.data.started;
   </header>
   <div class:list={["article-shell", { "article-shell--wide": !headings.some((heading) => heading.depth === 2 || heading.depth === 3) }]}>
     <TableOfContents headings={headings} />
-    <article class="article-main" data-pagefind-filter={`種類:${categoryLabels.projects}`}>
+    <article class="article-main" data-pagefind-filter={`category:${categoryLabels.projects}`}>
       <div class="article-body">
         <Content />
       </div>

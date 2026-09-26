@@ -1,10 +1,10 @@
 import rss from "@astrojs/rss";
 import type { APIContext } from "astro";
-import { getAllArticles, getEntryPath } from "@/lib/content";
+import { getAllWriting, getEntryPath } from "@/lib/content";
 import { site } from "@/lib/site";
 
 export async function GET(context: APIContext) {
-  const articles = await getAllArticles();
+  const articles = await getAllWriting();
 
   return rss({
     title: site.title,

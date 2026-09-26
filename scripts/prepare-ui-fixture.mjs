@@ -25,7 +25,7 @@ await symlink(
   path.join(target, "node_modules"),
   "dir",
 );
-for (const collection of ["tech", "life", "projects"])
+for (const collection of ["tech", "journal", "notes", "projects"])
   await mkdir(path.join(target, "src/content", collection), {
     recursive: true,
   });
@@ -38,12 +38,16 @@ for (let index = 1; index <= 12; index++) {
   );
 }
 await writeFile(
-  path.join(target, "src/content/life/journal.md"),
+  path.join(target, "src/content/journal/journal.md"),
   `---\ntitle: 日々の記録の表示確認\ndescription: 日々のページを確認します。\npublished: 2026-08-20\ntags: [日本語]\n---\n${body}`,
 );
 await writeFile(
-  path.join(target, "src/content/life/consent.md"),
+  path.join(target, "src/content/journal/consent.md"),
   `---\ntitle: 閲覧確認の動作テスト\ndescription: 同意ボタンの動作を検証する記事です。\npublished: 2026-08-21\nadult: true\ntags: [検証]\n---\n${body}`,
+);
+await writeFile(
+  path.join(target, "src/content/notes/memo.md"),
+  `---\ntitle: メモの表示確認\ndescription: メモ一覧と記事への導線を確認します。\npublished: 2026-08-22\ntags: [検証]\n---\n${body}`,
 );
 await writeFile(
   path.join(target, "src/content/projects/example.md"),
