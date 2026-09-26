@@ -23,7 +23,7 @@ const date = entry.data.updated ?? entry.data.published;
   <Heading class="entry-card__title">
     <a href={getEntryPath(entry)}>{entry.data.title}</a>
   </Heading>
-  <p>{entry.data.description}</p>
+  {entry.data.description && <p>{entry.data.description}</p>}
   <div class="entry-card__footer">
     <TagList tags={entry.data.tags} />
   </div>

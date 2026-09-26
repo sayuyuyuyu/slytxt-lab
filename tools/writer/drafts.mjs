@@ -15,8 +15,8 @@ export const draftsDir = process.env.SLYTXT_DRAFTS_DIR
   : path.join(repoRoot, "drafts");
 export const historyDir = path.join(draftsDir, ".history");
 
-export const CATEGORIES = ["tech", "life", "projects"];
-export const CATEGORY_LABELS = { tech: "技術メモ", life: "日々の記録", projects: "つくったもの" };
+export const CATEGORIES = ["tech", "journal", "notes", "projects"];
+export const CATEGORY_LABELS = { tech: "Tech", journal: "Journal", notes: "Notes", projects: "Projects" };
 export const STATUSES = ["memo", "draft", "ready", "published"];
 export const STATUS_LABELS = { memo: "メモ", draft: "下書き", ready: "出せる", published: "PR済み" };
 
@@ -78,7 +78,14 @@ function carriedLines(raw = []) {
 }
 
 export function normalizeDraft(id, data, body, raw = []) {
-  const category = CATEGORIES.includes(asString(data.category)) ? String(data.category) : "tech";
+  // 旧 life カテゴリのメモは journal として扱う。
+  const rawCategory = asString(data.category);
+  const category =
+    rawCategory === "life"
+      ? "journal"
+      : CATEGORIES.includes(rawCategory)
+        ? rawCategory
+        : "tech";
   const status = STATUSES.includes(asString(data.status)) ? String(data.status) : "memo";
   return {
     id,

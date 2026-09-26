@@ -2,7 +2,8 @@ import { defineCollection, z } from "astro:content";
 
 const articleSchema = z.object({
   title: z.string(),
-  description: z.string(),
+  // 一覧に出す説明。無いときは本文やタイトルで補う。
+  description: z.string().optional(),
   published: z.coerce.date(),
   updated: z.coerce.date().optional(),
   tags: z.array(z.string()).default([]),

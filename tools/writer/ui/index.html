@@ -10,11 +10,11 @@
       (() => {
         document.documentElement.classList.add("js");
         try {
-          const stored = localStorage.getItem("theme");
-          const dark = stored
-            ? stored === "dark"
-            : window.matchMedia("(prefers-color-scheme: dark)").matches;
-          document.documentElement.classList.toggle("dark", dark);
+          // サイトと同じく、青黒のダークを既定にする。
+          document.documentElement.classList.toggle(
+            "light",
+            localStorage.getItem("theme") === "light"
+          );
         } catch {}
       })();
     </script>
@@ -22,8 +22,9 @@
   <body>
     <header class="bar">
       <div class="bar__brand">
-        <span class="bar__mark" aria-hidden="true">し</span>
+        <span class="bar__mark" aria-hidden="true">❯</span>
         <span class="bar__label">執筆</span>
+        <span class="bar__cursor" aria-hidden="true"></span>
       </div>
 
       <button id="save" class="save" type="button" data-state="idle">
@@ -118,6 +119,7 @@
             </details>
           </div>
 
+          <p class="editor__cmd" aria-hidden="true">cat body.md</p>
           <textarea
             id="body"
             class="editor__body"
@@ -135,6 +137,7 @@
         </div>
 
         <div id="empty" class="empty" hidden>
+          <p class="empty__cmd" aria-hidden="true">ls drafts/</p>
           <p class="empty__title">メモがまだありません</p>
           <p class="empty__text">思いついたことをそのまま書くところから始めます。</p>
           <button id="emptyNew" class="button button--primary" type="button">＋ 新しいメモ</button>
@@ -143,6 +146,7 @@
 
       <section class="pane pane--preview" aria-label="プレビュー">
         <div class="preview">
+          <p class="preview__cmd" aria-hidden="true">cat article.md</p>
           <p class="preview__note">公開したときの見え方に近いものです。実際の表示は PR のプレビューで確かめてください。</p>
           <article class="preview__article">
             <p class="preview__category" id="previewCategory"></p>

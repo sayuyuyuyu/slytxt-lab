@@ -12,7 +12,7 @@ export async function GET(context: APIContext) {
     site: context.site ?? "https://slytxt.dev",
     items: articles.slice(0, 30).map((entry) => ({
       title: entry.data.title,
-      description: entry.data.description,
+      description: entry.data.description ?? entry.data.title,
       pubDate: entry.data.published,
       link: getEntryPath(entry)
     })),
