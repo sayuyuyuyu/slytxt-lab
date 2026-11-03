@@ -657,8 +657,45 @@ function openMenu(anchor, items) {
 }
 
 let confirmResolve = null;
+let confirmReturnFocus = null;
+let publishReturnFocus = null;
+
+// ダイアログ用: 開く前にフォーカスがあった要素へ戻し、開いている間は Tab を内側で循環させる。
+function rememberFocus() {
+  return document.activeElement instanceof HTMLElement ? document.activeElement : null;
+}
+
+function restoreFocus(target) {
+  if (target && document.contains(target)) target.focus();
+}
+
+function trapTab(event, container) {
+  if (event.key !== "Tab") return;
+  const items = [...container.querySelectorAll("button, select, input, textarea, a[href], [tabindex]")].filter(
+    (el) => !el.disabled && el.getAttribute("tabindex") !== "-1" && el.offsetParent !== null
+  );
+  if (items.length === 0) return;
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  } else if (!container.contains(document.activeElement)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+document.addEventListener("keydown", (event) => {
+  if (!els.confirmDialog.hidden) trapTab(event, els.confirmDialog);
+  else if (!els.publishPanel.hidden) trapTab(event, els.publishPanel);
+});
 
 function confirmAction({ title, message, okLabel = "削除する" }) {
+  confirmReturnFocus = rememberFocus();
   els.confirmTitle.textContent = title;
   els.confirmMessage.textContent = message;
   els.confirmOk.textContent = okLabel;
@@ -671,6 +708,8 @@ function confirmAction({ title, message, okLabel = "削除する" }) {
 
 function settleConfirm(value) {
   els.confirmDialog.hidden = true;
+  restoreFocus(confirmReturnFocus);
+  confirmReturnFocus = null;
   if (confirmResolve) {
     confirmResolve(value);
     confirmResolve = null;
@@ -705,12 +744,18 @@ function openPublishPanel() {
   }
   els.publishTitle.textContent = draftName({ ...state.current, body: els.body.value });
   updatePublishFile();
+  publishReturnFocus = rememberFocus();
   els.publishPanel.hidden = false;
   els.publishConfirm.focus();
 }
 
 function closePublishPanel() {
+  const wasHidden = els.publishPanel.hidden;
   els.publishPanel.hidden = true;
+  if (!wasHidden) {
+    restoreFocus(publishReturnFocus);
+    publishReturnFocus = null;
+  }
 }
 
 /* ---- 操作 ---- */
