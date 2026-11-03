@@ -64,6 +64,11 @@ export async function createCrepe(root, { value = "", onChange, onUpload, featur
     });
   }
   await crepe.create();
+  // WYSIWYG の編集領域（contenteditable）にも textarea と同じ名前を伝える。
+  const editable = root.querySelector("[contenteditable]");
+  if (editable) {
+    editable.setAttribute("aria-label", root.getAttribute("aria-label") ?? "本文");
+  }
   return {
     getMarkdown: () => crepe.getMarkdown(),
     setMarkdown: (markdown) => crepe.editor.action(replaceAll(markdown)),
