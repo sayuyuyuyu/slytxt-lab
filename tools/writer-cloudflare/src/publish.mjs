@@ -141,8 +141,9 @@ async function publishPostInner({ env, store, id, onLog }) {
 /**
  * PR の状態を見て、済んでいれば片付ける。
  * - merged: ブランチと下書きを消して state "merged"
- * - checks が全部成功: その場で squash merge して片付け、state "merged"
- * - checks 失敗 / conflict / PR が閉じられた: state "failed"
+ * - ci が成功: その場で squash merge して片付け、state "merged"
+ *   （Cloudflare Pages の結果は待たない。2026-11-04 本人決定）
+ * - ci 失敗 / conflict / PR が閉じられた: state "failed"
  * - それ以外: state "waiting"
  * 下書きに pr が無ければ state "idle"。
  */
