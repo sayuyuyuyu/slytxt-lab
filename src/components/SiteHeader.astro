@@ -1,11 +1,13 @@
 ---
-import { getProjects } from "@/lib/content";
+import { getAllEntries, getProjects } from "@/lib/content";
+import { collectTags } from "@/lib/tags";
 import { navGroups, site } from "@/lib/site";
 import ThemeToggle from "./ThemeToggle.astro";
 
 const currentPath = Astro.url.pathname;
 
-const projects = await getProjects();
+const [projects, allEntries] = await Promise.all([getProjects(), getAllEntries()]);
+const hasTags = collectTags(allEntries).size > 0;
 
 // Do not show a menu link to a section with no content (PR #19 rule).
 // The /projects/ page itself stays reachable by direct URL, and the
@@ -14,7 +16,9 @@ const visibleNavGroups = navGroups
   .map((group) => ({
     ...group,
     items: group.items.filter(
-      (item) => item.href !== "/projects/" || projects.length > 0
+      (item) =>
+        (item.href !== "/projects/" || projects.length > 0) &&
+        (item.href !== "/tags/" || hasTags)
     )
   }))
   .filter((group) => group.items.length > 0);
