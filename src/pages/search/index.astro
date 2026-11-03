@@ -8,22 +8,41 @@ import { site } from "@/lib/site";
   <section class="listing" aria-label="Search"><div class="container">
     <div class="search-box">
       <div id="search"></div>
-      <p id="search-status" class="muted" role="status">Loading search…</p>
-      <noscript><p>Search needs JavaScript. You can also browse <a href="/tags/">Tags</a>.</p></noscript>
+      <p id="search-status" class="muted" role="status">検索を読み込み中…</p>
+      <noscript><p>検索には JavaScript が必要です。<a href="/tags/">Tags</a> からも探せます。</p></noscript>
     </div>
-    <p class="search-help">Short words match more.</p>
+    <p class="search-help">短い言葉のほうが見つかりやすくなります。</p>
   </div></section>
   <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
   <script is:inline>
     (() => {
       const status = document.getElementById("search-status");
-      const fail = () => { status.textContent = "Could not load search. Reload the page or browse Tags."; };
+      const fail = () => { status.textContent = "検索を読み込めませんでした。ページを再読み込みするか、Tags を見てください。"; };
       const script = document.createElement("script");
       script.src = "/pagefind/pagefind-ui.js";
       script.onload = () => {
         try {
           new PagefindUI({ element: "#search", showSubResults: true, showImages: false,
-            translations: { placeholder: "Search", zero_results: "No results for \"[SEARCH_TERM]\"" }
+            translations: {
+              placeholder: "探したい言葉を入力",
+              clear_search: "クリア",
+              load_more: "結果をもっと読み込む",
+              search_label: "このサイトを検索",
+              filters_label: "絞り込み",
+              zero_results: "「[SEARCH_TERM]」の結果は見つかりませんでした",
+              many_results: "「[SEARCH_TERM]」の結果が [COUNT] 件見つかりました",
+              one_result: "「[SEARCH_TERM]」の結果が [COUNT] 件見つかりました",
+              total_zero_results: "結果は見つかりませんでした",
+              total_one_result: "[COUNT] 件の結果",
+              total_many_results: "[COUNT] 件の結果",
+              alt_search: "「[SEARCH_TERM]」の結果は見つかりませんでした。代わりに「[DIFFERENT_TERM]」の結果を表示しています",
+              search_suggestion: "「[SEARCH_TERM]」の結果は見つかりませんでした。次の言葉で探してみてください:",
+              searching: "「[SEARCH_TERM]」を検索中…",
+              results_label: "検索結果",
+              error_search: "検索に失敗しました",
+              input_hint: "入力すると結果が表示されます",
+              loading: "読み込み中…"
+            }
           });
           status.hidden = true;
         } catch { fail(); }
