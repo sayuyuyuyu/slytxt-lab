@@ -272,10 +272,18 @@ samp,
   top: 0;
   z-index: 50;
   background: var(--bg);
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  visibility: visible;
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0s;
 }
 .site-header[data-hidden="true"] {
   transform: translateY(-100%);
+  /* 隠し終わってから visibility を切り替え、中のリンクとボタンをフォーカス不可にする。 */
+  visibility: hidden;
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.3s;
 }
 .site-header__inner {
   min-height: var(--header-height);
