@@ -24,6 +24,7 @@ const els = {
   emptyNew: $("#emptyNew"),
   category: $("#category"),
   body: $("#body"),
+  editorRoot: $("#editorRoot"),
   count: $("#count"),
   back: $("#back"),
   editorMenu: $("#editorMenu"),
@@ -304,10 +305,95 @@ function updateCount() {
   els.count.textContent = `${chars}字・${lines}行`;
 }
 
+/* ---- WYSIWYG エディタ（Milkdown Crepe） ---- */
+/*
+ * 本文の正は textarea に置き、エディタとは双方向に同期する。
+ * - 下書きを開くとき: textarea の値をエディタへ差し替える（editorSet）。
+ * - 編集したとき: エディタの markdown を textarea に書き戻してから、
+ *   従来の onInput（文字数と自動保存）を通す。
+ * エディタが読み込めない・初期化できない場合は textarea のまま使う
+ * （フォールバック。editor.js が無い環境でもこの画面は動く）。
+ */
+const editorBridge = { handle: null, lastValue: "", applying: false, convert: null };
+
+function editorSet(markdown) {
+  if (!editorBridge.handle) return;
+  editorBridge.applying = true;
+  try {
+    // ブロック画像の alt はキャプションへ移してから渡す（editor.js 参照）。
+    const input = editorBridge.convert ? editorBridge.convert.to(markdown) : markdown;
+    editorBridge.handle.setMarkdown(input);
+    editorBridge.lastValue = editorBridge.handle.getMarkdown();
+  } catch (error) {
+    console.warn("エディタへの反映に失敗しました。", error);
+  } finally {
+    editorBridge.applying = false;
+  }
+}
+
+async function uploadMedia(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch("/api/media", {
+    method: "POST",
+    headers: { "x-slytxt-client": "1" },
+    body: form
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error ?? `画像のアップロードに失敗しました (${response.status})`);
+  }
+  return payload.url;
+}
+
+async function setupEditor() {
+  if (!window.SlytxtEditor?.mount) return;
+  try {
+    editorBridge.handle = await window.SlytxtEditor.mount(els.editorRoot, {
+      value: "",
+      onUpload: uploadMedia,
+      onChange: (markdown) => {
+        if (editorBridge.applying) {
+          editorBridge.lastValue = markdown;
+          return;
+        }
+        // 自分で差し替えた内容のエコー（直後の非同期通知）は無視する。
+        if (markdown === editorBridge.lastValue) return;
+        editorBridge.lastValue = markdown;
+        // ブロック画像のキャプションは alt へ戻して保存する（editor.js 参照）。
+        const text = editorBridge.convert ? editorBridge.convert.from(markdown) : markdown;
+        if (text === els.body.value) return;
+        els.body.value = text;
+        onInput();
+      }
+    });
+    editorBridge.convert = {
+      to: window.SlytxtEditor.imagesToEditor,
+      from: window.SlytxtEditor.imagesFromEditor
+    };
+    editorBridge.lastValue = "";
+    els.editorRoot.hidden = false;
+    els.body.hidden = true;
+    document.body.dataset.editor = "wysiwyg";
+  } catch (error) {
+    console.warn("WYSIWYG エディタを初期化できませんでした。textarea で続けます。", error);
+    editorBridge.handle = null;
+  }
+}
+
+function focusBody() {
+  if (editorBridge.handle) {
+    els.editorRoot.querySelector("[contenteditable]")?.focus();
+  } else {
+    els.body.focus();
+  }
+}
+
 function applyDraft(draft) {
   state.current = draft;
   els.category.value = draft.category;
   els.body.value = draft.body;
+  editorSet(draft.body);
   showEmpty(false);
 
   // 別のメモの保存が失敗したまま残っているときは、その状態を消さない。
@@ -323,6 +409,7 @@ function applyDraft(draft) {
 function clearEditor() {
   state.current = null;
   els.body.value = "";
+  editorSet("");
   showEmpty(true);
   renderList();
   setBusy(state.busy);
@@ -668,7 +755,7 @@ async function newDraft() {
     applyDraft(draft);
     setView("editor");
     await loadDrafts();
-    els.body.focus();
+    focusBody();
   } catch (error) {
     toast(error.message, "error");
   }
@@ -718,6 +805,7 @@ async function boot() {
 
   fillSelect(els.category, state.meta.categories, state.meta.categoryLabels);
 
+  await setupEditor();
   await loadDrafts();
   if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
   else clearEditor();

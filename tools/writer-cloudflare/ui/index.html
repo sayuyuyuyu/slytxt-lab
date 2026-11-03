@@ -6,6 +6,7 @@
     <title>執筆 - slytxt.lab</title>
     <link rel="stylesheet" href="/theme.css" />
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/editor.css" />
     <script>
       (() => {
         document.documentElement.classList.add("js");
@@ -64,6 +65,9 @@
             </div>
           </div>
 
+          <!-- WYSIWYG（editor.js）が有効なときはこちらを使い、textarea は隠れる。
+               読み込めない場合は textarea のまま編集できる（フォールバック）。 -->
+          <div id="editorRoot" class="editor__wysiwyg" hidden></div>
           <textarea id="body" class="editor__body" spellcheck="false"></textarea>
         </div>
 
@@ -128,6 +132,7 @@
       <p style="padding: 24px">この画面は JavaScript が必要です。</p>
     </noscript>
 
+    <script src="/editor.js"></script>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

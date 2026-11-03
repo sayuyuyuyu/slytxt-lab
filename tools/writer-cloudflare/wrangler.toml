@@ -22,9 +22,18 @@ binding = "DRAFTS"
 id = "52a4dd63c0164774ab9ca6d0c5f3855c"
 preview_id = "52a4dd63c0164774ab9ca6d0c5f3855c"
 
+# 画像メディア用の R2。2026-11-04 時点ではアカウントで R2 が未有効化のため
+# 未設定（POST /api/media は 501 を返す）。有効化の手順は README の
+# 「画像メディア（R2）」を参照。手順の中でこのコメントを外す。
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "slytxt-writer-media"
+
 [vars]
 GITHUB_OWNER = "sayuyuyuyu"
 GITHUB_REPO = "slytxt-lab"
+# R2 の公開 URL（r2.dev）を有効化したら、その URL をここに足す:
+# MEDIA_PUBLIC_BASE_URL = "https://pub-<hash>.r2.dev"
 
 # secrets はここに書かない。デプロイ時に wrangler secret put で登録する:
 #   GITHUB_TOKEN      GitHub fine-grained PAT（必須）

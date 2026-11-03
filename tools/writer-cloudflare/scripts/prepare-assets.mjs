@@ -4,6 +4,8 @@
  * - index.html / style.css / app.js はこのディレクトリの ui/ を正として
  *   コピーする（note 風レイアウトと投稿後の status ポーリングは
  *   Cloudflare 版だけの差分として ui/ 側に持つ）。
+ * - editor.js / editor.css は ui/editor.js（Milkdown Crepe）を esbuild で
+ *   バンドルして作る。このディレクトリで `pnpm install` 済みであることが前提。
  * - markdown.mjs は tools/writer からコピーする。
  * - theme.css はローカル版 server.mjs の実行時抽出と同じ規則で、
  *   サイト本体の src/styles/global.css から :root の変数ブロックだけを
@@ -26,6 +28,27 @@ await copyFile(path.join(toolRoot, "ui", "index.html"), path.join(publicDir, "in
 await copyFile(path.join(toolRoot, "ui", "style.css"), path.join(publicDir, "style.css"));
 await copyFile(path.join(toolRoot, "ui", "app.js"), path.join(publicDir, "app.js"));
 await copyFile(path.join(writerDir, "markdown.mjs"), path.join(publicDir, "markdown.mjs"));
+
+let build;
+try {
+  ({ build } = await import("esbuild"));
+} catch {
+  throw new Error(
+    "esbuild が見つかりません。tools/writer-cloudflare で pnpm install を実行してください。"
+  );
+}
+await build({
+  entryPoints: [path.join(toolRoot, "ui", "editor.js")],
+  bundle: true,
+  format: "iife",
+  platform: "browser",
+  target: ["es2022"],
+  minify: true,
+  outfile: path.join(publicDir, "editor.js"),
+  // KaTeX 等のフォント参照が CSS に残った場合に備え、フォントはファイルとして出す。
+  loader: { ".woff": "file", ".woff2": "file", ".ttf": "file" },
+  logLevel: "info"
+});
 
 const globalCss = await readFile(path.join(repoRoot, "src", "styles", "global.css"), "utf8");
 const themeCss = [...globalCss.matchAll(/:root(?:\.light)?\s*\{[^}]*\}/g)]

@@ -1,0 +1,18 @@
+{
+  "name": "slytxt-writer-cloudflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "執筆ツール（Cloudflare 版）のサブプロジェクト。WYSIWYG エディタのバンドル用。",
+  "scripts": {
+    "prepare-assets": "node scripts/prepare-assets.mjs"
+  },
+  "dependencies": {
+    "@milkdown/crepe": "^7.23.0",
+    "@milkdown/kit": "^7.23.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.3"
+  }
+}
