@@ -2,6 +2,10 @@ name = "slytxt-writer"
 main = "src/index.mjs"
 compatibility_date = "2025-06-01"
 
+# 入口はカスタムドメイン (write.slytxt.dev) のみ。workers.dev は Cloudflare Access の
+# 外にあるため無効化する。
+workers_dev = false
+
 # 本番のホスト名。デプロイ時にこのドメインへ割り当てる。
 routes = [{ pattern = "write.slytxt.dev", custom_domain = true }]
 
@@ -26,4 +30,3 @@ ANTHROPIC_MODEL = "claude-haiku-4-5"
 # secrets はここに書かない。デプロイ時に wrangler secret put で登録する:
 #   GITHUB_TOKEN      GitHub fine-grained PAT（必須）
 #   ANTHROPIC_API_KEY 誤字修正 pass 用（任意。未設定なら pass を省略）
-#   SLYTXT_TOKEN      初回疎通用のトークン認証（Access 切替後に削除可）

@@ -1,7 +1,10 @@
 /**
  * 執筆サーバーの Cloudflare Workers 版。
  *
- * tools/writer/server.mjs のルーティング・認証・書き込み防御を移植したもの。
+ * tools/writer/server.mjs のルーティングと書き込み防御を移植したもの。
+ * 認証は Cloudflare Access（write.slytxt.dev は本人のメールアドレスのみ許可）が
+ * 担うため、Worker 側にトークン認証は無い。入口はカスタムドメインのみで、
+ * workers.dev は wrangler.toml で無効化してある。
  * 静的ファイルは Workers Static Assets（env.ASSETS）から配信する。
  * API のパスとレスポンス形式はローカル版と同じにそろえてある。
  */
@@ -14,15 +17,6 @@ import {
 import { PublishError, publishPost, publishStatus } from "./publish.mjs";
 
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-
-function authorized(request, url, env) {
-  const token = env.SLYTXT_TOKEN;
-  if (!token) return true;
-  const provided = url.searchParams.get("token") ?? request.headers.get("x-slytxt-token");
-  if (provided && provided === token) return true;
-  const cookie = request.headers.get("cookie") ?? "";
-  return cookie.split(/;\s*/).includes(`slytxt_token=${token}`);
-}
 
 /**
  * 他のサイトから書き込みAPIを叩かせない（server.mjs と同じ考え方）。
@@ -150,50 +144,29 @@ async function handleApi(request, env, url) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    let response;
 
-    if (!authorized(request, url, env)) {
-      response = new Response(
-        "トークンが必要です。起動時に表示された URL を開いてください。",
-        { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } }
-      );
-    } else if (STATE_CHANGING.has(request.method ?? "") && !stateChangingAllowed(request)) {
-      response = json(
+    if (STATE_CHANGING.has(request.method ?? "") && !stateChangingAllowed(request)) {
+      return json(
         { error: "別のオリジンからの書き込みは受け付けません。執筆画面から操作してください。" },
         403
       );
-    } else {
-      try {
-        if (url.pathname.startsWith("/api/")) {
-          response = (await handleApi(request, env, url)) ?? json({ error: "not found" }, 404);
-        } else if (env.ASSETS) {
-          response = await env.ASSETS.fetch(request);
-        } else {
-          response = new Response("not found", {
-            status: 404,
-            headers: { "content-type": "text/plain; charset=utf-8" }
-          });
-        }
-      } catch (error) {
-        const status =
-          error instanceof DraftNotFound ? 404 : error instanceof PublishError ? 400 : 500;
-        response = json({ error: error?.message ?? String(error) }, status);
-      }
     }
 
-    // ?token= で入ってきたらクッキーに移す（ローカル版と同じ）。
-    if (env.SLYTXT_TOKEN && url.searchParams.get("token") === env.SLYTXT_TOKEN) {
-      const headers = new Headers(response.headers);
-      headers.append(
-        "set-cookie",
-        `slytxt_token=${env.SLYTXT_TOKEN}; Path=/; HttpOnly; SameSite=Lax`
-      );
-      response = new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers
+    try {
+      if (url.pathname.startsWith("/api/")) {
+        return (await handleApi(request, env, url)) ?? json({ error: "not found" }, 404);
+      }
+      if (env.ASSETS) {
+        return await env.ASSETS.fetch(request);
+      }
+      return new Response("not found", {
+        status: 404,
+        headers: { "content-type": "text/plain; charset=utf-8" }
       });
+    } catch (error) {
+      const status =
+        error instanceof DraftNotFound ? 404 : error instanceof PublishError ? 400 : 500;
+      return json({ error: error?.message ?? String(error) }, status);
     }
-    return response;
   }
 };
