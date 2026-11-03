@@ -1354,7 +1354,7 @@ html.js [data-motion] {
   display: inline-block;
   transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.theme-toggle[aria-pressed="true"] .theme-toggle__icon {
+html:not(.light) .theme-toggle__icon {
   transform: rotate(-180deg);
 }
 /* Animate colours only during a theme swap. */
