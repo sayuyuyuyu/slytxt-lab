@@ -25,8 +25,6 @@ preview_id = "52a4dd63c0164774ab9ca6d0c5f3855c"
 [vars]
 GITHUB_OWNER = "sayuyuyuyu"
 GITHUB_REPO = "slytxt-lab"
-ANTHROPIC_MODEL = "claude-haiku-4-5"
 
 # secrets はここに書かない。デプロイ時に wrangler secret put で登録する:
 #   GITHUB_TOKEN      GitHub fine-grained PAT（必須）
-#   ANTHROPIC_API_KEY 誤字修正 pass 用（任意。未設定なら pass を省略）

@@ -13,7 +13,6 @@
 import { stringifyFrontmatter } from "../../writer/frontmatter.mjs";
 import { plainText } from "../../writer/markdown.mjs";
 import { today } from "../../writer/prompt.mjs";
-import { FixError, fixBody } from "./fix.mjs";
 import { GitHubError, createGitHubClient } from "./github.mjs";
 
 export class PublishError extends Error {}
@@ -51,7 +50,7 @@ function publishTarget(draft) {
 
 function asPublishError(error) {
   if (error instanceof PublishError) return error;
-  if (error instanceof FixError || error instanceof GitHubError) {
+  if (error instanceof GitHubError) {
     return new PublishError(error.message);
   }
   return error;
@@ -76,10 +75,8 @@ async function publishPostInner({ env, store, id, onLog }) {
     throw new PublishError("本文が空です。何か書いてから流してください。");
   }
 
-  onLog("誤字を確認しています…");
-  const fixed = await fixBody({ env, draft, onLog });
-  const body = String(fixed).trim();
-  if (!body) throw new PublishError("誤字チェックの出力が空でした。");
+  // 誤字チェック pass は 2026-11-04 に廃止。本文をそのまま投稿する。
+  const body = draft.body.trim();
 
   const title = deriveTitle(draft, body);
   const description = deriveDescription(body) || title;

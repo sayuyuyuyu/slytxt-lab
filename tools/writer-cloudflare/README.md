@@ -10,9 +10,9 @@
 - 下書きは Cloudflare KV（バインディング `DRAFTS`）。キー `draft:<id>`、値はローカル版が `drafts/<id>.md` に書いているテキストそのまま。直列化・正規化の規則は `tools/writer/drafts.mjs` と同じ（`src/drafts-kv.mjs`）。
 - 純粋モジュール（`frontmatter.mjs` / `markdown.mjs` / `prompt.mjs`）は `tools/writer/` から直接 import して共有する。コピーは作らない。
 - 投稿は GitHub REST API（`src/github.mjs` / `src/publish.mjs`）。ブランチ作成 → ファイル作成 → PR 作成までを投稿リクエストの中で行い、CI 待ちと merge は `GET /api/publish/:id/status` を UI がポーリングして完了させる。ローカルの `pnpm run check` は持たず、PR の CI（ci と Cloudflare Pages の両方）が門番。
-- 誤字修正 pass は Anthropic API（`src/fix.mjs`）。プロンプトは現行 `prompt.mjs` の `fixPrompt` を流用。`ANTHROPIC_API_KEY` が未設定なら pass を省略して投稿を続行する。キーがあるのに呼び出しが失敗したら投稿を止める。
+- 投稿は下書きの本文をそのまま使う。誤字チェック pass（Anthropic API）は 2026-11-04 に廃止した。
 - 認証は Cloudflare Access が担う（`write.slytxt.dev` は本人のメールアドレスのみ許可。後述）。Worker 側にトークン認証は無い。`x-slytxt-client` による書き込み防御（認証とは別の層）は Worker 側に残してある。入口はカスタムドメインのみで、`workers_dev = false` で workers.dev 側を閉じてある（workers.dev は Access の外にあるため）。
-- UI は `tools/writer/ui` が正。`index.html` / `style.css` / `markdown.mjs` はデプロイ準備のときにコピーし、`app.js` だけは投稿後の status ポーリングを足した差分版を `ui/app.js` に置く。`/theme.css` は `src/styles/global.css` の `:root` 変数ブロックから静的に生成する（サイト側の変数を変えたら再生成と再デプロイが要る）。
+- UI はこのディレクトリの `ui/` が正（`index.html` / `style.css` / `app.js`）。note 風のレイアウト（編集画面のヘッダー、公開確認パネル、一覧の「…」メニュー）は Cloudflare 版だけの差分として `ui/` 側に持つ。`markdown.mjs` は `tools/writer/` からデプロイ準備のときにコピーする。`/theme.css` は `src/styles/global.css` の `:root` 変数ブロックから静的に生成する（サイト側の変数を変えたら再生成と再デプロイが要る）。
 
 ## デプロイ手順（本人の作業）
 
@@ -49,11 +49,9 @@ Mac の `gh` が持っている classic トークンは流用しない。
 
 ```sh
 npx wrangler secret put GITHUB_TOKEN -c tools/writer-cloudflare/wrangler.toml
-npx wrangler secret put ANTHROPIC_API_KEY -c tools/writer-cloudflare/wrangler.toml
 ```
 
 - `GITHUB_TOKEN`: 手順3の PAT（必須）。
-- `ANTHROPIC_API_KEY`: 誤字修正 pass 用（任意）。登録しない場合は pass が省略される。キーは console.anthropic.com で発行する。
 
 ### 5. 静的ファイルを用意してデプロイする
 
@@ -105,4 +103,4 @@ KV はローカルエミュレーションになる。secret が要る場合は 
 ## 切り替え後の後片付け（移行完了後）
 
 - ローカル版の常駐サービスを止める: `node tools/writer/service.mjs uninstall`（ローカル版のコードと CLI 投稿 `pnpm write:publish` は当面残す）。
-- `tools/writer/ui/app.js` を変更したら、`ui/app.js`（このディレクトリ）へ差分を写し直す。
+- UI は Cloudflare 版の `ui/` で完結する。ローカル版（`tools/writer/ui`）とは別に保守する。

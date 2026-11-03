@@ -1,9 +1,9 @@
 /**
  * デプロイ用の静的ファイル（public/）を用意する。
  *
- * - index.html と style.css は tools/writer/ui を正としてコピーする。
- * - app.js はこのディレクトリの ui/app.js（投稿後の status ポーリングを
- *   足した差分版）を使う。
+ * - index.html / style.css / app.js はこのディレクトリの ui/ を正として
+ *   コピーする（note 風レイアウトと投稿後の status ポーリングは
+ *   Cloudflare 版だけの差分として ui/ 側に持つ）。
  * - markdown.mjs は tools/writer からコピーする。
  * - theme.css はローカル版 server.mjs の実行時抽出と同じ規則で、
  *   サイト本体の src/styles/global.css から :root の変数ブロックだけを
@@ -22,8 +22,8 @@ const publicDir = path.join(toolRoot, "public");
 await rm(publicDir, { recursive: true, force: true });
 await mkdir(publicDir, { recursive: true });
 
-await copyFile(path.join(writerDir, "ui", "index.html"), path.join(publicDir, "index.html"));
-await copyFile(path.join(writerDir, "ui", "style.css"), path.join(publicDir, "style.css"));
+await copyFile(path.join(toolRoot, "ui", "index.html"), path.join(publicDir, "index.html"));
+await copyFile(path.join(toolRoot, "ui", "style.css"), path.join(publicDir, "style.css"));
 await copyFile(path.join(toolRoot, "ui", "app.js"), path.join(publicDir, "app.js"));
 await copyFile(path.join(writerDir, "markdown.mjs"), path.join(publicDir, "markdown.mjs"));
 

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>執筆 - slytxt.lab</title>
+    <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <script>
+      (() => {
+        document.documentElement.classList.add("js");
+        try {
+          // サイトと同じく、青黒のダークを既定にする。
+          document.documentElement.classList.toggle(
+            "light",
+            localStorage.getItem("theme") === "light"
+          );
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body data-view="list">
+    <header class="bar">
+      <div class="bar__brand">
+        <span class="bar__mark" aria-hidden="true">❯</span>
+        <span class="bar__label">執筆</span>
+        <span class="bar__cursor" aria-hidden="true"></span>
+      </div>
+
+      <div class="bar__actions">
+        <button id="new" class="button button--primary">＋ 新規</button>
+      </div>
+    </header>
+
+    <main class="app">
+      <aside class="pane pane--list" aria-label="メモの一覧">
+        <ul id="drafts" class="drafts"></ul>
+        <p class="pane__foot" id="draftCount"></p>
+      </aside>
+
+      <section class="pane pane--editor" aria-label="本文">
+        <div class="editor" id="editor">
+          <div class="editor__bar">
+            <button id="back" class="button editor__back" type="button">← 一覧へ戻る</button>
+
+            <div class="editor__bar-actions">
+              <span id="count" class="editor__count"></span>
+              <button id="save" class="save" type="button" data-state="idle">
+                <span class="save__dot" aria-hidden="true"></span>
+                <span class="save__text" id="saveText">保存済み</span>
+              </button>
+              <button
+                id="editorMenu"
+                class="button button--icon"
+                type="button"
+                aria-label="その他の操作"
+                aria-haspopup="menu"
+              >
+                …
+              </button>
+              <button id="publishOpen" class="button button--primary" type="button">
+                公開に進む
+              </button>
+            </div>
+          </div>
+
+          <textarea id="body" class="editor__body" spellcheck="false"></textarea>
+        </div>
+
+        <div id="empty" class="empty" hidden>
+          <p class="empty__cmd" aria-hidden="true">ls drafts/</p>
+          <p class="empty__title">メモがまだありません</p>
+          <button id="emptyNew" class="button button--primary" type="button">＋ 新規</button>
+        </div>
+      </section>
+    </main>
+
+    <section id="task" class="task" hidden aria-live="polite">
+      <div class="task__head">
+        <span class="task__spinner" aria-hidden="true"></span>
+        <strong id="taskTitle">実行中</strong>
+        <span id="taskElapsed" class="task__elapsed">0:00</span>
+        <button id="taskToggle" class="button button--icon" aria-label="ログを開閉する">⌃</button>
+        <button id="taskClose" class="button button--icon" aria-label="閉じる">×</button>
+      </div>
+      <div id="taskResult" class="task__result" hidden></div>
+      <pre id="taskLog" class="task__log"></pre>
+    </section>
+
+    <div id="publishPanel" class="dialog" hidden>
+      <div class="dialog__backdrop"></div>
+      <div class="dialog__panel" role="dialog" aria-modal="true" aria-labelledby="publishPanelTitle">
+        <h2 id="publishPanelTitle" class="dialog__title">公開の確認</h2>
+        <div class="dialog__row">
+          <span class="dialog__label">タイトル</span>
+          <p id="publishTitle" class="dialog__value"></p>
+        </div>
+        <label class="dialog__row">
+          <span class="dialog__label">カテゴリ</span>
+          <select id="category" class="field"></select>
+        </label>
+        <p class="dialog__note" id="publishFile"></p>
+        <p class="dialog__note">PR を作成し、CI が通ると自動でマージされます。</p>
+        <div class="dialog__actions">
+          <button id="publishCancel" class="button" type="button">キャンセル</button>
+          <button id="publishConfirm" class="button button--primary" type="button">投稿する</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirmDialog" class="dialog" hidden>
+      <div class="dialog__backdrop"></div>
+      <div class="dialog__panel" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <h2 id="confirmTitle" class="dialog__title">削除しますか</h2>
+        <p id="confirmMessage" class="dialog__message"></p>
+        <div class="dialog__actions">
+          <button id="confirmCancel" class="button" type="button">キャンセル</button>
+          <button id="confirmOk" class="button button--danger" type="button">削除する</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="menu" class="menu" role="menu" hidden></div>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <noscript>
+      <p style="padding: 24px">この画面は JavaScript が必要です。</p>
+    </noscript>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

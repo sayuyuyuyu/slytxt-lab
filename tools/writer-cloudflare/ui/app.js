@@ -1,10 +1,13 @@
 import { plainText } from "/markdown.mjs";
 
 /*
- * これは tools/writer/ui/app.js の Cloudflare 版コピー。
- * 違いは投稿フローだけ: Cloudflare 版は PR 作成までで応答が返り、
- * CI の完了と merge は /api/publish/:id/status のポーリングで見届ける。
- * それ以外の変更は tools/writer/ui/app.js 側に入れて、ここへ写すこと。
+ * Cloudflare 版の UI 本体。index.html / style.css もこのディレクトリ
+ * （ui/）に持ち、prepare-assets が public/ へコピーする。
+ * ローカル版（tools/writer/ui）との違い:
+ * - 投稿フロー: PR 作成までで応答が返り、CI の完了と merge は
+ *   /api/publish/:id/status のポーリングで見届ける。
+ * - レイアウトを note に寄せた（編集画面のヘッダー、公開確認パネル、
+ *   一覧と編集の「…」メニュー、狭い画面では一覧⇔編集の画面遷移）。
  */
 
 const $ = (selector) => document.querySelector(selector);
@@ -22,8 +25,20 @@ const els = {
   category: $("#category"),
   body: $("#body"),
   count: $("#count"),
-  publish: $("#publish"),
-  remove: $("#remove"),
+  back: $("#back"),
+  editorMenu: $("#editorMenu"),
+  publishOpen: $("#publishOpen"),
+  publishPanel: $("#publishPanel"),
+  publishTitle: $("#publishTitle"),
+  publishFile: $("#publishFile"),
+  publishCancel: $("#publishCancel"),
+  publishConfirm: $("#publishConfirm"),
+  confirmDialog: $("#confirmDialog"),
+  confirmTitle: $("#confirmTitle"),
+  confirmMessage: $("#confirmMessage"),
+  confirmCancel: $("#confirmCancel"),
+  confirmOk: $("#confirmOk"),
+  menu: $("#menu"),
   task: $("#task"),
   taskTitle: $("#taskTitle"),
   taskElapsed: $("#taskElapsed"),
@@ -93,6 +108,22 @@ function displayTitle(draft) {
   const first = String(draft.excerpt ?? "").trim();
   if (!first) return "新しいメモ";
   return first.length > 32 ? `${first.slice(0, 32)}…` : first;
+}
+
+/** 本文を持つ下書き（編集中の1件）の表示名。本文の書き出しから作る。 */
+function draftName(draft) {
+  if (draft.title && draft.title !== "無題") return draft.title;
+  if (draft.body) {
+    const firstLine = draft.body.split("\n").find((line) => line.trim()) ?? "";
+    const text = plainText(firstLine).replace(/\s+/g, " ").trim();
+    if (text) return text.length > 32 ? `${text.slice(0, 32)}…` : text;
+  }
+  return displayTitle(draft);
+}
+
+/** 狭い画面用の一覧⇔編集の切り替え。広い画面では CSS が無視する。 */
+function setView(view) {
+  document.body.dataset.view = view;
 }
 
 /* ---- 保存 ---- */
@@ -220,6 +251,22 @@ function renderList() {
     meta.append(when);
 
     item.append(meta);
+
+    const menuButton = document.createElement("button");
+    menuButton.type = "button";
+    menuButton.className = "drafts__menu";
+    menuButton.textContent = "…";
+    menuButton.setAttribute("aria-label", `${displayTitle(draft)} の操作`);
+    menuButton.setAttribute("aria-haspopup", "menu");
+    menuButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openMenu(menuButton, [
+        { label: "開く", onSelect: () => selectDraft(draft.id) },
+        { label: "削除", danger: true, onSelect: () => removeDraft(draft.id) }
+      ]);
+    });
+    item.append(menuButton);
+
     item.addEventListener("click", () => selectDraft(draft.id));
     els.drafts.append(item);
   }
@@ -270,6 +317,7 @@ function applyDraft(draft) {
   }
   updateCount();
   renderList();
+  setBusy(state.busy);
 }
 
 function clearEditor() {
@@ -277,6 +325,7 @@ function clearEditor() {
   els.body.value = "";
   showEmpty(true);
   renderList();
+  setBusy(state.busy);
 }
 
 async function selectDraft(id) {
@@ -284,6 +333,7 @@ async function selectDraft(id) {
   try {
     const { draft } = await api(`/api/drafts/${encodeURIComponent(id)}`);
     applyDraft(draft);
+    setView("editor");
     // 前回の投稿が CI 待ちのまま残っていたら、結果を見届ける。
     if (draft.pr) resumePublishCheck(draft);
   } catch (error) {
@@ -448,12 +498,122 @@ async function pollPublishStatus(id, initial) {
   throw new Error(`CI が終わりませんでした。PR を確認してください: ${last?.prUrl ?? ""}`);
 }
 
+/* ---- メニューとダイアログ ---- */
+
+let menuCleanup = null;
+
+function closeMenu() {
+  els.menu.hidden = true;
+  els.menu.replaceChildren();
+  if (menuCleanup) {
+    menuCleanup();
+    menuCleanup = null;
+  }
+}
+
+function openMenu(anchor, items) {
+  closeMenu();
+  for (const item of items) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = item.danger ? "menu__item menu__item--danger" : "menu__item";
+    button.textContent = item.label;
+    button.setAttribute("role", "menuitem");
+    button.addEventListener("click", () => {
+      closeMenu();
+      item.onSelect();
+    });
+    els.menu.append(button);
+  }
+  els.menu.hidden = false;
+
+  const rect = anchor.getBoundingClientRect();
+  const menuWidth = 180;
+  els.menu.style.top = `${rect.bottom + 6}px`;
+  els.menu.style.left = `${Math.max(
+    8,
+    Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8)
+  )}px`;
+
+  const onPointerDown = (event) => {
+    if (!els.menu.contains(event.target) && event.target !== anchor) closeMenu();
+  };
+  const onKey = (event) => {
+    if (event.key === "Escape") closeMenu();
+  };
+  document.addEventListener("pointerdown", onPointerDown);
+  document.addEventListener("keydown", onKey);
+  menuCleanup = () => {
+    document.removeEventListener("pointerdown", onPointerDown);
+    document.removeEventListener("keydown", onKey);
+  };
+}
+
+let confirmResolve = null;
+
+function confirmAction({ title, message, okLabel = "削除する" }) {
+  els.confirmTitle.textContent = title;
+  els.confirmMessage.textContent = message;
+  els.confirmOk.textContent = okLabel;
+  els.confirmDialog.hidden = false;
+  els.confirmOk.focus();
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+  });
+}
+
+function settleConfirm(value) {
+  els.confirmDialog.hidden = true;
+  if (confirmResolve) {
+    confirmResolve(value);
+    confirmResolve = null;
+  }
+}
+
+/* ---- 公開の確認パネル ---- */
+
+/** 投稿先ファイルの表示用（サーバー側の slug 規則に合わせた見た目だけの計算）。 */
+function publishSlug(raw) {
+  const cleaned = String(raw ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/, "");
+  return cleaned || raw;
+}
+
+function updatePublishFile() {
+  if (!state.current) return;
+  els.publishFile.textContent = `投稿先: src/content/${els.category.value}/${publishSlug(
+    state.current.id
+  )}.md`;
+}
+
+function openPublishPanel() {
+  if (!state.current || state.busy) return;
+  if (!els.body.value.trim()) {
+    toast("本文が空です。", "error");
+    return;
+  }
+  els.publishTitle.textContent = draftName({ ...state.current, body: els.body.value });
+  updatePublishFile();
+  els.publishPanel.hidden = false;
+  els.publishConfirm.focus();
+}
+
+function closePublishPanel() {
+  els.publishPanel.hidden = true;
+}
+
 /* ---- 操作 ---- */
 
 function setBusy(busy) {
   state.busy = busy;
-  els.publish.disabled = busy || !state.current;
-  els.remove.disabled = busy || !state.current;
+  const disabled = busy || !state.current;
+  els.publishOpen.disabled = disabled;
+  els.editorMenu.disabled = disabled;
+  els.publishConfirm.disabled = busy;
 }
 
 async function runPublish() {
@@ -467,7 +627,7 @@ async function runPublish() {
   setBusy(true);
   const id = encodeURIComponent(state.current.id);
   try {
-    let result = await streamTask(`/api/publish/${id}`, "誤字を直して公開");
+    let result = await streamTask(`/api/publish/${id}`, "投稿");
     if (result?.state === "waiting") {
       appendLog("PR を作成しました。CI の完了を待っています…");
       result = await pollPublishStatus(state.current.id, result);
@@ -506,6 +666,7 @@ async function newDraft() {
       excerpt: ""
     });
     applyDraft(draft);
+    setView("editor");
     await loadDrafts();
     els.body.focus();
   } catch (error) {
@@ -513,15 +674,31 @@ async function newDraft() {
   }
 }
 
-async function removeCurrent() {
-  if (!state.current || state.busy) return;
-  if (!window.confirm(`「${displayTitle(state.current)}」を削除します。元に戻せません。`)) return;
+/** 一覧の「…」メニューと編集画面の「…」メニューの共通の削除処理。 */
+async function removeDraft(id) {
+  if (state.busy) return;
+  const target =
+    state.drafts.find((draft) => draft.id === id) ??
+    (state.current?.id === id ? state.current : null);
+  const ok = await confirmAction({
+    title: "削除しますか",
+    message: `「${target ? draftName(target) : "このメモ"}」を削除します。元に戻せません。`
+  });
+  if (!ok) return;
   try {
-    await api(`/api/drafts/${encodeURIComponent(state.current.id)}`, { method: "DELETE" });
-    state.drafts = state.drafts.filter((draft) => draft.id !== state.current.id);
-    state.current = null;
-    if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
-    else clearEditor();
+    await api(`/api/drafts/${encodeURIComponent(id)}`, { method: "DELETE" });
+    const wasCurrent = state.current?.id === id;
+    state.drafts = state.drafts.filter((draft) => draft.id !== id);
+    if (wasCurrent) {
+      state.current = null;
+      if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
+      else {
+        clearEditor();
+        setView("list");
+      }
+    } else {
+      renderList();
+    }
     await loadDrafts();
     toast("削除しました。");
   } catch (error) {
@@ -545,13 +722,37 @@ async function boot() {
   if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
   else clearEditor();
   setBusy(false);
+  // 狭い画面では一覧から始める（編集は下書きを選んだときに開く）。
+  if (window.matchMedia("(max-width: 1000px)").matches) setView("list");
 
   els.body.addEventListener("input", onInput);
-  els.category.addEventListener("change", onInput);
+  els.category.addEventListener("change", () => {
+    updatePublishFile();
+    scheduleSave();
+  });
   els.newButton.addEventListener("click", newDraft);
   els.emptyNew.addEventListener("click", newDraft);
-  els.publish.addEventListener("click", runPublish);
-  els.remove.addEventListener("click", removeCurrent);
+  els.back.addEventListener("click", () => setView("list"));
+  els.editorMenu.addEventListener("click", () => {
+    if (!state.current || state.busy) return;
+    openMenu(els.editorMenu, [
+      { label: "このメモを削除", danger: true, onSelect: () => removeDraft(state.current.id) }
+    ]);
+  });
+  els.publishOpen.addEventListener("click", openPublishPanel);
+  els.publishCancel.addEventListener("click", closePublishPanel);
+  els.publishPanel
+    .querySelector(".dialog__backdrop")
+    .addEventListener("click", closePublishPanel);
+  els.publishConfirm.addEventListener("click", () => {
+    closePublishPanel();
+    runPublish();
+  });
+  els.confirmCancel.addEventListener("click", () => settleConfirm(false));
+  els.confirmOk.addEventListener("click", () => settleConfirm(true));
+  els.confirmDialog
+    .querySelector(".dialog__backdrop")
+    .addEventListener("click", () => settleConfirm(false));
   els.taskClose.addEventListener("click", closeTask);
   els.taskToggle.addEventListener("click", () => {
     const open = els.task.dataset.log === "open";
@@ -577,7 +778,11 @@ async function boot() {
         .then(() => toast("保存しました。"))
         .catch((error) => toast(error.message, "error"));
     }
-    if (event.key === "Escape" && !els.task.hidden) closeTask();
+    if (event.key === "Escape") {
+      if (!els.confirmDialog.hidden) settleConfirm(false);
+      else if (!els.publishPanel.hidden) closePublishPanel();
+      else if (!els.task.hidden) closeTask();
+    }
   });
 
   window.addEventListener("online", () => {
