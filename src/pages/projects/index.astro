@@ -3,7 +3,7 @@ import EmptyState from "@/components/EmptyState.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { getProjects } from "@/lib/content";
-import { site } from "@/lib/site";
+import { emptyStateTitles, site } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
 const projects = await getProjects();
@@ -25,7 +25,7 @@ const projects = await getProjects();
             {projects.map((entry) => <ProjectCard entry={entry} headingLevel="h2" />)}
           </div>
         ) : (
-          <EmptyState title="Content not found" description="まだありません。つくったものが進み具合と一緒にここに並びます。" />
+          <EmptyState title={emptyStateTitles.projects} description="まだありません。つくったものが進み具合と一緒にここに並びます。" />
         )
       }
     </div>
