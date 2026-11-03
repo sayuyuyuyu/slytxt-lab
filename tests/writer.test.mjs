@@ -1,12 +1,36 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import test from "node:test";
-import { normalizeDraft } from "../tools/writer/drafts.mjs";
-import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer/frontmatter.mjs";
-import { plainText, renderMarkdown } from "../tools/writer/markdown.mjs";
-import { deriveDescription, normalizeSlug } from "../tools/writer/publish.mjs";
+import { createDraftStore, normalizeDraft } from "../tools/writer-cloudflare/src/drafts-kv.mjs";
+import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer-cloudflare/src/frontmatter.mjs";
+import { plainText, renderMarkdown } from "../tools/writer-cloudflare/src/markdown.mjs";
+import { deriveDescription, normalizeSlug } from "../tools/writer-cloudflare/src/publish.mjs";
+
+/**
+ * drafts-kv のテスト用に、Cloudflare KV の最小インターフェースを
+ * メモリ上で再現する（get / put / delete / list）。
+ */
+function memoryKv() {
+  const map = new Map();
+  return {
+    map,
+    async get(key) {
+      return map.has(key) ? map.get(key) : null;
+    },
+    async put(key, value) {
+      map.set(key, String(value));
+    },
+    async delete(key) {
+      map.delete(key);
+    },
+    async list({ prefix = "" } = {}) {
+      const keys = [...map.keys()]
+        .filter((key) => key.startsWith(prefix))
+        .sort()
+        .map((name) => ({ name }));
+      return { keys, list_complete: true, cursor: undefined };
+    }
+  };
+}
 
 test("frontmatter: 往復しても値が変わらない", () => {
   const data = {
@@ -141,22 +165,19 @@ test("markdown: URL の括弧を切らない", () => {
 });
 
 test("drafts: 手で足したキーとコメントを消さない", async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), "slytxt-drafts-"));
-  process.env.SLYTXT_DRAFTS_DIR = dir;
-  const drafts = await import(`../tools/writer/drafts.mjs?case=carry-${Date.now()}`);
-
-  await writeFile(
-    path.join(dir, "sample.md"),
-    '---\ntitle: 元のタイトル\ncategory: life\n# 作業メモ\nmemo: あとで書く\nslug: my-slug\n---\n\n本文\n',
-    "utf8"
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  kv.map.set(
+    "draft:sample",
+    '---\ntitle: 元のタイトル\ncategory: life\n# 作業メモ\nmemo: あとで書く\nslug: my-slug\n---\n\n本文\n'
   );
 
-  const loaded = await drafts.readDraft("sample");
+  const loaded = await store.readDraft("sample");
   assert.deepEqual(loaded.extras, ["# 作業メモ", "memo: あとで書く"]);
   assert.equal(loaded.slug, "my-slug");
 
-  await drafts.writeDraft("sample", { body: "書き直した本文" });
-  const saved = await readFile(path.join(dir, "sample.md"), "utf8");
+  await store.writeDraft("sample", { body: "書き直した本文" });
+  const saved = kv.map.get("draft:sample");
   assert.match(saved, /# 作業メモ/);
   assert.match(saved, /memo: あとで書く/);
   assert.match(saved, /slug: my-slug/);
@@ -164,31 +185,28 @@ test("drafts: 手で足したキーとコメントを消さない", async () => 
   assert.match(saved, /title: 元のタイトル/);
 });
 
-test("drafts: 同じタイトルを並行で作っても衝突しない", async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), "slytxt-drafts-"));
-  process.env.SLYTXT_DRAFTS_DIR = dir;
-  const drafts = await import(`../tools/writer/drafts.mjs?case=race-${Date.now()}`);
+test("drafts: 同じタイトルで作り続けても衝突しない", async () => {
+  // KV には排他作成が無いため、並行作成の衝突回避は保証されない
+  // （drafts-kv.mjs のコメント参照）。ここでは順に作った場合の採番を見る。
+  const store = createDraftStore(memoryKv());
 
-  const made = await Promise.all([
-    drafts.createDraft({ title: "同じタイトル" }),
-    drafts.createDraft({ title: "同じタイトル" }),
-    drafts.createDraft({ title: "同じタイトル" })
-  ]);
+  const made = [];
+  for (let i = 0; i < 3; i += 1) {
+    made.push(await store.createDraft({ title: "同じタイトル" }));
+  }
 
   assert.equal(new Set(made.map((draft) => draft.id)).size, 3);
-  assert.equal((await drafts.listDrafts()).length, 3);
+  assert.equal((await store.listDrafts()).length, 3);
 });
 
 test("drafts: 削除した id は再利用できる", async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), "slytxt-drafts-"));
-  process.env.SLYTXT_DRAFTS_DIR = dir;
-  const drafts = await import(`../tools/writer/drafts.mjs?case=reuse-${Date.now()}`);
+  const store = createDraftStore(memoryKv());
 
-  const first = await drafts.createDraft({ title: "同じタイトル" });
-  await drafts.writeDraft(first.id, { body: "前のメモ" });
-  await drafts.deleteDraft(first.id);
+  const first = await store.createDraft({ title: "同じタイトル" });
+  await store.writeDraft(first.id, { body: "前のメモ" });
+  await store.deleteDraft(first.id);
 
-  const second = await drafts.createDraft({ title: "同じタイトル" });
+  const second = await store.createDraft({ title: "同じタイトル" });
   assert.equal(second.id, first.id);
   assert.equal(second.body, "");
 });
@@ -201,15 +219,13 @@ test("plainText: 記号を落として1行にする", () => {
 });
 
 test("drafts: 存在しないドラフトを保存で作り直さない", async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), "slytxt-drafts-"));
-  process.env.SLYTXT_DRAFTS_DIR = dir;
-  const drafts = await import(`../tools/writer/drafts.mjs?case=missing-${Date.now()}`);
+  const store = createDraftStore(memoryKv());
 
   await assert.rejects(
-    () => drafts.writeDraft("missing", { body: "よみがえらないでほしい" }),
+    () => store.writeDraft("missing", { body: "よみがえらないでほしい" }),
     /ありません/
   );
-  assert.deepEqual(await drafts.listDrafts(), []);
+  assert.deepEqual(await store.listDrafts(), []);
 });
 
 test("description: 本文の書き出しから最小限だけ作る", () => {
