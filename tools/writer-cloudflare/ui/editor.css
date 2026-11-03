@@ -36,6 +36,12 @@
   font-size: 1rem;
   line-height: 1.95;
   caret-color: var(--accent-cyan);
+  /* ProseMirror は grid レイアウトで、列幅は最も広いブロックの
+     max-content で決まる。列をコンテナ幅に抑え、長い URL など
+     折り返し不能な語も段落内で折り返す。スマホ幅で見出しや段落、
+     コードブロック、表まで一列に広がってはみ出すのを防ぐ。 */
+  grid-template-columns: minmax(0, 1fr);
+  overflow-wrap: anywhere;
 }
 
 .milkdown .ProseMirror:focus {
