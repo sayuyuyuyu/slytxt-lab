@@ -15,7 +15,7 @@ import {
   createDraftStore
 } from "./drafts-kv.mjs";
 import { PublishError, publishPost, publishStatus } from "./publish.mjs";
-import { MediaError, uploadMedia } from "./media.mjs";
+import { MediaError, mediaStatus, uploadMedia } from "./media.mjs";
 
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -129,6 +129,10 @@ async function handleApi(request, env, url) {
       return json(await uploadMedia(request, env), 201);
     }
     return null;
+  }
+
+  if (resource === "media" && id && action === "status" && method === "GET") {
+    return json(await mediaStatus(env, id));
   }
 
   if (resource === "publish" && id && action === "status" && method === "GET") {
