@@ -41,14 +41,32 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build は Check / Test と依存関係がないので、裏で並行して走らせる。
+      # 終了コードはファイル経由で受け取り、「Wait for build」で合流する。
+      - name: Start build in background
+        run: |
+          ( pnpm build > "${RUNNER_TEMP}/ci-build.log" 2>&1; echo $? > "${RUNNER_TEMP}/ci-build.exit" ) < /dev/null > /dev/null 2>&1 &
+
       - name: Check
         run: pnpm check
 
       - name: Test
         run: pnpm test
 
-      - name: Build
-        run: pnpm build
+      - name: Wait for build
+        run: |
+          for _ in $(seq 1 300); do
+            if [ -f "${RUNNER_TEMP}/ci-build.exit" ]; then
+              break
+            fi
+            sleep 1
+          done
+          cat "${RUNNER_TEMP}/ci-build.log"
+          code="$(cat "${RUNNER_TEMP}/ci-build.exit" 2>/dev/null || echo 1)"
+          if [ "${code}" != "0" ]; then
+            echo "::error::pnpm build failed with exit code ${code}"
+            exit 1
+          fi
 
       - name: Check generated links
         run: pnpm run check:build
