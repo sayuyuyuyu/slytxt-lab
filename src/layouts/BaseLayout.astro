@@ -12,6 +12,7 @@ type Props = {
   published?: Date;
   updated?: Date;
   noindex?: boolean;
+  noCanonical?: boolean;
   searchable?: boolean;
 };
 
@@ -23,6 +24,7 @@ const {
   published,
   updated,
   noindex = false,
+  noCanonical = false,
   searchable = false
 } = Astro.props;
 
@@ -75,14 +77,14 @@ const imageUrl = new URL(image, Astro.site);
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
-    <link rel="canonical" href={canonical.href} />
+    {!noCanonical && <link rel="canonical" href={canonical.href} />}
     <link rel="alternate" type="application/rss+xml" title={site.name} href="/rss.xml" />
     <meta property="og:site_name" content={site.name} />
     <meta property="og:locale" content={site.locale} />
     <meta property="og:type" content={type} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical.href} />
+    {!noCanonical && <meta property="og:url" content={canonical.href} />}
     <meta property="og:image" content={imageUrl.href} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />

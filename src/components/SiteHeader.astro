@@ -96,6 +96,17 @@ function isCurrentSection(href: string) {
       }
     </nav>
   </div>
+  <noscript>
+    <style>
+      .site-menu[hidden] {
+        display: block !important;
+        position: static;
+      }
+      .menu-button {
+        display: none;
+      }
+    </style>
+  </noscript>
 </header>
 
 <script>
