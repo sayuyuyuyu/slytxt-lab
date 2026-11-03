@@ -15,8 +15,8 @@ binding = "ASSETS"
 # で作った ID に差し替えること（README 参照）。
 [[kv_namespaces]]
 binding = "DRAFTS"
-id = "00000000000000000000000000000000"
-preview_id = "00000000000000000000000000000000"
+id = "52a4dd63c0164774ab9ca6d0c5f3855c"
+preview_id = "52a4dd63c0164774ab9ca6d0c5f3855c"
 
 [vars]
 GITHUB_OWNER = "sayuyuyuyu"
