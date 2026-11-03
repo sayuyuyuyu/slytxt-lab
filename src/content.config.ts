@@ -10,9 +10,7 @@ const articleSchema = z.object({
   updated: z.coerce.date().optional(),
   tags: z.array(z.string()).default([]),
   draft: z.boolean().default(false),
-  featured: z.boolean().default(false),
-  adult: z.boolean().default(false),
-  cover: z.string().optional()
+  adult: z.boolean().default(false)
 });
 
 const projectSchema = z.object({
@@ -24,8 +22,7 @@ const projectSchema = z.object({
   repo: z.string().url().optional(),
   demo: z.string().url().optional(),
   tags: z.array(z.string()).default([]),
-  draft: z.boolean().default(false),
-  cover: z.string().optional()
+  draft: z.boolean().default(false)
 });
 
 export const collections = {

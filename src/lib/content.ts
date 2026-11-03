@@ -94,11 +94,6 @@ export function getEntryPath(entry: SiteEntry): string {
   return `/${ARTICLE_BASE[entry.collection]}/${getEntrySlug(entry)}/`;
 }
 
-export function getEntryKind(entry: SiteEntry): string {
-  if (entry.collection === "projects") return "project";
-  return entry.collection === "notes" ? "note" : "article";
-}
-
 export function getEntriesByTag(entries: SiteEntry[], tagSlug: string): SiteEntry[] {
   return entries.filter((entry) =>
     entry.data.tags.some((tag) => slugifyTag(tag) === tagSlug)
