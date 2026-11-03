@@ -20,6 +20,6 @@ const countText = count === 1 ? (countLabelOne ?? countLabel) : countLabel;
     <p class="eyebrow">{eyebrow}</p>
     <h1 class="page-title">{title}</h1>
     {description && <p class="page-lead">{description}</p>}
-    {count !== undefined && <p class="page-count">{count} {countText}</p>}
+    {count !== undefined && count > 0 && <p class="page-count">{count} {countText}</p>}
   </div>
 </header>
