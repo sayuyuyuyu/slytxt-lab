@@ -1,12 +1,12 @@
 /**
  * 執筆サーバーの Cloudflare Workers 版。
  *
- * tools/writer/server.mjs のルーティングと書き込み防御を移植したもの。
+ * 旧ローカル版サーバーのルーティングと書き込み防御を移植したもの。
  * 認証は Cloudflare Access（write.slytxt.dev は本人のメールアドレスのみ許可）が
  * 担うため、Worker 側にトークン認証は無い。入口はカスタムドメインのみで、
  * workers.dev は wrangler.toml で無効化してある。
  * 静的ファイルは Workers Static Assets（env.ASSETS）から配信する。
- * API のパスとレスポンス形式はローカル版と同じにそろえてある。
+ * API のパスとレスポンス形式は旧ローカル版から変えていない。
  */
 import {
   CATEGORIES,
@@ -15,7 +15,7 @@ import {
   createDraftStore
 } from "./drafts-kv.mjs";
 import { PublishError, publishPost, publishStatus } from "./publish.mjs";
-import { MediaError, uploadMedia } from "./media.mjs";
+import { MediaError, mediaStatus, uploadMedia } from "./media.mjs";
 
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -129,6 +129,10 @@ async function handleApi(request, env, url) {
       return json(await uploadMedia(request, env), 201);
     }
     return null;
+  }
+
+  if (resource === "media" && id && action === "status" && method === "GET") {
+    return json(await mediaStatus(env, id));
   }
 
   if (resource === "publish" && id && action === "status" && method === "GET") {

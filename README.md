@@ -80,55 +80,17 @@ X_CLIENT_SECRET         X アプリの Client Secret
 
 ## 執筆
 
-執筆用のエディタが `tools/writer/` にあります。ブラウザで書いて、投稿ボタンで公開まで進みます。
-
-```bash
-pnpm write        # http://127.0.0.1:4326 を開く
-pnpm write:host   # Tailscale など別の端末から触れるようにする
-```
+執筆は Cloudflare 版のエディタ（https://write.slytxt.dev 、コードは `tools/writer-cloudflare/`）で行います。ブラウザで書いて、投稿ボタンで公開まで進みます。認証は Cloudflare Access（本人のメールアドレスのみ許可）です。
 
 やることは2つだけです。
 
 1. **書く** — カテゴリ（Tech / Journal / Notes）を選んで本文を書く。タイトルは要りません。公開時に本文の書き出しから付けます。一覧では本文の書き出しが名前になります。
-2. **投稿** — 誤字だけをエージェントに直させて、ファイル化、ブランチ作成、Pull Request、CI待ち、merge まで一度に進みます。公開できたドラフトは一覧から消えます。
+2. **投稿** — ファイル化、ブランチ作成、Pull Request、CI 待ち、merge まで一度に進みます（merge の条件は CI の成功のみ）。公開できたドラフトは一覧から消えます。
 
-編集は 900ms のデバウンスで自動保存します。保存に失敗したときは上部の丸い印が「保存できません・再試行」になり、押すと再送します。オフラインが戻ったときも自動で再送します。
+編集は 900ms のデバウンスで自動保存します。下書きは Cloudflare KV に保存されます。
 
-下書きはリポジトリ直下の `drafts/` に置きます（`.gitignore` 済み）。
+構成とデプロイ手順は `tools/writer-cloudflare/README.md` を参照してください。旧ローカル版（Mac 上のサーバーを launchd で常駐させる方式）は廃止しました。移行前の下書きファイルは、原本としてリポジトリ直下の `drafts/` に残してあります（`.gitignore` 済み。現在の下書きの正は KV）。
 
-### 出先から使う
-
-Mac を再起動しても使えるように、launchd に登録できます。
-
-```bash
-node tools/writer/service.mjs install    # 登録して Tailscale に公開する
-node tools/writer/service.mjs status     # 状態と URL を出す
-node tools/writer/service.mjs uninstall  # 登録を外す
-```
-
-`install` は以下を行います。
-
-- `~/Library/LaunchAgents/ts.slytxt.writer.plist` を書き、`launchctl` に登録する（`RunAtLoad` + `KeepAlive`）
-- token を `~/.config/slytxt-writer/token` に作る（既にあれば使う）
-- `tailscale serve --bg --https=8443 http://127.0.0.1:4326` で tailnet に出す
-
-出先からは `https://<tailnet のホスト名>:8443/?token=<token>` を開きます。初回に token を cookie に入れるので、以降は `https://<tailnet のホスト名>:8443/` だけで入れます。
-
-Mac がスリープすると届きません。電源に繋いでスリープを止めておいてください。ポートは `--port` と `--https-port` で変えられます。
-
-### 環境変数
-
-| 変数 | 既定 | 用途 |
-| --- | --- | --- |
-| `SLYTXT_DRAFTS_DIR` | `./drafts` | 下書きの置き場所。iCloud などに逃がすときに使う |
-| `SLYTXT_AGENT` | `pi` | `pi` または `codex` |
-| `SLYTXT_AGENT_CMD` | なし | 任意のCLIを直接指定する |
-| `SLYTXT_AGENT_MODEL` | なし | 使うモデルを固定する |
-| `SLYTXT_SKIP_CHECK` | なし | `1` で公開前の `astro check` を飛ばす |
-| `SLYTXT_TOKEN` | 起動ごとに生成 | `--host` で起動したときの合言葉を固定する |
-| `PORT` | `4326` | 待ち受けポート |
-
-`publish` は作業ツリーが汚れていると何もせずに止まります。`main` へは push しません。
 
 ## Content
 
@@ -182,7 +144,7 @@ cover:
 - メニューは `navGroups` で writing（Articles / Notes）、works（Projects）、browse（Tags / Search）、meta（About）に分け、Articles の下に Tech / Journal を入れ子にしています。
 - 共通の配色・文字・余白は `src/styles/global.css` に集約しています。青黒を基調にしたターミナル風で、ダーク（`--bg: #05070f`）が既定、`:root.light` が昼向けの配色です。切り替えは `html` の `light` クラスと `localStorage.theme` で行います。
 - ターミナル風の見た目は `.terminal`（ウィンドウ枠）、`.prompt`、`.cursor`、`.eyebrow` の `❯` 接頭辞で作っています。
-- 執筆用のエディタは `tools/writer/` にあります。`pnpm write` で起動します。
+- 執筆用のエディタは Cloudflare 版（`tools/writer-cloudflare/`、https://write.slytxt.dev）です。
 - スクロール出現と入場のアニメーションは Motion（`motion`）で行います。動かしたい要素に `data-motion` を付けます。JS が無い・動かない環境では2秒後に必ず表示されるようにしてあります。
 - 動きは `prefers-reduced-motion` を尊重します。
 - 技術メモと日々の一覧は `ArticleListing.astro`、ページ数・URL計算は `src/lib/pagination.ts` で共有します。

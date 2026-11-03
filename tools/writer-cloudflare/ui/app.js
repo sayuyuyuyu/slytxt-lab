@@ -3,7 +3,7 @@ import { plainText } from "/markdown.mjs";
 /*
  * Cloudflare 版の UI 本体。index.html / style.css もこのディレクトリ
  * （ui/）に持ち、prepare-assets が public/ へコピーする。
- * ローカル版（tools/writer/ui）との違い:
+ * 旧ローカル版から引き継いだうえでの、この版の特徴:
  * - 投稿フロー: PR 作成までで応答が返り、CI の完了と merge は
  *   /api/publish/:id/status のポーリングで見届ける。
  * - レイアウトを note に寄せた（編集画面のヘッダー、公開確認パネル、
@@ -343,7 +343,22 @@ async function uploadMedia(file) {
   if (!response.ok) {
     throw new Error(payload.error ?? `画像のアップロードに失敗しました (${response.status})`);
   }
-  return payload.url;
+  if (payload.state !== "waiting") return payload.url;
+  // main へは PR 経由でしか入れられないため、CI と merge を見届けてから
+  // URL を返す（投稿の pollPublishStatus と同じ形）。merge 後に Pages の
+  // デプロイが伝わるまで、画像は一時的に表示されないことがある。
+  const deadline = Date.now() + 5 * 60 * 1000;
+  let last = payload;
+  while (Date.now() < deadline) {
+    await sleep(4000);
+    const status = await api(`/api/media/${encodeURIComponent(payload.key)}/status`);
+    if (status.state === "merged") return status.url ?? payload.url;
+    if (status.state === "failed") {
+      throw new Error(status.message ?? `画像の反映に失敗しました: ${status.prUrl ?? ""}`);
+    }
+    last = status;
+  }
+  throw new Error(`画像の反映が終わりませんでした。PR を確認してください: ${last?.prUrl ?? ""}`);
 }
 
 async function setupEditor() {
