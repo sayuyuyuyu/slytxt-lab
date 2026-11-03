@@ -24,7 +24,12 @@ for (const file of htmlFiles) {
     issues.push(`${relative}: expected one h1`);
   if (!html.includes('id="main-content"'))
     issues.push(`${relative}: missing skip-link target`);
-  if (!html.includes('rel="canonical"'))
+  if (relative === "404.html") {
+    if (html.includes('rel="canonical"'))
+      issues.push(`${relative}: unexpected canonical`);
+    if (html.includes('property="og:url"'))
+      issues.push(`${relative}: unexpected og:url`);
+  } else if (!html.includes('rel="canonical"'))
     issues.push(`${relative}: missing canonical`);
   for (const match of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
     const value = match[1].replaceAll("&amp;", "&");
