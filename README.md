@@ -116,9 +116,7 @@ published:
 updated:
 tags:
 draft:
-featured:
 adult:
-cover:
 ```
 
 ### Projects
@@ -133,7 +131,6 @@ repo:
 demo:
 tags:
 draft:
-cover:
 ```
 
 `status` は `planning` / `active` / `maintenance` / `paused` / `completed` のいずれかです。
@@ -143,7 +140,7 @@ cover:
 - 画面のラベルは英語、本文と説明文は日本語にしています。カテゴリ名は `src/lib/site.ts` の `categoryLabels` に集約しています。
 - メニューは `navGroups` で writing（Articles / Notes）、works（Projects）、browse（Tags / Search）、meta（About）に分け、Articles の下に Tech / Journal を入れ子にしています。
 - 共通の配色・文字・余白は `src/styles/global.css` に集約しています。青黒を基調にしたターミナル風で、ダーク（`--bg: #05070f`）が既定、`:root.light` が昼向けの配色です。切り替えは `html` の `light` クラスと `localStorage.theme` で行います。
-- ターミナル風の見た目は `.terminal`（ウィンドウ枠）、`.prompt`、`.cursor`、`.eyebrow` の `❯` 接頭辞で作っています。
+- ターミナル風の見た目は `.terminal`（ウィンドウ枠）、`.prompt`、`.eyebrow` の `❯` 接頭辞で作っています。
 - 執筆用のエディタは Cloudflare 版（`tools/writer-cloudflare/`、https://write.slytxt.dev）です。
 - スクロール出現と入場のアニメーションは Motion（`motion`）で行います。動かしたい要素に `data-motion` を付けます。JS が無い・動かない環境では2秒後に必ず表示されるようにしてあります。
 - 動きは `prefers-reduced-motion` を尊重します。
