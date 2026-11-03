@@ -16,7 +16,7 @@ const { items } = Astro.props;
   {items.map((item) => (
     <>
       <span aria-hidden="true">/</span>
-      {item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
+      {item.href ? <a href={item.href}>{item.label}</a> : <span aria-current="page">{item.label}</span>}
     </>
   ))}
 </nav>
