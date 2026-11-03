@@ -227,17 +227,21 @@ function renderList() {
     item.className = "drafts__item";
     if (state.current?.id === draft.id) item.setAttribute("aria-current", "true");
 
+    const select = document.createElement("button");
+    select.type = "button";
+    select.className = "drafts__select";
+
     const title = document.createElement("span");
     title.className = "drafts__title";
     title.textContent = displayTitle(draft);
-    item.append(title);
+    select.append(title);
 
     const excerpt = String(draft.excerpt ?? "").trim();
     if (draft.title !== "無題" && excerpt) {
       const text = document.createElement("span");
       text.className = "drafts__excerpt";
       text.textContent = excerpt.slice(0, 90);
-      item.append(text);
+      select.append(text);
     }
 
     const meta = document.createElement("span");
@@ -251,7 +255,9 @@ function renderList() {
     when.textContent = `${draft.chars}字・${relativeTime(draft.updated)}`;
     meta.append(when);
 
-    item.append(meta);
+    select.append(meta);
+    select.addEventListener("click", () => selectDraft(draft.id));
+    item.append(select);
 
     const menuButton = document.createElement("button");
     menuButton.type = "button";
@@ -268,7 +274,6 @@ function renderList() {
     });
     item.append(menuButton);
 
-    item.addEventListener("click", () => selectDraft(draft.id));
     els.drafts.append(item);
   }
 
