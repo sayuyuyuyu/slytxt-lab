@@ -11,7 +11,3 @@ export function formatDate(date: Date): string {
 export function getYear(date: Date): string {
   return String(date.getFullYear());
 }
-
-export function stripTrailingSlash(path: string): string {
-  return path === "/" ? path : path.replace(/\/$/, "");
-}
