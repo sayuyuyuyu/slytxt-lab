@@ -103,9 +103,15 @@ npx wrangler kv key list --binding DRAFTS --remote -c tools/writer-cloudflare/wr
 
 ## 画像メディア（GitHub）
 
-`POST /api/media`（`src/media.mjs`、書き込み防御の対象）が jpeg / png / gif / webp（10MB まで）を受け取り、GitHub Contents API でリポジトリの `public/media/<uuid>.<ext>` に main へ直接コミットする。使う認証は投稿フローと同じ secret `GITHUB_TOKEN`（Contents Read and write）。返却する URL は `https://slytxt.dev/media/<uuid>.<ext>` で、エディタはこの URL を本文へ挿入する。下書きの markdown には最初からこの最終 URL が入る。
+`POST /api/media`（`src/media.mjs`、書き込み防御の対象）が jpeg / png / gif / webp（10MB まで）を受け取り、GitHub リポジトリの `public/media/<uuid>.<ext>` に保存する。返却する URL は `https://slytxt.dev/media/<uuid>.<ext>` で、エディタはこの URL を本文へ挿入する。下書きの markdown には最初からこの最終 URL が入る。使う認証は投稿フローと同じ secret `GITHUB_TOKEN`（Contents / Pull requests の Read and write）。
 
-注意: コミットが Cloudflare Pages のデプロイを起こすため、返却直後はまだその URL は開けず、有効になるまで数十秒〜1分程度かかる。アップロード直後にエディタ内で画像が見えないことがあるが、デプロイが伝われば表示される。`GITHUB_TOKEN` が未設定の環境では、`POST /api/media` は 501 を返す。
+main は ruleset で「PR 経由＋チェック `ci` の成功」が必須のため、Contents API で main へ直接コミットはできない（409 になる）。そのため投稿フローと同じ形を取る:
+
+1. `POST /api/media` がブランチ `media/<uuid>` を作ってファイルを置き、PR を作成して返す（state は `waiting`）。
+2. UI が `GET /api/media/:key/status` をポーリングし、status 側が `ci` の成功を見て squash merge し、ブランチを消す（Cloudflare Pages の結果は待たない。投稿フローと同じ本人決定）。
+3. merge のコミットが Cloudflare Pages の本番デプロイを起こし、伝わって初めて URL が開ける。
+
+そのため、アップロード操作自体は CI と merge の分だけ（数十秒程度）かかり、画像が実際に表示できるようになるのは merge 後のデプロイ完了までで、合計で数分程度かかることがある（デプロイの所要時間は Cloudflare 側のばらつきに左右される）。アップロード直後にエディタ内で画像が見えないことがあるが、デプロイが伝われば表示される。`GITHUB_TOKEN` が未設定の環境では、`POST /api/media` は 501 を返す。
 
 以前は R2 バケット `slytxt-writer-media` に保存していたが、2026-11-04 の方針変更で GitHub 保存に切り替え、バケットと binding（`MEDIA` / `MEDIA_PUBLIC_BASE_URL`）は撤去した。アカウントの R2 有効化自体は残してある。
 

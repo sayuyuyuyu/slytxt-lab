@@ -191,6 +191,12 @@ export function createGitHubClient(env) {
       return { state: "success", pages };
     },
 
+    /** main の最新をブランチへ取り込む（update-branch API）。成功は 202。 */
+    async updateBranch(number) {
+      const result = await api(`/pulls/${number}/update-branch`, { method: "PUT" });
+      return result.ok || result.status === 202;
+    },
+
     async mergePull(number, title) {
       const result = await api(`/pulls/${number}/merge`, {
         method: "PUT",
