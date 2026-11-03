@@ -19,8 +19,15 @@ const visibleNavGroups = navGroups
   }))
   .filter((group) => group.items.length > 0);
 
-function isCurrent(href: string) {
-  return currentPath === href || currentPath.startsWith(href);
+// aria-current="page" is only for the link that points at this page itself.
+// An ancestor (e.g. Articles above /articles/tech/) keeps a visual hint via
+// data-current-section instead, so a page never carries two aria-current.
+function isCurrentPage(href: string) {
+  return currentPath === href;
+}
+
+function isCurrentSection(href: string) {
+  return currentPath !== href && currentPath.startsWith(href);
 }
 ---
 
@@ -55,14 +62,22 @@ function isCurrent(href: string) {
             <ul>
               {group.items.map((item) => (
                 <li class:list={["site-menu__item", { "site-menu__item--branch": item.children }]}>
-                  <a href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>
+                  <a
+                    href={item.href}
+                    aria-current={isCurrentPage(item.href) ? "page" : undefined}
+                    data-current-section={isCurrentSection(item.href) ? "true" : undefined}
+                  >
                     {item.label}
                   </a>
                   {item.children && (
                     <ul class="site-menu__sub">
                       {item.children.map((child) => (
                         <li>
-                          <a href={child.href} aria-current={isCurrent(child.href) ? "page" : undefined}>
+                          <a
+                            href={child.href}
+                            aria-current={isCurrentPage(child.href) ? "page" : undefined}
+                            data-current-section={isCurrentSection(child.href) ? "true" : undefined}
+                          >
                             {child.label}
                           </a>
                         </li>

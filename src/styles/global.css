@@ -433,7 +433,8 @@ samp,
   content: "> ";
   color: var(--accent-5);
 }
-.site-menu a[aria-current="page"] {
+.site-menu a[aria-current="page"],
+.site-menu a[data-current-section="true"] {
   color: var(--accent-strong);
 }
 .link-button {
