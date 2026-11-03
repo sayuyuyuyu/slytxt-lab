@@ -31,6 +31,21 @@ const FAILED_CONCLUSIONS = new Set([
 ]);
 const OK_CONCLUSIONS = new Set(["success", "neutral", "skipped"]);
 
+/** Cloudflare Pages のチェック／ステータスを表示用の値に畳む（マージ条件には使わない）。 */
+function pagesState(byName, statuses) {
+  const run = [...byName.values()].find((entry) => /cloudflare/i.test(entry.name));
+  if (run) {
+    if (run.status !== "completed") return "pending";
+    if (FAILED_CONCLUSIONS.has(run.conclusion)) return "failure";
+    return OK_CONCLUSIONS.has(run.conclusion) ? "success" : "pending";
+  }
+  const status = statuses.find((entry) => /cloudflare/i.test(entry.context));
+  if (!status) return "unknown";
+  if (status.state === "success") return "success";
+  if (status.state === "failure" || status.state === "error") return "failure";
+  return "pending";
+}
+
 export function createGitHubClient(env) {
   const token = env.GITHUB_TOKEN ?? "";
   const owner = env.GITHUB_OWNER ?? "sayuyuyuyu";
@@ -131,8 +146,10 @@ export function createGitHubClient(env) {
 
     /**
      * head コミットに付いたチェックの総合判定。
-     * CI（チェックラン名 ci）と Cloudflare Pages の両方が成功して初めて
-     * "success" を返す。Pages のチェックがまだ付いていない間は "pending"。
+     * 門番は CI（チェックラン名 ci）だけ（2026-11-04 本人決定）:
+     * ci が成功すれば "success"、失敗すれば "failure"、未完了・未検出は
+     * "pending"。Cloudflare Pages はマージ条件から外してあり、待たないし
+     * 失敗してもブロックしない。状態は pages として返すだけ（表示用）。
      */
     async getChecks(sha) {
       const runsResult = await api(`/commits/${sha}/check-runs?per_page=100`);
@@ -147,32 +164,15 @@ export function createGitHubClient(env) {
       const statusResult = await api(`/commits/${sha}/status`);
       const statuses = statusResult.ok ? (statusResult.data.statuses ?? []) : [];
 
-      let failure = null;
-      let pending = false;
-
-      const latest = [...byName.values()];
-      for (const run of latest) {
-        if (run.status !== "completed") pending = true;
-        else if (FAILED_CONCLUSIONS.has(run.conclusion)) {
-          failure = `チェック ${run.name} が失敗しました`;
-        } else if (!OK_CONCLUSIONS.has(run.conclusion)) pending = true;
-      }
-      for (const entry of statuses) {
-        if (entry.state === "failure" || entry.state === "error") {
-          failure = `チェック ${entry.context} が失敗しました`;
-        } else if (entry.state !== "success") pending = true;
-      }
+      const pages = pagesState(byName, statuses);
 
       const ci = byName.get("ci");
-      if (!ci) pending = true;
-      const pages =
-        latest.find((run) => /cloudflare/i.test(run.name)) ??
-        statuses.find((entry) => /cloudflare/i.test(entry.context));
-      if (!pages) pending = true;
-
-      if (failure) return { state: "failure", message: failure };
-      if (pending) return { state: "pending" };
-      return { state: "success" };
+      if (!ci || ci.status !== "completed") return { state: "pending", pages };
+      if (FAILED_CONCLUSIONS.has(ci.conclusion)) {
+        return { state: "failure", message: "チェック ci が失敗しました", pages };
+      }
+      if (!OK_CONCLUSIONS.has(ci.conclusion)) return { state: "pending", pages };
+      return { state: "success", pages };
     },
 
     async mergePull(number, title) {
