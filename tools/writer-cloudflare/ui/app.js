@@ -742,7 +742,13 @@ async function runPublish() {
     finishTask();
     showResult([
       { label: result.file },
-      { href: result.prUrl, label: "PR" }
+      { href: result.prUrl, label: "PR" },
+      ...(result.url
+        ? [
+            { href: result.url, label: "公開ページ" },
+            { label: "公開ページはデプロイの反映まで数十秒かかることがあります" }
+          ]
+        : [])
     ]);
     toast("公開しました。");
     // 公開したドラフトはサーバー側で消えている。
