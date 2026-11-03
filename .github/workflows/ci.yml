@@ -45,7 +45,7 @@ jobs:
       # 終了コードはファイル経由で受け取り、「Wait for build」で合流する。
       - name: Start build in background
         run: |
-          ( pnpm build > "${RUNNER_TEMP}/ci-build.log" 2>&1; echo $? > "${RUNNER_TEMP}/ci-build.exit" ) &
+          ( pnpm build > "${RUNNER_TEMP}/ci-build.log" 2>&1; echo $? > "${RUNNER_TEMP}/ci-build.exit" ) < /dev/null > /dev/null 2>&1 &
 
       - name: Check
         run: pnpm check
