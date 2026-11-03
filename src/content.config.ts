@@ -1,4 +1,6 @@
-import { defineCollection, z } from "astro:content";
+import { defineCollection } from "astro:content";
+import { glob } from "astro/loaders";
+import { z } from "astro/zod";
 
 const articleSchema = z.object({
   title: z.string(),
@@ -27,8 +29,20 @@ const projectSchema = z.object({
 });
 
 export const collections = {
-  tech: defineCollection({ type: "content", schema: articleSchema }),
-  journal: defineCollection({ type: "content", schema: articleSchema }),
-  notes: defineCollection({ type: "content", schema: articleSchema }),
-  projects: defineCollection({ type: "content", schema: projectSchema })
+  tech: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/content/tech" }),
+    schema: articleSchema
+  }),
+  journal: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/content/journal" }),
+    schema: articleSchema
+  }),
+  notes: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/content/notes" }),
+    schema: articleSchema
+  }),
+  projects: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/content/projects" }),
+    schema: projectSchema
+  })
 };
