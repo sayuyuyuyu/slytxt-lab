@@ -4,9 +4,10 @@ import EmptyState from "@/components/EmptyState.astro";
 import NoteCard from "@/components/NoteCard.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import Pagination from "@/components/Pagination.astro";
-import { type ArticleEntry } from "@/lib/content";
+import { getAllEntries, type ArticleEntry } from "@/lib/content";
 import { type PageData } from "@/lib/pagination";
 import { type ArticleSection, site } from "@/lib/site";
+import { collectTags } from "@/lib/tags";
 import BaseLayout from "./BaseLayout.astro";
 
 type Props = {
@@ -17,12 +18,13 @@ type Props = {
 };
 const { section, basePath, page, variant = "article" } = Astro.props;
 const suffix = page.currentPage > 1 ? ` (page ${page.currentPage})` : "";
+const hasTags = collectTags(await getAllEntries()).size > 0;
 ---
 <BaseLayout title={`${section.title}${suffix} - ${site.name}`} description={section.description}>
   <PageHeader title={section.title} eyebrow={section.eyebrow} count={page.totalEntries} countLabel="entries" countLabelOne="entry" />
   <section class="listing" aria-label={`${section.title} listing`}>
     <div class="container">
-      <div class="listing-tools"><a href="/tags/">Browse tags <span aria-hidden="true">↗</span></a></div>
+      {hasTags && <div class="listing-tools"><a href="/tags/">Browse tags <span aria-hidden="true">↗</span></a></div>}
       {page.entries.length > 0 ? (
         <div class="listing-list">
           {page.entries.map((entry) =>
