@@ -3,7 +3,7 @@ import { plainText } from "/markdown.mjs";
 /*
  * Cloudflare 版の UI 本体。index.html / style.css もこのディレクトリ
  * （ui/）に持ち、prepare-assets が public/ へコピーする。
- * ローカル版（tools/writer/ui）との違い:
+ * 旧ローカル版から引き継いだうえでの、この版の特徴:
  * - 投稿フロー: PR 作成までで応答が返り、CI の完了と merge は
  *   /api/publish/:id/status のポーリングで見届ける。
  * - レイアウトを note に寄せた（編集画面のヘッダー、公開確認パネル、

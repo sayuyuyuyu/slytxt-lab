@@ -15,11 +15,11 @@
 
 # 執筆
 
-- 記事の下書きは `drafts/` に置く。`pnpm write` でブラウザのエディタを開く。
-- 下書きと `drafts/.history/` はコミットしない。公開するのは `src/content/<category>/<slug>.md` だけ。
-- 公開は執筆ツールの「整形してPR」から行う。手で出す場合も `main` へ直接 push しない。
+- 執筆は Cloudflare 版のエディタ（https://write.slytxt.dev 、コードは `tools/writer-cloudflare/`）で行う。下書きは Cloudflare KV に保存する。
+- `drafts/` は移行前の下書きの原本で、コミットしない。公開するのは `src/content/<category>/<slug>.md` だけ。
+- 公開は執筆ツールの投稿ボタン（PR 経由）から行う。手で出す場合も `main` へ直接 push しない。
 - 文体の規範は `~/.agents/skills/slytxt-writing/SKILL.md`。サイトの文章を直すときもこれに合わせる。
-- `tools/writer/` は Node の標準機能だけで動かす。ここに依存パッケージを追加しない。
+- `tools/writer-cloudflare/` はサブプロジェクトとして `package.json` を持つ。依存はそちらで管理し、サイト本体には足さない。
 
 # 検証
 

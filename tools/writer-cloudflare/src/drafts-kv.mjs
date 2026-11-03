@@ -1,12 +1,12 @@
 /**
  * 執筆用ドラフトの保管庫（Cloudflare KV 版）。
  *
- * tools/writer/drafts.mjs と同じ API 形状・同じ直列化形式にそろえる。
- * キーは `draft:<id>`、値はローカル版が drafts/<id>.md に書いている
- * テキストそのもの。置き場所だけがファイルから KV に変わる。
+ * キーは `draft:<id>`、値は移行前のファイル保存版が drafts/<id>.md に
+ * 書いていたテキストそのもの。置き場所だけがファイルから KV に変わり、
+ * API 形状・直列化形式は移行時から変えていない。
  */
-import { parseFrontmatter, stringifyFrontmatter } from "../../writer/frontmatter.mjs";
-import { plainText } from "../../writer/markdown.mjs";
+import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
+import { plainText } from "./markdown.mjs";
 
 export const CATEGORIES = ["tech", "journal", "notes"];
 export const CATEGORY_LABELS = { tech: "Tech", journal: "Journal", notes: "Notes" };
@@ -55,7 +55,7 @@ const MANAGED_KEYS = new Set([
 /**
  * ドラフトが自分で書くキー以外と、解釈できなかった行を残す。
  * エディタから保存したときに、手で足したキーやコメントを消さないため。
- * （drafts.mjs の carriedLines と同じ規則）
+ * （移行前のファイル保存版と同じ規則）
  */
 function carriedLines(raw = []) {
   return raw.filter((line) => {
@@ -114,7 +114,7 @@ function slugFragment(title) {
 }
 
 /**
- * KV バインディングを受け取って、drafts.mjs と同じ関数群を返す。
+ * KV バインディングを受け取って、ファイル保存版と同じ関数群を返す。
  * KV には排他作成がないため、createDraft の競合窓は
  * 「存在確認 → 書き込み」の間だけ残る（単独利用では実害なし）。
  */
@@ -160,7 +160,7 @@ export function createDraftStore(kv) {
 
   async function writeDraft(id, patch) {
     const current = await readDraft(id).catch(() => null);
-    // 存在しないドラフトを保存で作り直さない（drafts.mjs と同じ）。
+    // 存在しないドラフトを保存で作り直さない（ファイル保存版と同じ）。
     if (!current) throw new DraftNotFound(`ドラフト ${assertId(id)} はありません`);
     const base = current;
     const next = normalizeDraft(
