@@ -32,11 +32,12 @@
   /* Header bar height including its bottom border. */
   --header-height: 65px;
   --font-body:
-    -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    "Hina Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho",
+    "YuMincho", serif;
   --font-mono:
     ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
-  --font-heading: var(--font-mono), "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-heading: var(--font-body);
 }
 :root.light {
   color-scheme: light;
