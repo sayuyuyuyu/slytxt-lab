@@ -43,7 +43,7 @@ export function renderOgPng(options: {
   const titleSpans = titleLines
     .map(
       (line, index) =>
-        `<tspan x="90" dy="${index === 0 ? 0 : 76}">${escapeXml(line)}</tspan>`
+        `<tspan x="100" dy="${index === 0 ? 0 : 76}">${escapeXml(line)}</tspan>`
     )
     .join("");
 
