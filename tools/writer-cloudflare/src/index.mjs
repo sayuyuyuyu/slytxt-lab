@@ -1,0 +1,199 @@
+/**
+ * 執筆サーバーの Cloudflare Workers 版。
+ *
+ * tools/writer/server.mjs のルーティング・認証・書き込み防御を移植したもの。
+ * 静的ファイルは Workers Static Assets（env.ASSETS）から配信する。
+ * API のパスとレスポンス形式はローカル版と同じにそろえてある。
+ */
+import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  DraftNotFound,
+  createDraftStore
+} from "./drafts-kv.mjs";
+import { PublishError, publishPost, publishStatus } from "./publish.mjs";
+
+const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function authorized(request, url, env) {
+  const token = env.SLYTXT_TOKEN;
+  if (!token) return true;
+  const provided = url.searchParams.get("token") ?? request.headers.get("x-slytxt-token");
+  if (provided && provided === token) return true;
+  const cookie = request.headers.get("cookie") ?? "";
+  return cookie.split(/;\s*/).includes(`slytxt_token=${token}`);
+}
+
+/**
+ * 他のサイトから書き込みAPIを叩かせない（server.mjs と同じ考え方）。
+ * 独自ヘッダ必須が本体。クロスオリジンの fetch はプリフライトが走り、
+ * こちらは CORS ヘッダを返さないので本処理まで届かない。
+ */
+function stateChangingAllowed(request) {
+  if (request.headers.get("x-slytxt-client") !== "1") return false;
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === (request.headers.get("host") ?? "");
+  } catch {
+    return false;
+  }
+}
+
+function json(payload, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store"
+    }
+  });
+}
+
+async function readJsonBody(request, limit = 2_000_000) {
+  const text = await request.text();
+  if (new TextEncoder().encode(text).length > limit) {
+    throw new Error("リクエストが大きすぎます");
+  }
+  if (!text) return {};
+  return JSON.parse(text);
+}
+
+/** ローカル版の streamTask と同じ NDJSON 形式で進捗を流す。 */
+function streamTask(task) {
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+  const send = (payload) =>
+    writer.write(encoder.encode(`${JSON.stringify(payload)}\n`)).catch(() => {});
+  (async () => {
+    try {
+      const result = await task(send);
+      await send({ type: "done", result });
+    } catch (error) {
+      await send({ type: "error", message: error?.message ?? String(error) });
+    } finally {
+      await writer.close().catch(() => {});
+    }
+  })();
+  return new Response(readable, {
+    headers: {
+      "content-type": "application/x-ndjson; charset=utf-8",
+      "cache-control": "no-store"
+    }
+  });
+}
+
+async function handleApi(request, env, url) {
+  const store = createDraftStore(env.DRAFTS);
+  const segments = url.pathname.split("/").filter(Boolean); // ["api", ...]
+  const [, resource, id, action] = segments;
+  const method = request.method ?? "GET";
+
+  if (resource === "meta" && method === "GET") {
+    return json({
+      categories: CATEGORIES,
+      categoryLabels: CATEGORY_LABELS,
+      draftsDir: "Cloudflare KV"
+    });
+  }
+
+  if (resource === "drafts" && !id) {
+    if (method === "GET") {
+      return json({ drafts: await store.listDrafts() });
+    }
+    if (method === "POST") {
+      const body = await readJsonBody(request);
+      const draft = await store.createDraft({
+        title: body.title ?? "",
+        category: body.category ?? "notes"
+      });
+      return json({ draft }, 201);
+    }
+    return null;
+  }
+
+  if (resource === "drafts" && id && !action) {
+    if (method === "GET") {
+      return json({ draft: await store.readDraft(id) });
+    }
+    if (method === "PUT") {
+      const body = await readJsonBody(request);
+      const draft = await store.writeDraft(id, body);
+      return json({ draft });
+    }
+    if (method === "DELETE") {
+      const removed = await store.deleteDraft(id);
+      return json({ removed }, removed ? 200 : 404);
+    }
+    return null;
+  }
+
+  if (resource === "publish" && id && action === "status" && method === "GET") {
+    return json(await publishStatus({ env, store, id }));
+  }
+
+  if (resource === "publish" && id && !action && method === "POST") {
+    return streamTask(async (send) =>
+      publishPost({
+        env,
+        store,
+        id,
+        onLog: (message) => send({ type: "log", message })
+      })
+    );
+  }
+
+  return null;
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    let response;
+
+    if (!authorized(request, url, env)) {
+      response = new Response(
+        "トークンが必要です。起動時に表示された URL を開いてください。",
+        { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } }
+      );
+    } else if (STATE_CHANGING.has(request.method ?? "") && !stateChangingAllowed(request)) {
+      response = json(
+        { error: "別のオリジンからの書き込みは受け付けません。執筆画面から操作してください。" },
+        403
+      );
+    } else {
+      try {
+        if (url.pathname.startsWith("/api/")) {
+          response = (await handleApi(request, env, url)) ?? json({ error: "not found" }, 404);
+        } else if (env.ASSETS) {
+          response = await env.ASSETS.fetch(request);
+        } else {
+          response = new Response("not found", {
+            status: 404,
+            headers: { "content-type": "text/plain; charset=utf-8" }
+          });
+        }
+      } catch (error) {
+        const status =
+          error instanceof DraftNotFound ? 404 : error instanceof PublishError ? 400 : 500;
+        response = json({ error: error?.message ?? String(error) }, status);
+      }
+    }
+
+    // ?token= で入ってきたらクッキーに移す（ローカル版と同じ）。
+    if (env.SLYTXT_TOKEN && url.searchParams.get("token") === env.SLYTXT_TOKEN) {
+      const headers = new Headers(response.headers);
+      headers.append(
+        "set-cookie",
+        `slytxt_token=${env.SLYTXT_TOKEN}; Path=/; HttpOnly; SameSite=Lax`
+      );
+      response = new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers
+      });
+    }
+    return response;
+  }
+};
