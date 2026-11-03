@@ -1,8 +1,23 @@
 ---
+import { getProjects } from "@/lib/content";
 import { navGroups, site } from "@/lib/site";
 import ThemeToggle from "./ThemeToggle.astro";
 
 const currentPath = Astro.url.pathname;
+
+const projects = await getProjects();
+
+// Do not show a menu link to a section with no content (PR #19 rule).
+// The /projects/ page itself stays reachable by direct URL, and the
+// link returns automatically once a project is published.
+const visibleNavGroups = navGroups
+  .map((group) => ({
+    ...group,
+    items: group.items.filter(
+      (item) => item.href !== "/projects/" || projects.length > 0
+    )
+  }))
+  .filter((group) => group.items.length > 0);
 
 function isCurrent(href: string) {
   return currentPath === href || currentPath.startsWith(href);
@@ -34,7 +49,7 @@ function isCurrent(href: string) {
   <div class="site-menu" id="site-menu" data-menu hidden>
     <nav aria-label="Main">
       {
-        navGroups.map((group) => (
+        visibleNavGroups.map((group) => (
           <div class="site-menu__group">
             <p class="site-menu__label" aria-hidden="true">{group.label}</p>
             <ul>
