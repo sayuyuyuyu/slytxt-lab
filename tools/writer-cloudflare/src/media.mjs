@@ -1,12 +1,15 @@
 /*
- * 画像メディアのアップロード。R2 バケット（env.MEDIA）に保存し、
- * 公開 URL（env.MEDIA_PUBLIC_BASE_URL 配下）を返す。
+ * 画像メディアのアップロード。GitHub リポジトリの public/media/ へ
+ * Contents API で main に直接コミットし、サイト側の公開 URL を返す。
  *
- * 2026-11-04 に R2 を有効化し、バケットと binding を設定済み。
- * 未設定の環境では 501 で明示的に失敗させる
- * （blob: URL のような壊れた URL を本文に残さないため）。
- * 設定の手順は README の「画像メディア（R2）」を参照。
+ * 以前は R2 バケットに保存していたが、2026-11-04 の方針変更で GitHub 保存に
+ * 切り替えた（バケットと binding は撤去済み）。コミットが Cloudflare Pages の
+ * デプロイを起こすため、返した URL が実際に開けるようになるまで数十秒〜
+ * 1分程度かかる。詳細は README の「画像メディア（GitHub）」を参照。
+ * GITHUB_TOKEN が未設定の環境では 501 で明示的に失敗させる
+ * （壊れた URL を本文に残さないため）。
  */
+import { GitHubError, createGitHubClient } from "./github.mjs";
 
 export class MediaError extends Error {
   constructor(message, status = 400) {
@@ -24,16 +27,15 @@ const TYPES = new Map([
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
+const SITE_ORIGIN = "https://slytxt.dev";
+const MEDIA_DIR = "public/media";
+
 export async function uploadMedia(request, env) {
-  if (!env.MEDIA) {
+  if (!env.GITHUB_TOKEN) {
     throw new MediaError(
-      "画像ストレージ（R2）が未設定です。README の「画像メディア（R2）」の手順で有効化してください。",
+      "GitHub トークン（GITHUB_TOKEN）が未設定のため、画像を保存できません。",
       501
     );
-  }
-  const base = String(env.MEDIA_PUBLIC_BASE_URL ?? "").replace(/\/+$/, "");
-  if (!base) {
-    throw new MediaError("画像の公開 URL（MEDIA_PUBLIC_BASE_URL）が未設定です。", 501);
   }
 
   const form = await request.formData().catch(() => null);
@@ -49,9 +51,21 @@ export async function uploadMedia(request, env) {
     throw new MediaError("画像は 10MB までです。", 413);
   }
 
-  const key = `media/${crypto.randomUUID()}.${ext}`;
-  await env.MEDIA.put(key, await file.arrayBuffer(), {
-    httpMetadata: { contentType: file.type }
-  });
-  return { url: `${base}/${key}`, key };
+  const name = `${crypto.randomUUID()}.${ext}`;
+  const path = `${MEDIA_DIR}/${name}`;
+  const gh = createGitHubClient(env);
+  try {
+    await gh.putBinaryContent({
+      path,
+      bytes: new Uint8Array(await file.arrayBuffer()),
+      message: `media: 画像を追加 ${path}`,
+      branch: "main"
+    });
+  } catch (error) {
+    if (error instanceof GitHubError) {
+      throw new MediaError(`画像の保存に失敗しました: ${error.message}`, 502);
+    }
+    throw error;
+  }
+  return { url: `${SITE_ORIGIN}/media/${name}`, key: path };
 }
