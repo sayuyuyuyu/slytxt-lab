@@ -1,0 +1,43 @@
+/*
+ * Crepe の見た目を writer のトーン（theme.css / style.css の変数）に
+ * 合わせるための上書き。editor.js が Crepe の CSS の後に読み込むので、
+ * ここに書いた指定が優先される。色は変数経由なのでライトテーマ
+ * （html.light）にもそのまま追従する。
+ */
+
+.milkdown {
+  --crepe-color-background: var(--bg);
+  --crepe-color-on-background: var(--text);
+  --crepe-color-surface: var(--surface);
+  --crepe-color-surface-low: var(--bg);
+  --crepe-color-on-surface: var(--text);
+  --crepe-color-on-surface-variant: var(--text-muted);
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--accent-cyan);
+  --crepe-color-secondary: var(--border);
+  --crepe-color-on-secondary: var(--text);
+  --crepe-color-inverse: var(--surface);
+  --crepe-color-on-inverse: var(--text);
+  --crepe-color-inline-area: var(--surface);
+  --crepe-color-error: var(--accent-red);
+  --crepe-color-hover: var(--surface);
+  --crepe-color-selected: var(--border);
+  --crepe-color-inline-code: var(--accent-red);
+  --crepe-font-title: var(--font-body);
+  --crepe-font-default: var(--font-body);
+  --crepe-font-code: var(--font-mono);
+  --crepe-shadow-1: 0 4px 16px rgb(0 0 0 / 18%);
+  --crepe-shadow-2: 0 12px 32px rgb(0 0 0 / 24%);
+}
+
+/* Crepe 既定の大きな余白（60px 120px）を、本文の読み幅に合わせて詰める。 */
+.milkdown .ProseMirror {
+  padding: 10px 2px 56px;
+  font-size: 1rem;
+  line-height: 1.95;
+  caret-color: var(--accent-cyan);
+}
+
+.milkdown .ProseMirror:focus {
+  outline: none;
+}

@@ -15,6 +15,7 @@ import {
   createDraftStore
 } from "./drafts-kv.mjs";
 import { PublishError, publishPost, publishStatus } from "./publish.mjs";
+import { MediaError, uploadMedia } from "./media.mjs";
 
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -123,6 +124,13 @@ async function handleApi(request, env, url) {
     return null;
   }
 
+  if (resource === "media" && !id) {
+    if (method === "POST") {
+      return json(await uploadMedia(request, env), 201);
+    }
+    return null;
+  }
+
   if (resource === "publish" && id && action === "status" && method === "GET") {
     return json(await publishStatus({ env, store, id }));
   }
@@ -165,7 +173,13 @@ export default {
       });
     } catch (error) {
       const status =
-        error instanceof DraftNotFound ? 404 : error instanceof PublishError ? 400 : 500;
+        error instanceof DraftNotFound
+          ? 404
+          : error instanceof PublishError
+            ? 400
+            : error instanceof MediaError
+              ? error.status
+              : 500;
       return json({ error: error?.message ?? String(error) }, status);
     }
   }
