@@ -26,6 +26,14 @@ export const categoryPaths = {
   projects: "/projects/"
 } as const;
 
+/** Empty-state headings: one pattern, "No <collection> yet", kept distinct from the 404 heading "Not found". */
+export const emptyStateTitles = {
+  articles: "No articles yet",
+  notes: "No notes yet",
+  projects: "No projects yet",
+  tags: "No tags yet"
+} as const;
+
 export type ArticleSection = {
   title: string;
   eyebrow: string;
@@ -39,21 +47,21 @@ export const articleSections: Record<"tech" | "journal" | "notes", ArticleSectio
     title: categoryLabels.tech,
     eyebrow: "tech",
     description: "AI、MCP、クラウド、プログラミングを試した記録。",
-    emptyTitle: "Content not found",
+    emptyTitle: emptyStateTitles.articles,
     emptyDescription: "まだありません。AIやクラウドを試した記録の最初の1本がここに並びます。"
   },
   journal: {
     title: categoryLabels.journal,
     eyebrow: "journal",
     description: "旅行、ゲーム、音楽、ガジェットの話。",
-    emptyTitle: "Content not found",
+    emptyTitle: emptyStateTitles.articles,
     emptyDescription: "まだありません。旅行、ゲーム、音楽、ガジェットの話がここに並びます。"
   },
   notes: {
     title: categoryLabels.notes,
     eyebrow: "notes",
     description: "あとで記事にする前の、短いメモ。",
-    emptyTitle: "Content not found",
+    emptyTitle: emptyStateTitles.notes,
     emptyDescription: "まだありません。短いメモがここに並びます。"
   }
 };
@@ -63,7 +71,7 @@ export const articlesIndex: ArticleSection = {
   title: "Articles",
   eyebrow: "articles",
   description: "技術系の記事と、それ以外の記事。",
-  emptyTitle: "Content not found",
+  emptyTitle: emptyStateTitles.articles,
   emptyDescription: "まだありません。長い文章がここに並びます。"
 };
 
