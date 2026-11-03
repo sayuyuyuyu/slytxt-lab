@@ -26,9 +26,9 @@ const recentNotes = notes.slice(0, 4);
           </p>
           <h1 id="intro-title">{site.name}</h1>
           <nav class="home-hero__links" aria-label="Writing and projects">
-            <a href="/articles/">Articles <span>{articles.length}</span></a>
-            <a href="/notes/">Notes <span>{notes.length}</span></a>
-            <a href="/projects/">Projects <span>{projects.length}</span></a>
+            <a href="/articles/">Articles {articles.length > 0 && <span>{articles.length}</span>}</a>
+            <a href="/notes/">Notes {notes.length > 0 && <span>{notes.length}</span>}</a>
+            <a href="/projects/">Projects {projects.length > 0 && <span>{projects.length}</span>}</a>
             <a href="/tags/">Tags</a>
           </nav>
         </div>
