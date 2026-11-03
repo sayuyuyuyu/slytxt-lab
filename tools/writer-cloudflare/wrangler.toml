@@ -1,0 +1,29 @@
+name = "slytxt-writer"
+main = "src/index.mjs"
+compatibility_date = "2025-06-01"
+
+# 本番のホスト名。デプロイ時にこのドメインへ割り当てる。
+routes = [{ pattern = "write.slytxt.dev", custom_domain = true }]
+
+# 静的ファイルは scripts/prepare-assets.mjs が public/ に用意する。
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# 下書きの KV。デプロイ前に
+#   npx wrangler kv namespace create slytxt-writer-drafts
+# で作った ID に差し替えること（README 参照）。
+[[kv_namespaces]]
+binding = "DRAFTS"
+id = "00000000000000000000000000000000"
+preview_id = "00000000000000000000000000000000"
+
+[vars]
+GITHUB_OWNER = "sayuyuyuyu"
+GITHUB_REPO = "slytxt-lab"
+ANTHROPIC_MODEL = "claude-haiku-4-5"
+
+# secrets はここに書かない。デプロイ時に wrangler secret put で登録する:
+#   GITHUB_TOKEN      GitHub fine-grained PAT（必須）
+#   ANTHROPIC_API_KEY 誤字修正 pass 用（任意。未設定なら pass を省略）
+#   SLYTXT_TOKEN      初回疎通用のトークン認証（Access 切替後に削除可）
