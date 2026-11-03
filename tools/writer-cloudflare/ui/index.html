@@ -73,8 +73,8 @@
 
           <!-- WYSIWYG（editor.js）が有効なときはこちらを使い、textarea は隠れる。
                読み込めない場合は textarea のまま編集できる（フォールバック）。 -->
-          <div id="editorRoot" class="editor__wysiwyg" hidden></div>
-          <textarea id="body" class="editor__body" spellcheck="false"></textarea>
+          <div id="editorRoot" class="editor__wysiwyg" hidden aria-label="本文"></div>
+          <textarea id="body" class="editor__body" spellcheck="false" aria-label="本文"></textarea>
         </div>
 
         <div id="empty" class="empty" hidden>
