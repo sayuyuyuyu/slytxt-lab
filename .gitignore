@@ -6,7 +6,7 @@ dist
 .env.*
 !.env.example
 
-# Local-only content samples. Real published content should use normal .mdx files.
+# Local-only content samples. Real published content should use normal .md files.
 src/content/**/*.sample.mdx
 src/content/**/sample-*.mdx
 
