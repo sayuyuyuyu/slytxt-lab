@@ -2,10 +2,12 @@
 import ArticleCard from "@/components/ArticleCard.astro";
 import NoteCard from "@/components/NoteCard.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
-import { getAllArticles, getNotes, getProjects } from "@/lib/content";
+import { getAllArticles, getAllEntries, getNotes, getProjects } from "@/lib/content";
 import { site } from "@/lib/site";
+import { collectTags } from "@/lib/tags";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-const [articles, notes, projects] = await Promise.all([getAllArticles(), getNotes(), getProjects()]);
+const [articles, notes, projects, allEntries] = await Promise.all([getAllArticles(), getNotes(), getProjects(), getAllEntries()]);
+const hasTags = collectTags(allEntries).size > 0;
 const recent = articles.slice(0, 6);
 const recentNotes = notes.slice(0, 4);
 ---
@@ -28,8 +30,8 @@ const recentNotes = notes.slice(0, 4);
           <nav class="home-hero__links" aria-label="Writing and projects">
             <a href="/articles/">Articles {articles.length > 0 && <span>{articles.length}</span>}</a>
             <a href="/notes/">Notes {notes.length > 0 && <span>{notes.length}</span>}</a>
-            <a href="/projects/">Projects {projects.length > 0 && <span>{projects.length}</span>}</a>
-            <a href="/tags/">Tags</a>
+            {projects.length > 0 && <a href="/projects/">Projects <span>{projects.length}</span></a>}
+            {hasTags && <a href="/tags/">Tags</a>}
           </nav>
         </div>
       </div>
