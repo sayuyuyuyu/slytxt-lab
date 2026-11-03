@@ -257,10 +257,18 @@ textarea {
 
 .drafts__item {
   position: relative;
+  border-radius: 10px;
+}
+
+.drafts__select {
   display: grid;
   gap: 4px;
+  width: 100%;
   padding: 10px 40px 10px 12px;
+  border: 0;
   border-radius: 10px;
+  background: transparent;
+  text-align: left;
   cursor: pointer;
 }
 
