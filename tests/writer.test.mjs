@@ -3,7 +3,11 @@ import test from "node:test";
 import { createDraftStore, normalizeDraft } from "../tools/writer-cloudflare/src/drafts-kv.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer-cloudflare/src/frontmatter.mjs";
 import { plainText, renderMarkdown } from "../tools/writer-cloudflare/src/markdown.mjs";
-import { deriveDescription, normalizeSlug } from "../tools/writer-cloudflare/src/publish.mjs";
+import {
+  deriveDescription,
+  normalizeSlug,
+  publicUrl
+} from "../tools/writer-cloudflare/src/publish.mjs";
 
 /**
  * drafts-kv のテスト用に、Cloudflare KV の最小インターフェースを
@@ -70,6 +74,13 @@ test("slug: 日本語や記号から作れないときは日付に落とす", ()
   assert.equal(normalizeSlug("--MCP---サーバー--"), "mcp");
   assert.equal(normalizeSlug("日本語だけ", "20260917"), "post-20260917");
   assert.equal(normalizeSlug("", "20260917"), "post-20260917");
+});
+
+test("publish: 公開 URL はサイト側のパスに対応する", () => {
+  assert.equal(publicUrl("notes", "my-note"), "https://slytxt.dev/notes/my-note/");
+  assert.equal(publicUrl("tech", "my-post"), "https://slytxt.dev/articles/tech/my-post/");
+  assert.equal(publicUrl("journal", "my-post"), "https://slytxt.dev/articles/journal/my-post/");
+  assert.equal(publicUrl("projects", "my-post"), "");
 });
 
 test("markdown: 見出しと段落", () => {

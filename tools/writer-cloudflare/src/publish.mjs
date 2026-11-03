@@ -16,6 +16,21 @@ import { GitHubError, createGitHubClient } from "./github.mjs";
 
 export class PublishError extends Error {}
 
+const SITE_ORIGIN = "https://slytxt.dev";
+
+/** サイト側の公開パス（src/lib/content.ts の ARTICLE_BASE と対応）。 */
+const PUBLIC_BASE = {
+  tech: "articles/tech",
+  journal: "articles/journal",
+  notes: "notes"
+};
+
+/** 投稿が公開される URL。想定外のカテゴリなら空文字を返す。 */
+export function publicUrl(category, slug) {
+  const base = PUBLIC_BASE[category];
+  return base ? `${SITE_ORIGIN}/${base}/${slug}/` : "";
+}
+
 /** 一覧に出す説明。エージェントに書かせず、本文の書き出しから最小限だけ作る。 */
 export function deriveDescription(body, limit = 90) {
   const withoutHeadings = String(body ?? "").replace(/^\s{0,3}#{1,6}\s+.*$/gm, "");
@@ -44,7 +59,11 @@ function deriveTitle(draft, body) {
 
 function publishTarget(draft) {
   const slug = normalizeSlug(draft.id) || draft.id;
-  return { slug, file: `src/content/${draft.category}/${slug}.md` };
+  return {
+    slug,
+    file: `src/content/${draft.category}/${slug}.md`,
+    url: publicUrl(draft.category, slug)
+  };
 }
 
 function asPublishError(error) {
@@ -105,7 +124,15 @@ async function publishPostInner({ env, store, id, onLog }) {
     });
     onLog(`書き出しました: ${file}`);
     await store.writeDraft(id, { pr: existingPr.html_url });
-    return { branch, file, prUrl: existingPr.html_url, slug, title, state: "waiting" };
+    return {
+      branch,
+      file,
+      prUrl: existingPr.html_url,
+      url: publicUrl(draft.category, slug),
+      slug,
+      title,
+      state: "waiting"
+    };
   }
 
   if (await gh.getContent(file, "main")) {
@@ -134,7 +161,15 @@ async function publishPostInner({ env, store, id, onLog }) {
   onLog("CI の完了待ちです。このまま画面を開いておくと merge まで進みます。");
 
   await store.writeDraft(id, { pr: pr.html_url });
-  return { branch, file, prUrl: pr.html_url, slug, title, state: "waiting" };
+  return {
+    branch,
+    file,
+    prUrl: pr.html_url,
+    url: publicUrl(draft.category, slug),
+    slug,
+    title,
+    state: "waiting"
+  };
 }
 
 /**
@@ -156,8 +191,8 @@ export async function publishStatus({ env, store, id }) {
 
 async function publishStatusInner({ env, store, id }) {
   const draft = await store.readDraft(id);
-  const { slug, file } = publishTarget(draft);
-  const base = { prUrl: draft.pr || "", file, slug, title: draft.title };
+  const { slug, file, url } = publishTarget(draft);
+  const base = { prUrl: draft.pr || "", file, slug, url, title: draft.title };
 
   if (!draft.pr) return { ...base, state: "idle" };
 
