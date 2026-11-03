@@ -1,8 +1,7 @@
 /**
- * ドラフトを PR 作成まで一度に通す（Cloudflare 版）。
+ * ドラフトを PR 作成まで一度に通す。
  *
- * ローカル版 publish.mjs との違い:
- * - git / pnpm / gh の spawn を GitHub REST API に置き換えた。
+ * - 投稿は GitHub REST API で行う（git / pnpm / gh の spawn はしない）。
  * - ローカル check は持たず、PR の CI を門番にする（設計書 2.5）。
  * - CI 待ちと merge は publishStatus 側に分けた。投稿リクエストは
  *   PR 作成までで返り、UI が GET /api/publish/:id/status を叩いて
@@ -10,9 +9,9 @@
  * - CI 失敗後に本文を直して再投稿すると、既存ブランチのファイルを
  *   更新して同じ PR で CI を回し直す。
  */
-import { stringifyFrontmatter } from "../../writer/frontmatter.mjs";
-import { plainText } from "../../writer/markdown.mjs";
-import { today } from "../../writer/prompt.mjs";
+import { stringifyFrontmatter } from "./frontmatter.mjs";
+import { plainText } from "./markdown.mjs";
+import { today } from "./date.mjs";
 import { GitHubError, createGitHubClient } from "./github.mjs";
 
 export class PublishError extends Error {}
@@ -129,7 +128,7 @@ async function publishPostInner({ env, store, id, onLog }) {
     title,
     head: branch,
     base: "main",
-    body: "執筆ツール（tools/writer）から投稿。"
+    body: "執筆ツール（write.slytxt.dev）から投稿。"
   });
   onLog(`PR を作成しました: ${pr.html_url}`);
   onLog("CI の完了待ちです。このまま画面を開いておくと merge まで進みます。");
