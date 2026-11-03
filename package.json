@@ -20,7 +20,7 @@
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.3.4",
     "astro": "^7.4.5",
-    "motion": "^13.5.1",
+    "motion": "^14.9.0",
     "pagefind": "^1.6.0",
     "tailwindcss": "^4.3.4"
   },
