@@ -22,6 +22,15 @@ function encodeBase64(text) {
   return btoa(binary);
 }
 
+function encodeBase64Bytes(bytes) {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk));
+  }
+  return btoa(binary);
+}
+
 const FAILED_CONCLUSIONS = new Set([
   "failure",
   "cancelled",
@@ -122,6 +131,13 @@ export function createGitHubClient(env) {
 
     async putContent({ path: filePath, content, message, branch, sha }) {
       const body = { message, content: encodeBase64(content), branch };
+      if (sha) body.sha = sha;
+      return must(`/contents/${filePath}`, { method: "PUT", body }, `${filePath} の書き込み`);
+    },
+
+    /** バイナリ（画像など）を raw bytes の base64 で書き込む。 */
+    async putBinaryContent({ path: filePath, bytes, message, branch, sha }) {
+      const body = { message, content: encodeBase64Bytes(bytes), branch };
       if (sha) body.sha = sha;
       return must(`/contents/${filePath}`, { method: "PUT", body }, `${filePath} の書き込み`);
     },
