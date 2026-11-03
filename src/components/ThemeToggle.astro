@@ -16,6 +16,9 @@
       button.setAttribute("aria-pressed", String(!light));
       button.setAttribute("aria-label", next);
       button.setAttribute("title", next);
+      document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute("content", light ? "#eef3fb" : "#05070f");
     };
 
     button.addEventListener("click", () => {

@@ -35,12 +35,17 @@ const imageUrl = new URL(image, Astro.site);
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#05070f" />
     <script is:inline>
       (() => {
         document.documentElement.classList.add("js");
         // Blue-black terminal is the default look. `light` is an explicit opt-in.
         try {
-          document.documentElement.classList.toggle("light", localStorage.getItem("theme") === "light");
+          const isLight = localStorage.getItem("theme") === "light";
+          document.documentElement.classList.toggle("light", isLight);
+          document
+            .querySelector('meta[name="theme-color"]')
+            ?.setAttribute("content", isLight ? "#eef3fb" : "#05070f");
         } catch {
           // Storage unavailable: stay on the default dark palette.
         }
@@ -79,8 +84,6 @@ const imageUrl = new URL(image, Astro.site);
     {site.twitter && <meta name="twitter:site" content={site.twitter} />}
     {published && <meta property="article:published_time" content={published.toISOString()} />}
     {updated && <meta property="article:modified_time" content={updated.toISOString()} />}
-    <meta name="theme-color" content="#eef3fb" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#05070f" media="(prefers-color-scheme: dark)" />
   </head>
   <body data-pagefind-ignore={searchable ? undefined : "all"}>
     <a class="skip-link" href="#main-content">Skip to content</a>
