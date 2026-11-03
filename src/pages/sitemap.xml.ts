@@ -42,8 +42,7 @@ export async function GET(context: APIContext) {
     "/notes/",
     "/projects/",
     "/tags/",
-    "/about/",
-    "/rss.xml"
+    "/about/"
   ];
 
   const paged = (count: number, base: string) =>
