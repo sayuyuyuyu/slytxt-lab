@@ -1,6 +1,6 @@
 /**
  * 執筆用のローカルサーバー。
- * ブラウザでメモを書いて、AIで膨らませて、整形して Pull Request まで出す。
+ * ブラウザで書いて、投稿ボタンで公開まで通す。
  *
  *   node tools/writer/server.mjs            # 127.0.0.1:4326
  *   node tools/writer/server.mjs --host     # Tailscale などから触れるようにする
@@ -10,7 +10,7 @@ import { randomBytes } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { agentPlan, runAgent, stripCodeFence } from "./agent.mjs";
+import { agentPlan } from "./agent.mjs";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
@@ -19,17 +19,11 @@ import {
   deleteDraft,
   DraftNotFound,
   listDrafts,
-  listHistory,
   readDraft,
   repoRoot,
-  restoreHistory,
-  snapshotDraft,
-  STATUSES,
-  STATUS_LABELS,
   writeDraft
 } from "./drafts.mjs";
-import { expandPrompt } from "./prompt.mjs";
-import { PublishError, publishDraft, publishNote } from "./publish.mjs";
+import { PublishError, publishPost } from "./publish.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -141,10 +135,7 @@ async function handleApi(req, res, url) {
     json(res, 200, {
       categories: CATEGORIES,
       categoryLabels: CATEGORY_LABELS,
-      statuses: STATUSES,
-      statusLabels: STATUS_LABELS,
-      draftsDir,
-      agent: agentPlan().label
+      draftsDir
     });
     return true;
   }
@@ -156,7 +147,7 @@ async function handleApi(req, res, url) {
     }
     if (method === "POST") {
       const body = await readJsonBody(req);
-      const draft = await createDraft({ title: body.title ?? "", category: body.category ?? "tech" });
+      const draft = await createDraft({ title: body.title ?? "", category: body.category ?? "notes" });
       json(res, 201, { draft });
       return true;
     }
@@ -182,53 +173,9 @@ async function handleApi(req, res, url) {
     return false;
   }
 
-  if (resource === "drafts" && id && action === "history" && method === "GET") {
-    json(res, 200, { history: await listHistory(id) });
-    return true;
-  }
-
-  if (resource === "drafts" && id && action === "restore" && method === "POST") {
-    const body = await readJsonBody(req);
-    json(res, 200, { draft: await restoreHistory(id, body.file) });
-    return true;
-  }
-
-  if (resource === "expand" && id && method === "POST") {
-    streamTask(res, async (send) => {
-      const draft = await readDraft(id);
-      if (!draft.body.trim()) throw new Error("本文が空です。メモを書いてから実行してください。");
-      send({ type: "log", message: "元のメモを退避しています" });
-      await snapshotDraft(id, "expand");
-      const { stdout } = await runAgent({
-        prompt: await expandPrompt(draft),
-        onLog: (message) => send({ type: "log", message })
-      });
-      const body = stripCodeFence(stdout);
-      if (!body.trim()) throw new Error("エージェントの出力が空でした");
-      const updated = await writeDraft(id, {
-        body,
-        status: draft.status === "memo" ? "draft" : draft.status
-      });
-      send({ type: "log", message: "下書きに反映しました" });
-      return { draft: updated };
-    });
-    return true;
-  }
-
   if (resource === "publish" && id && method === "POST") {
     streamTask(res, async (send) => {
-      const result = await publishDraft({
-        id,
-        onLog: (message) => send({ type: "log", message })
-      });
-      return result;
-    });
-    return true;
-  }
-
-  if (resource === "note" && id && method === "POST") {
-    streamTask(res, async (send) => {
-      const result = await publishNote({
+      const result = await publishPost({
         id,
         onLog: (message) => send({ type: "log", message })
       });

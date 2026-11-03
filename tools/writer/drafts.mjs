@@ -1,9 +1,9 @@
 /**
  * 執筆用ドラフトの保管庫。
- * `drafts/<id>.md` を1記事1ファイルで扱う。リポジトリ直下だが .gitignore 済み。
+ * `drafts/<id>.md` を1件1ファイルで扱う。リポジトリ直下だが .gitignore 済み。
  * 別の場所に置きたいときは SLYTXT_DRAFTS_DIR を指定する。
  */
-import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
@@ -13,12 +13,9 @@ export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 export const draftsDir = process.env.SLYTXT_DRAFTS_DIR
   ? path.resolve(process.env.SLYTXT_DRAFTS_DIR)
   : path.join(repoRoot, "drafts");
-export const historyDir = path.join(draftsDir, ".history");
 
-export const CATEGORIES = ["tech", "journal", "notes", "projects"];
-export const CATEGORY_LABELS = { tech: "Tech", journal: "Journal", notes: "Notes", projects: "Projects" };
-export const STATUSES = ["memo", "draft", "ready", "published"];
-export const STATUS_LABELS = { memo: "メモ", draft: "下書き", ready: "出せる", published: "PR済み" };
+export const CATEGORIES = ["tech", "journal", "notes"];
+export const CATEGORY_LABELS = { tech: "Tech", journal: "Journal", notes: "Notes" };
 
 export class DraftNotFound extends Error {}
 
@@ -57,7 +54,6 @@ function asTags(value) {
 const MANAGED_KEYS = new Set([
   "title",
   "category",
-  "status",
   "tags",
   "created",
   "updated",
@@ -86,12 +82,10 @@ export function normalizeDraft(id, data, body, raw = []) {
       : CATEGORIES.includes(rawCategory)
         ? rawCategory
         : "tech";
-  const status = STATUSES.includes(asString(data.status)) ? String(data.status) : "memo";
   return {
     id,
     title: asString(data.title).trim() || "無題",
     category,
-    status,
     tags: asTags(data.tags),
     created: asString(data.created) || nowIso(),
     updated: asString(data.updated) || nowIso(),
@@ -107,7 +101,6 @@ export function serializeDraft(draft) {
     {
       title: draft.title,
       category: draft.category,
-      status: draft.status,
       tags: draft.tags,
       created: draft.created,
       updated: draft.updated,
@@ -137,7 +130,6 @@ export async function listDrafts() {
         id: draft.id,
         title: draft.title,
         category: draft.category,
-        status: draft.status,
         tags: draft.tags,
         updated: draft.updated,
         pr: draft.pr,
@@ -168,7 +160,6 @@ export async function writeDraft(id, patch) {
     {
       title: patch.title ?? base.title,
       category: patch.category ?? base.category,
-      status: patch.status ?? base.status,
       tags: patch.tags ?? base.tags,
       created: base.created,
       updated: nowIso(),
@@ -192,24 +183,20 @@ function slugFragment(title) {
   return ascii || "memo";
 }
 
-export async function createDraft({ title = "", category = "tech" } = {}) {
+export async function createDraft({ title = "", category = "notes" } = {}) {
   await ensureDraftsDir();
   const stamp = new Date().toISOString().slice(0, 10);
   const base = `${stamp}-${slugFragment(title)}`;
   let id = base;
   let suffix = 2;
   for (;;) {
-    const draft = normalizeDraft(id, { title: title || "無題", category, status: "memo" }, "");
-    // 削除して空いた id に新しいメモを置くと、前のメモの履歴を
-    // 「直前の状態に戻す」で拾ってしまう。履歴付きの id は使わない。
-    if ((await listHistory(id)).length === 0) {
-      try {
-        // 既にあれば EEXIST で弾かれる。stat と write の間の競合を避ける。
-        await writeFile(draftPath(id), serializeDraft(draft), { encoding: "utf8", flag: "wx" });
-        return draft;
-      } catch (error) {
-        if (error.code !== "EEXIST") throw error;
-      }
+    const draft = normalizeDraft(id, { title: title || "無題", category }, "");
+    try {
+      // 既にあれば EEXIST で弾かれる。stat と write の間の競合を避ける。
+      await writeFile(draftPath(id), serializeDraft(draft), { encoding: "utf8", flag: "wx" });
+      return draft;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
     }
     id = `${base}-${suffix}`;
     suffix += 1;
@@ -219,47 +206,6 @@ export async function createDraft({ title = "", category = "tech" } = {}) {
 export async function deleteDraft(id) {
   const target = draftPath(id);
   if (!(await stat(target).catch(() => null))) return false;
-  await snapshotDraft(id, "deleted");
   await rm(target);
   return true;
-}
-
-/** 上書き前に退避する。expand や publish のように本文を置き換える操作の直前に呼ぶ。 */
-export async function snapshotDraft(id, reason = "snapshot") {
-  const source = draftPath(id);
-  if (!(await stat(source).catch(() => null))) return null;
-  await mkdir(historyDir, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const target = path.join(historyDir, `${assertId(id)}.${stamp}.${reason}.md`);
-  await cp(source, target);
-  return target;
-}
-
-/** 退避した版の一覧。新しい順。 */
-export async function listHistory(id) {
-  const prefix = `${assertId(id)}.`;
-  const names = await readdir(historyDir).catch(() => []);
-  return names
-    .filter((name) => name.startsWith(prefix) && name.endsWith(".md"))
-    .map((name) => {
-      const match = name.slice(prefix.length).match(/^(.+?)\.([a-z-]+)\.md$/);
-      return match ? { file: name, stamp: match[1], reason: match[2] } : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => b.stamp.localeCompare(a.stamp));
-}
-
-/** 退避した版を書き戻す。AIで膨らませた結果を戻したいときに使う。 */
-export async function restoreHistory(id, file) {
-  const safe = path.basename(String(file ?? ""));
-  if (!safe.startsWith(`${assertId(id)}.`)) {
-    throw new Error("このドラフトの履歴ではありません");
-  }
-  const source = path.join(historyDir, safe);
-  if (!(await stat(source).catch(() => null))) {
-    throw new Error("履歴が見つかりません");
-  }
-  await snapshotDraft(id, "before-restore");
-  await writeFile(draftPath(id), await readFile(source, "utf8"), "utf8");
-  return readDraft(id);
 }

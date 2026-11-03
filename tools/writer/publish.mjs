@@ -1,5 +1,7 @@
 /**
- * 下書きを整形して、ブランチ・コミット・push・Pull Request まで通す。
+ * ドラフトを公開まで一度に通す。
+ * 誤字だけエージェントに直させ、あとは機械的にファイル化して、
+ * ブランチ・コミット・push・Pull Request・CI待ち・merge まで実行する。
  * 直接 main へは push しない。作業ツリーが汚れているときは何もせず止まる。
  */
 import { spawn } from "node:child_process";
@@ -7,10 +9,10 @@ import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AgentError, runAgent, stripCodeFence } from "./agent.mjs";
-import { historyDir, readDraft, repoRoot, snapshotDraft, writeDraft } from "./drafts.mjs";
-import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
+import { deleteDraft, readDraft, repoRoot } from "./drafts.mjs";
+import { stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText } from "./markdown.mjs";
-import { notePrompt, polishPrompt, today } from "./prompt.mjs";
+import { fixPrompt, today } from "./prompt.mjs";
 
 export class PublishError extends Error {}
 
@@ -75,198 +77,15 @@ export function normalizeSlug(raw, fallbackDate = today()) {
   return cleaned || `post-${fallbackDate.replace(/-/g, "")}`;
 }
 
-function requireField(data, key) {
-  const value = data[key];
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new PublishError(`エージェントの出力に ${key} がありません`);
-  }
-  return value.trim();
+/** タイトルが無いドラフトは、本文の書き出しをタイトルにする。 */
+function deriveTitle(draft, body) {
+  if (draft.title && draft.title !== "無題") return draft.title;
+  const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
+  const text = plainText(firstLine).replace(/\s+/g, " ").trim();
+  return (text || "無題").slice(0, 40);
 }
 
-async function savePolished(draftId, document) {
-  await mkdir(historyDir, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const target = path.join(historyDir, `${draftId}.${stamp}.polished.md`);
-  await writeFile(target, document, "utf8");
-  return target;
-}
-
-export async function publishDraft({ id, onLog = () => {} }) {
-  const draft = await readDraft(id);
-  if (!draft.body.trim()) throw new PublishError("本文が空です。何か書いてから流してください。");
-
-  const originalBranch = (
-    await run("git", ["rev-parse", "--abbrev-ref", "HEAD"], { onLog })
-  ).stdout.trim();
-  if (originalBranch === "HEAD") throw new PublishError("detached HEAD では実行できません。");
-
-  const dirty = (await run("git", ["status", "--porcelain"], { onLog })).stdout.trim();
-  if (dirty) {
-    throw new PublishError(
-      `コミットされていない変更があります。先に片付けてから実行してください。\n${dirty}`
-    );
-  }
-
-  await run("git", ["fetch", "origin", "main"], { onLog });
-  const base = (await run("git", ["rev-parse", "origin/main"], { onLog })).stdout.trim();
-
-  onLog("整形中…（エージェントの応答を待っています）");
-  const { stdout } = await runAgent({ prompt: await polishPrompt(draft), onLog });
-  const document = stripCodeFence(stdout);
-  const polishedPath = await savePolished(id, document);
-  const shown = path.relative(repoRoot, polishedPath);
-  onLog(`整形結果を保存しました: ${shown.startsWith("..") ? polishedPath : shown}`);
-
-  const { data, body, hasFrontmatter } = parseFrontmatter(document);
-  if (!hasFrontmatter) throw new PublishError("出力に frontmatter がありません。");
-  const title = requireField(data, "title");
-  const provided = typeof data.description === "string" ? data.description.trim() : "";
-  const description = provided || deriveDescription(body) || title;
-  const published = String(data.published ?? "").trim() || today();
-  const tags = (Array.isArray(data.tags) ? data.tags : []).map((tag) => String(tag).trim()).filter(Boolean).slice(0, 6);
-  const slug = draft.slug || normalizeSlug(data.slug, published.replace(/-/g, ""));
-  const category = draft.category;
-  const relativeFile = path.join("src", "content", category, `${slug}.md`);
-  const absoluteFile = path.join(repoRoot, relativeFile);
-
-  const branch = `write/${slug}`;
-
-  // 一度出した PR をもう一度流したときは、同じブランチに積んで PR を更新する。
-  // 誤字を直したいだけのときに、新しい PR を立てずに済む。
-  const updating = Boolean(draft.pr && draft.slug);
-  if (updating) {
-    await run("git", ["fetch", "origin", branch], { onLog });
-    const remote = await run("git", ["rev-parse", "--verify", `origin/${branch}`], {
-      onLog,
-      allowFailure: true
-    });
-    if (remote.code !== 0) {
-      throw new PublishError(
-        `${branch} がリモートにありません。PR ${draft.pr} を閉じてから、もう一度出し直してください。`
-      );
-    }
-    const local = await run("git", ["rev-parse", "--verify", branch], { allowFailure: true });
-    if (local.code === 0) {
-      const ahead = (
-        await run("git", ["log", "--oneline", `origin/${branch}..${branch}`], { allowFailure: true })
-      ).stdout.trim();
-      if (ahead) {
-        throw new PublishError(
-          `${branch} に push していないコミットがあります。先に片付けてください。\n${ahead}`
-        );
-      }
-    }
-  } else {
-    if (await stat(absoluteFile).catch(() => null)) {
-      throw new PublishError(`${relativeFile} は既にあります。slug を変えてください。`);
-    }
-    const existingBranch = (await run("git", ["branch", "--list", branch], { onLog })).stdout.trim();
-    if (existingBranch) throw new PublishError(`ブランチ ${branch} が既にあります。`);
-  }
-
-  await snapshotDraft(id, updating ? "republish" : "publish");
-  const startPoint = updating ? `origin/${branch}` : base;
-  // -C は既存のローカルブランチをリモートに合わせ直す。
-  // 前回の実行で残っているブランチをそのまま使うため。
-  await run("git", ["switch", "-C", branch, startPoint], { onLog });
-  onLog(
-    updating
-      ? `ブランチ ${branch} に積みます（${draft.pr} を更新）`
-      : `ブランチ ${branch} を作成しました（origin/main から）`
-  );
-
-  let committed = false;
-  try {
-    await mkdir(path.dirname(absoluteFile), { recursive: true });
-    await writeFile(
-      absoluteFile,
-      stringifyFrontmatter({ title, description, published, tags }, body),
-      "utf8"
-    );
-    onLog(`書き出しました: ${relativeFile}`);
-
-    await run("git", ["add", relativeFile], { onLog });
-
-    if (process.env.SLYTXT_SKIP_CHECK !== "1") {
-      onLog("型チェック中…");
-      await run("pnpm", ["run", "check"], { onLog });
-    }
-
-    const changed = (await run("git", ["status", "--porcelain"], { onLog })).stdout.trim();
-    if (!changed) {
-      await run("git", ["switch", originalBranch], { onLog });
-      onLog("内容に変更がありませんでした。PR はそのままです。");
-      return { branch, file: relativeFile, prUrl: draft.pr, slug, title, updated: false };
-    }
-
-    await run("git", ["commit", "-m", updating ? `post: ${title} を修正` : `post: ${title}`], { onLog });
-    committed = true;
-    await run("git", ["push", "-u", "origin", branch], { onLog });
-
-    if (updating) {
-      await writeDraft(id, { status: "published", title, tags, pr: draft.pr, slug });
-      await run("git", ["switch", originalBranch], { onLog });
-      return { branch, file: relativeFile, prUrl: draft.pr, slug, title, updated: true };
-    }
-
-    const prBody = [
-      "## 概要",
-      "",
-      description,
-      "",
-      "## 変更",
-      "",
-      `- \`${relativeFile.replace(/\\/g, "/")}\` を追加`,
-      "",
-      `カテゴリ: ${category} / タグ: ${tags.length ? tags.join(", ") : "なし"}`,
-      "",
-      "<details>",
-      "<summary>元のメモ</summary>",
-      "",
-      "````text",
-      draft.body.trim().slice(0, 4000),
-      "````",
-      "",
-      "</details>",
-      "",
-      "---",
-      "",
-      "執筆ツール（`tools/writer`）から作成。"
-    ].join("\n");
-
-    const pr = await run(
-      "gh",
-      ["pr", "create", "--base", "main", "--head", branch, "--title", title, "--body", prBody],
-      { onLog }
-    );
-    const prUrl = pr.stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .find((line) => line.startsWith("http")) ?? "";
-
-    await writeDraft(id, { status: "published", title, tags, pr: prUrl, slug });
-    await run("git", ["switch", originalBranch], { onLog });
-
-    return { branch, file: relativeFile, prUrl, slug, title, updated: false };
-  } catch (error) {
-    if (!committed) {
-      onLog("失敗したのでブランチを元に戻します");
-      await run("git", ["reset"], { onLog, allowFailure: true });
-      await rm(absoluteFile, { force: true });
-      await run("git", ["switch", originalBranch], { onLog, allowFailure: true });
-      await run("git", ["branch", "-D", branch], { onLog, allowFailure: true });
-    } else {
-      onLog(`コミットは ${branch} に残っています。手動で push してください。`);
-    }
-    throw error;
-  }
-}
-
-/**
- * note は誤字だけ直し、CI が通ったらそのまま merge する。
- * 記事のように PR を開いたままにせず、公開まで一度で終える。
- */
-export async function publishNote({ id, onLog = () => {} }) {
+export async function publishPost({ id, onLog = () => {} }) {
   const draft = await readDraft(id);
   if (!draft.body.trim()) throw new PublishError("本文が空です。何か書いてから流してください。");
 
@@ -286,21 +105,24 @@ export async function publishNote({ id, onLog = () => {} }) {
   const base = (await run("git", ["rev-parse", "origin/main"], { onLog })).stdout.trim();
 
   onLog("誤字を確認しています…");
-  const { stdout } = await runAgent({ prompt: await notePrompt(draft), onLog });
+  const { stdout } = await runAgent({ prompt: fixPrompt(draft), onLog });
   const body = stripCodeFence(stdout).trim();
   if (!body) throw new PublishError("誤字チェックの出力が空でした。");
 
-  const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
-  const title = draft.title === "無題" ? firstLine.slice(0, 40) : draft.title;
+  const title = deriveTitle(draft, body);
   const description = deriveDescription(body) || title;
   const tags = draft.tags.slice(0, 6);
   const published = today();
   const slug = normalizeSlug(draft.id, published.replace(/-/g, "")) || draft.id;
-  const relativeFile = path.join("src", "content", "notes", `${slug}.md`);
+  const note = draft.category === "notes";
+  const relativeFile = path.join("src", "content", draft.category, `${slug}.md`);
   const absoluteFile = path.join(repoRoot, relativeFile);
-  const branch = `note/${slug}`;
+  const branch = `${note ? "note" : "write"}/${slug}`;
 
-  await snapshotDraft(id, "note");
+  if (await stat(absoluteFile).catch(() => null)) {
+    throw new PublishError(`${relativeFile} は既にあります。`);
+  }
+
   await run("git", ["switch", "-C", branch, base], { onLog });
   onLog(`ブランチ ${branch} を作成しました`);
 
@@ -320,13 +142,13 @@ export async function publishNote({ id, onLog = () => {} }) {
       await run("pnpm", ["run", "check"], { onLog });
     }
 
-    await run("git", ["commit", "-m", `note: ${title}`], { onLog });
+    await run("git", ["commit", "-m", `${note ? "note" : "post"}: ${title}`], { onLog });
     committed = true;
     await run("git", ["push", "-u", "origin", branch], { onLog });
 
     const pr = await run(
       "gh",
-      ["pr", "create", "--base", "main", "--head", branch, "--title", title, "--body", `note: ${title}`],
+      ["pr", "create", "--base", "main", "--head", branch, "--title", title, "--body", "執筆ツール（tools/writer）から投稿。"],
       { onLog }
     );
     const prUrl =
@@ -372,7 +194,7 @@ export async function publishNote({ id, onLog = () => {} }) {
 
     await run("git", ["switch", originalBranch], { onLog });
     await run("git", ["branch", "-D", branch], { onLog, allowFailure: true });
-    await writeDraft(id, { status: "published", title, tags, pr: prUrl, slug });
+    await deleteDraft(id);
     return { branch, file: relativeFile, prUrl, slug, title, merged: true };
   } catch (error) {
     if (!committed) {
@@ -395,7 +217,7 @@ if (invokedDirectly) {
     process.exit(1);
   }
   try {
-    const result = await publishDraft({ id, onLog: (line) => console.log(line) });
+    const result = await publishPost({ id, onLog: (line) => console.log(line) });
     console.log(`\n完了: ${result.prUrl || result.branch}`);
   } catch (error) {
     console.error(`\n失敗: ${error instanceof AgentError || error instanceof PublishError ? error.message : error}`);
