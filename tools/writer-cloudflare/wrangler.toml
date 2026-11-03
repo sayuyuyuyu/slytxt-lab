@@ -22,16 +22,9 @@ binding = "DRAFTS"
 id = "52a4dd63c0164774ab9ca6d0c5f3855c"
 preview_id = "52a4dd63c0164774ab9ca6d0c5f3855c"
 
-# 画像メディア用の R2（POST /api/media の保存先）。
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "slytxt-writer-media"
-
 [vars]
 GITHUB_OWNER = "sayuyuyuyu"
 GITHUB_REPO = "slytxt-lab"
-# R2 バケット slytxt-writer-media の公開 URL（r2.dev）。
-MEDIA_PUBLIC_BASE_URL = "https://pub-7e99815991e7448196f84e5f779c29aa.r2.dev"
 
 # secrets はここに書かない。デプロイ時に wrangler secret put で登録する:
 #   GITHUB_TOKEN      GitHub fine-grained PAT（必須）

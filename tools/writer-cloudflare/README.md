@@ -14,7 +14,7 @@
 - 認証は Cloudflare Access が担う（`write.slytxt.dev` は本人のメールアドレスのみ許可。後述）。Worker 側にトークン認証は無い。`x-slytxt-client` による書き込み防御（認証とは別の層）は Worker 側に残してある。入口はカスタムドメインのみで、`workers_dev = false` で workers.dev 側を閉じてある（workers.dev は Access の外にあるため）。
 - UI はこのディレクトリの `ui/` が正（`index.html` / `style.css` / `app.js`）。note 風のレイアウト（編集画面のヘッダー、公開確認パネル、一覧の「…」メニュー）は Cloudflare 版だけの差分として `ui/` 側に持つ。`markdown.mjs` は `tools/writer/` からデプロイ準備のときにコピーする。`/theme.css` は `src/styles/global.css` の `:root` 変数ブロックから静的に生成する（サイト側の変数を変えたら再生成と再デプロイが要る）。
 - 本文の編集は WYSIWYG（Milkdown Crepe、`ui/editor.js` を esbuild でバンドルして `editor.js` / `editor.css` として配信）。本文の保存形式は従来どおり markdown で、自動保存も textarea 経由の従来の仕組みをそのまま使う。エディタが読み込めない・初期化できない場合は textarea にフォールバックする。このディレクトリはサブプロジェクトとして `package.json` を持ち、依存（Crepe / esbuild 等）はここで `pnpm install` する（`node_modules` は git 管理しない）。往復変換の確認は `node scripts/check-editor.mjs`。
-- 画像は `POST /api/media` で R2 バケット `slytxt-writer-media` に保存し、公開 URL を本文へ挿入する（次節）。
+- 画像は `POST /api/media` で GitHub リポジトリの `public/media/` にコミットし、サイト側の公開 URL を本文へ挿入する（次節）。
 
 ## デプロイ手順（本人の作業）
 
@@ -101,20 +101,13 @@ Worker 版で短いメモを1本投稿し、ブランチ → PR → CI → merge
 
 ポリシーを変えるときは、Zero Trust のダッシュボードでこのアプリケーションを編集する。
 
-## 画像メディア（R2）
+## 画像メディア（GitHub）
 
-コード側は実装済み: `POST /api/media`（`src/media.mjs`、書き込み防御の対象）が jpeg / png / gif / webp（10MB まで）を受け取り、R2 バケット（binding `MEDIA`）へ `media/<uuid>.<ext>` で保存し、`MEDIA_PUBLIC_BASE_URL` 配下の公開 URL を返す。エディタの画像アップロードはこの API を使う。
+`POST /api/media`（`src/media.mjs`、書き込み防御の対象）が jpeg / png / gif / webp（10MB まで）を受け取り、GitHub Contents API でリポジトリの `public/media/<uuid>.<ext>` に main へ直接コミットする。使う認証は投稿フローと同じ secret `GITHUB_TOKEN`（Contents Read and write）。返却する URL は `https://slytxt.dev/media/<uuid>.<ext>` で、エディタはこの URL を本文へ挿入する。下書きの markdown には最初からこの最終 URL が入る。
 
-2026-11-04 にアカウントで R2 を有効化し、バケット作成・binding・公開 URL の設定まで完了して稼働中。binding `MEDIA` や `MEDIA_PUBLIC_BASE_URL` が未設定の環境では、`POST /api/media` は 501 を返す。初期設定の手順は次のとおり（実施済み。再設定時も同じ）:
+注意: コミットが Cloudflare Pages のデプロイを起こすため、返却直後はまだその URL は開けず、有効になるまで数十秒〜1分程度かかる。アップロード直後にエディタ内で画像が見えないことがあるが、デプロイが伝われば表示される。`GITHUB_TOKEN` が未設定の環境では、`POST /api/media` は 501 を返す。
 
-1. Cloudflare ダッシュボードで R2 を有効化する（R2 のページを開き、利用開始の手続きをする）。
-2. バケットを作る（リポジトリのルートで）:
-   ```sh
-   npx wrangler r2 bucket create slytxt-writer-media
-   ```
-3. `wrangler.toml` の `[[r2_buckets]]` のコメントを外す。
-4. r2.dev の公開 URL を有効化し（`npx wrangler r2 bucket dev-url enable slytxt-writer-media`、またはダッシュボードの R2 → `slytxt-writer-media` → Settings → Public access）、表示された URL を `wrangler.toml` の `[vars]` に `MEDIA_PUBLIC_BASE_URL` として書く。
-5. `prepare-assets` と `wrangler deploy` で再デプロイする。
+以前は R2 バケット `slytxt-writer-media` に保存していたが、2026-11-04 の方針変更で GitHub 保存に切り替え、バケットと binding（`MEDIA` / `MEDIA_PUBLIC_BASE_URL`）は撤去した。アカウントの R2 有効化自体は残してある。
 
 ## ローカルで試す
 
