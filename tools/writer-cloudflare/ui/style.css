@@ -472,6 +472,11 @@ textarea {
   outline: none;
 }
 
+.editor__title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .editor__body {
   width: 100%;
   min-height: 0;
@@ -485,6 +490,11 @@ textarea {
 
 .editor__body:focus {
   outline: none;
+}
+
+.editor__body:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* WYSIWYG エディタ（Milkdown Crepe）の置き場所。本文エリアの色は editor.css 側で合わせる。 */

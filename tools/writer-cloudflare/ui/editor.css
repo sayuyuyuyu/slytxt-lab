@@ -48,6 +48,11 @@
   outline: none;
 }
 
+.milkdown .ProseMirror:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* 埋め込みプレビュー（editor.js の decoration。公開時の見え方の目安） */
 .milkdown .embed-preview {
   display: flex;
