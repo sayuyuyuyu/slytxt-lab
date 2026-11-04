@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 const root = path.resolve(process.argv[2] ?? "dist");
+const SITE_ORIGIN = "https://slytxt.dev";
 async function files(directory) {
   const result = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -76,8 +77,18 @@ for (const file of htmlFiles) {
   }
   for (const match of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
     const value = match[1].replaceAll("&amp;", "&");
-    if (/^(?:[a-z]+:|\/\/|#)/i.test(value)) continue;
-    const url = new URL(value, `https://local.test${route}`);
+    if (value.startsWith("#")) continue;
+    let url;
+    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)) {
+      try {
+        url = new URL(value, "https://local.test");
+      } catch {
+        continue;
+      }
+      if (url.origin !== SITE_ORIGIN) continue;
+    } else {
+      url = new URL(value, `https://local.test${route}`);
+    }
     let decoded;
     try {
       decoded = decodeURIComponent(url.pathname);
