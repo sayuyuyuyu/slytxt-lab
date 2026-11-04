@@ -9,15 +9,16 @@ type Props = {
   countLabel?: string;
   countLabelOne?: string;
   breadcrumbs?: Crumb[];
+  searchable?: boolean;
 };
-const { title, eyebrow, count, countLabel = "entries", countLabelOne, breadcrumbs } = Astro.props;
+const { title, eyebrow, count, countLabel = "entries", countLabelOne, breadcrumbs, searchable = false } = Astro.props;
 const countText = count === 1 ? (countLabelOne ?? countLabel) : countLabel;
 ---
 <header class="page-header" data-motion>
   <div class="container">
     {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
     <p class="eyebrow">{eyebrow}</p>
-    <h1 class="page-title">{title}</h1>
+    <h1 class="page-title" data-pagefind-meta={searchable ? "title" : undefined}>{title}</h1>
     {count !== undefined && count > 0 && <p class="page-count">{count} {countText}</p>}
   </div>
 </header>

@@ -5,7 +5,7 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
 ---
 
 <BaseLayout searchable title={`About - ${site.name}`} description={pageDescriptions.about}>
-  <PageHeader eyebrow="about" title="About" />
+  <PageHeader eyebrow="about" title="About" searchable />
   <section class="section" data-motion>
     <div class="container">
       <article class="article-main article-body" data-pagefind-filter={`category:${categoryLabels.about}`}>
