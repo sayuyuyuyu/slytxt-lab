@@ -833,6 +833,7 @@ let publishReturnFocus = null;
 let publishCategorySnapshot = null;
 let publishTagsSnapshot = null;
 let publishDescriptionSnapshot = null;
+let publishSuggestionToken = 0;
 
 // ダイアログ用: 開く前にフォーカスがあった要素へ戻し、開いている間は Tab を内側で循環させる。
 function rememberFocus() {
@@ -1084,6 +1085,7 @@ function openPublishPanel() {
 }
 
 function closePublishPanel({ restoreCategory = false } = {}) {
+  publishSuggestionToken += 1;
   const wasHidden = els.publishPanel.hidden;
   els.publishPanel.hidden = true;
   if (restoreCategory && publishCategorySnapshot !== null) {
@@ -1134,12 +1136,14 @@ function setBusy(busy) {
 async function fillDescriptionSuggestion() {
   const id = state.current?.id;
   if (!id) return;
+  const token = ++publishSuggestionToken;
   els.publishDescriptionNote.textContent = "説明文の候補を作っています…";
   try {
     const data = await api(`/api/drafts/${encodeURIComponent(id)}/summary`, {
       method: "POST",
       body: JSON.stringify({ title: els.titleInput.value.trim(), body: els.body.value })
     });
+    if (token !== publishSuggestionToken || els.publishPanel.hidden) return;
     if (state.current?.id !== id) return;
     if (data.summary && !els.publishDescription.value.trim()) {
       els.publishDescription.value = data.summary;
@@ -1149,6 +1153,7 @@ async function fillDescriptionSuggestion() {
         ? "AI 要約の候補です。そのまま使っても、直しても大丈夫です。"
         : "本文の抜粋です。そのまま使っても、直しても大丈夫です。";
   } catch {
+    if (token !== publishSuggestionToken || els.publishPanel.hidden) return;
     els.publishDescriptionNote.textContent =
       "候補を作れませんでした。空欄のままなら、公開時に自動で作られます。";
   }
