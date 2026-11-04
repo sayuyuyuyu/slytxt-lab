@@ -168,17 +168,13 @@ textarea {
 .button--primary {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .button--primary:hover:not(:disabled) {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
-  color: #fff;
-}
-
-.dark .button--primary {
-  color: #231f1a;
+  color: var(--on-accent);
 }
 
 .button--icon {
