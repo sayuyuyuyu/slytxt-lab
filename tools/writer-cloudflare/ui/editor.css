@@ -74,7 +74,7 @@
 }
 .milkdown .embed-preview__kind {
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--text);
 }
 .milkdown .embed-preview__url {
