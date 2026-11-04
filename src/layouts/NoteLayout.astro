@@ -39,7 +39,7 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
         <span aria-hidden="true"> / </span>
         <time datetime={date.toISOString()}>{formatDate(date)}</time>
       </p>
-      {entry.data.cover && <img class="note-cover" src={entry.data.cover} alt="" loading="lazy" />}
+      {entry.data.cover && <img class="note-cover" src={entry.data.cover} alt="" />}
       <pre class="note__text">{text}</pre>
       <TagList tags={entry.data.tags} />
       <nav class="article-nav" aria-label="Note navigation" data-pagefind-ignore data-motion>
