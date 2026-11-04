@@ -16,6 +16,7 @@ const htmlFiles = (await files(root)).filter((name) => name.endsWith(".html"));
 assert.ok(htmlFiles.length > 0, "Build the site before checking output");
 const issues = [];
 let checkedLinks = 0;
+let checkedImages = 0;
 for (const file of htmlFiles) {
   const html = await readFile(file, "utf8");
   const relative = path.relative(root, file);
@@ -31,6 +32,29 @@ for (const file of htmlFiles) {
       issues.push(`${relative}: unexpected og:url`);
   } else if (!html.includes('rel="canonical"'))
     issues.push(`${relative}: missing canonical`);
+  for (const tag of html.matchAll(
+    /<meta\b[^>]*\b(?:property="og:image"|name="twitter:image")[^>]*>/g,
+  )) {
+    const value = tag[0].match(/\bcontent="([^"]+)"/)?.[1];
+    if (!value) {
+      issues.push(`${relative}: og:image / twitter:image without content`);
+      continue;
+    }
+    let decoded;
+    try {
+      decoded = decodeURIComponent(new URL(value).pathname);
+    } catch {
+      issues.push(`${relative}: invalid og image URL ${value}`);
+      continue;
+    }
+    try {
+      if (!(await stat(path.join(root, decoded))).isFile())
+        throw new Error("not a file");
+      checkedImages++;
+    } catch {
+      issues.push(`${relative}: missing og image ${value}`);
+    }
+  }
   for (const match of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
     const value = match[1].replaceAll("&amp;", "&");
     if (/^(?:[a-z]+:|\/\/|#)/i.test(value)) continue;
@@ -55,5 +79,5 @@ for (const file of htmlFiles) {
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages and ${checkedLinks} local links/assets.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedLinks} local links/assets and ${checkedImages} og images.`,
 );
