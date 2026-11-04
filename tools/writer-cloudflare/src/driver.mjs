@@ -78,10 +78,14 @@ export async function drivePendingPublishes(env) {
     driven += 1;
     try {
       const result = await publishStatus({ env, store, id: draft.id });
+      // 見届けの成否は Workers のログで追えるようにする（以前は例外を
+      // 握り潰すだけで、本番で何が起きているか分からなかった）。
+      console.log(`driver: publish ${draft.id} -> ${result.state}`);
       if (result.state === "merged" || result.state === "failed") {
         await recordResult(env, draft, result);
       }
-    } catch {
+    } catch (error) {
+      console.error(`driver: publish ${draft.id} failed: ${error?.message ?? error}`);
       // 次の tick で再試行する。
     }
   }
@@ -99,8 +103,12 @@ export async function drivePendingPublishes(env) {
     try {
       const files = await gh.getPullFiles(pr.number);
       const file = files.find((entry) => entry.filename?.startsWith("public/media/"));
-      if (file) await mediaStatus(env, file.filename.split("/").pop());
-    } catch {
+      if (file) {
+        const result = await mediaStatus(env, file.filename.split("/").pop());
+        console.log(`driver: media ${pr.head.ref} -> ${result.state}`);
+      }
+    } catch (error) {
+      console.error(`driver: media ${pr.head.ref} failed: ${error?.message ?? error}`);
       // 次の tick で再試行する。
     }
   }

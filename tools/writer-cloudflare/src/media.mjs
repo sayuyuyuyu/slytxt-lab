@@ -228,8 +228,18 @@ export async function mediaStatus(env, key) {
     }
 
     // ci 成功。残っている作業はマージだけ。
-    if (pr.mergeable_state === "behind") {
-      return takeInMain(gh, pr, withPr);
+    // mergeable が未確定（"unknown"）な間は publish 側と同様に1回取り直し、
+    // それでも確定しなければ待ちにする（publish.mjs 側のコメント参照）。
+    let settled = pr;
+    if (settled.mergeable == null) {
+      const refetched = await gh.getPull(pr.number).catch(() => null);
+      if (refetched) settled = refetched;
+    }
+    if (settled.mergeable == null) {
+      return { ...withPr, state: "waiting" };
+    }
+    if (settled.mergeable_state === "behind") {
+      return takeInMain(gh, settled, withPr);
     }
     try {
       await gh.mergePull(pr.number, pr.title);
@@ -242,6 +252,9 @@ export async function mediaStatus(env, key) {
       }
       if (after && after.mergeable_state === "behind") {
         return takeInMain(gh, after, withPr);
+      }
+      if (after && after.mergeable == null) {
+        return { ...withPr, state: "waiting" };
       }
       if (after && after.mergeable === false && after.mergeable_state === "dirty") {
         return {

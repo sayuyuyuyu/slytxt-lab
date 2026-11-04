@@ -347,8 +347,24 @@ async function publishStatusInner({ env, store, id }) {
   }
 
   // ci 成功。残っている作業はマージだけ。
-  if (pr.mergeable_state === "behind") {
-    return takeInMain(gh, pr, withPr);
+  // GitHub の mergeable は非同期に計算され、main が動いた直後などは
+  // mergeable_state が "unknown"（mergeable が null）で返ることがある。
+  // そのまま merge を試みると失敗して例外になり、Cron の見届けでは
+  // 握り潰されて何も進まなくなるため、1回だけ取り直して確定させる。
+  // それでも確定しなければ「待ち」として次の確認に委ねる。
+  let settled = pr;
+  if (settled.mergeable == null) {
+    const refetched = await gh.getPull(pr.number).catch(() => null);
+    if (refetched) settled = refetched;
+  }
+  if (settled.mergeable == null) {
+    return { ...withPr, state: "waiting" };
+  }
+  if (settled.mergeable_state === "behind") {
+    return takeInMain(gh, settled, withPr);
+  }
+  if (settled.mergeable === false && settled.mergeable_state === "dirty") {
+    return conflicted;
   }
   try {
     await gh.mergePull(pr.number, pr.title ?? base.title);
@@ -365,6 +381,10 @@ async function publishStatusInner({ env, store, id }) {
     }
     if (after && after.mergeable === false && after.mergeable_state === "dirty") {
       return conflicted;
+    }
+    // mergeable がまだ確定していないだけなら、失敗ではなく待ちにする。
+    if (after && after.mergeable == null) {
+      return { ...withPr, state: "waiting" };
     }
     throw error;
   }
