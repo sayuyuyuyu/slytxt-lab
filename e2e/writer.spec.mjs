@@ -33,6 +33,16 @@ test("writer: 作成→編集→自動保存→カテゴリ切替→タイトル
   await expect(page.locator("#body")).toHaveValue(/open\.spotify\.com\/track\//);
   await expectSaved(page);
 
+  // 選択中の下書きは、操作対象のボタン側に aria-current が付き、
+  // li 側のハイライトも追随している。
+  await expect(page.locator('.drafts__select[aria-current=\"true\"]')).toHaveCount(1);
+  await expect(page.locator(".drafts__item[aria-current]")).toHaveCount(0);
+  const itemShadow = await page
+    .locator(".drafts__item")
+    .first()
+    .evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(itemShadow).not.toBe("none");
+
   // notes のまま開く公開パネル: タイトル行は出ず、カテゴリは表示のみ。
   await page.locator("#publishOpen").click();
   await expect(page.locator("#publishPanel")).toBeVisible();
