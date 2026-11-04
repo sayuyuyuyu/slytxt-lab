@@ -1,16 +1,17 @@
 ---
-import { getAllEntries, getArticles, getProjects } from "@/lib/content";
+import { getAllEntries, getArticles, getNotes, getProjects } from "@/lib/content";
 import { collectTags } from "@/lib/tags";
 import { navGroups, site } from "@/lib/site";
 import ThemeToggle from "./ThemeToggle.astro";
 
 const currentPath = Astro.url.pathname;
 
-const [projects, allEntries, tech, journal] = await Promise.all([
+const [projects, allEntries, tech, journal, notes] = await Promise.all([
   getProjects(),
   getAllEntries(),
   getArticles("tech"),
-  getArticles("journal")
+  getArticles("journal"),
+  getNotes()
 ]);
 const hasTags = collectTags(allEntries).size > 0;
 
@@ -23,6 +24,7 @@ if (tech.length + journal.length === 0) hiddenHrefs.add("/articles/");
 if (tech.length === 0) hiddenHrefs.add("/articles/tech/");
 if (journal.length === 0) hiddenHrefs.add("/articles/journal/");
 if (projects.length === 0) hiddenHrefs.add("/projects/");
+if (notes.length === 0) hiddenHrefs.add("/notes/");
 if (!hasTags) hiddenHrefs.add("/tags/");
 
 const visibleNavGroups = navGroups
