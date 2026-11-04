@@ -339,7 +339,7 @@ textarea {
   /* 列はコンテナ幅を超えない。バーのボタン群など中身の最小幅で
      列が広がり、操作ボタンが画面外へ出るのを防ぐ。 */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   min-height: 0;
   flex: 1;
   width: 100%;
@@ -399,6 +399,49 @@ textarea {
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* 見出し画像（タイトル欄の上）。 */
+.editor__cover {
+  padding-inline: 20px;
+}
+.editor__cover-set {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.editor__cover-set:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.editor__cover-box {
+  margin-top: 14px;
+}
+.editor__cover-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 191 / 100;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.editor__cover-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.editor__cover-status {
+  margin-right: auto;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 /* タイトル欄。本文とは独立した入力で、大きめの文字で出す。 */

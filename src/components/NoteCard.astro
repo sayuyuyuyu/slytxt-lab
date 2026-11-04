@@ -19,6 +19,7 @@ const preview = previewChars.length > 90 ? `${previewChars.slice(0, 90).join("")
 ---
 
 <article class="note-card" data-motion>
+  {entry.data.cover && <img class="note-card__thumb" src={entry.data.cover} alt="" loading="lazy" />}
   <div class="note-card__meta">
     <span>{categoryLabels.notes}</span>
     <span aria-hidden="true"> / </span>

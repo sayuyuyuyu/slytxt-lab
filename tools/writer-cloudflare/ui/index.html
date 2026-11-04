@@ -93,6 +93,28 @@
             </div>
           </div>
 
+          <!-- 見出し画像（note と同じ「見出し画像 → タイトル → 本文」の並び）。
+               値の保存先は下書きの frontmatter の cover。 -->
+          <div class="editor__cover">
+            <button id="coverSet" class="editor__cover-set" type="button" hidden>
+              ＋ 見出し画像を設定
+            </button>
+            <div id="coverBox" class="editor__cover-box" hidden>
+              <img id="coverPreview" class="editor__cover-img" alt="" />
+              <div class="editor__cover-actions">
+                <span id="coverStatus" class="editor__cover-status"></span>
+                <button id="coverChange" class="button" type="button">変更</button>
+                <button id="coverRemove" class="button" type="button">外す</button>
+              </div>
+            </div>
+            <input
+              id="coverFile"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              hidden
+            />
+          </div>
+
           <!-- タイトルは本文と独立した欄（note と同じ「タイトル→本文」の構成）。
                値の保存先は下書きの frontmatter の title。 -->
           <input

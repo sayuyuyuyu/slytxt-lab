@@ -9,6 +9,8 @@ const articleSchema = z.object({
   published: z.coerce.date(),
   updated: z.coerce.date().optional(),
   tags: z.array(z.string()).default([]),
+  // 見出し画像（アイキャッチ）の URL。writer の見出し画像設定が書く。
+  cover: z.string().optional(),
   draft: z.boolean().default(false),
   adult: z.boolean().default(false)
 });

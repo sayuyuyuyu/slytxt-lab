@@ -25,6 +25,13 @@ const els = {
   themeToggleIcon: $("#themeToggleIcon"),
   emptyNew: $("#emptyNew"),
   category: $("#category"),
+  coverSet: $("#coverSet"),
+  coverBox: $("#coverBox"),
+  coverPreview: $("#coverPreview"),
+  coverStatus: $("#coverStatus"),
+  coverChange: $("#coverChange"),
+  coverRemove: $("#coverRemove"),
+  coverFile: $("#coverFile"),
   titleInput: $("#title"),
   body: $("#body"),
   editorRoot: $("#editorRoot"),
@@ -64,7 +71,8 @@ const state = {
   drafts: [],
   current: null,
   busy: false,
-  tags: []
+  tags: [],
+  cover: ""
 };
 
 const save = { status: "idle", pending: null, timer: null, retryTimer: null, attempt: 0 };
@@ -502,6 +510,9 @@ function applyDraft(draft) {
   els.body.value = draft.body;
   state.tags = [...(draft.tags ?? [])];
   renderTags();
+  state.cover = draft.cover ?? "";
+  resetCoverDisplay();
+  renderCover();
   editorSet(draft.body);
   showEmpty(false);
 
@@ -519,6 +530,9 @@ function clearEditor() {
   state.current = null;
   state.tags = [];
   renderTags();
+  state.cover = "";
+  resetCoverDisplay();
+  renderCover();
   els.titleInput.value = "";
   els.body.value = "";
   editorSet("");
@@ -578,6 +592,7 @@ function collect() {
     // 本文の書き出しから導出される。
     title: els.titleInput.value.trim(),
     tags: [...state.tags],
+    cover: state.cover,
     body: els.body.value
   };
 }
@@ -848,6 +863,68 @@ function settleConfirm(value) {
     confirmResolve(value);
     confirmResolve = null;
   }
+}
+
+/* ---- 見出し画像 ---- */
+/*
+ * note と同じく、見出し画像はタイトル欄の上で設定する。
+ * 保存先は下書き frontmatter の cover（URL）。画像の保存自体は本文画像と
+ * 同じ media フロー（PR 経由）で、POST が通った時点で最終 URL が確定する。
+ * 反映完了まではローカルの blob プレビューで見せる。
+ */
+let coverDisplayUrl = "";
+let coverUploading = false;
+
+function renderCover() {
+  const has = Boolean(state.cover || coverDisplayUrl);
+  els.coverSet.hidden = has;
+  els.coverBox.hidden = !has;
+  if (has) els.coverPreview.src = coverDisplayUrl || state.cover;
+  els.coverChange.disabled = coverUploading;
+  els.coverRemove.disabled = coverUploading;
+}
+
+function resetCoverDisplay() {
+  if (coverDisplayUrl) URL.revokeObjectURL(coverDisplayUrl);
+  coverDisplayUrl = "";
+  els.coverStatus.textContent = "";
+}
+
+async function setCoverFromFile(file) {
+  if (!file || coverUploading) return;
+  coverUploading = true;
+  resetCoverDisplay();
+  coverDisplayUrl = URL.createObjectURL(file);
+  els.coverStatus.textContent = "画像を反映中…";
+  renderCover();
+  try {
+    const url = await uploadMedia(file, {
+      onPosted: (posted) => {
+        if (posted) {
+          state.cover = posted;
+          scheduleSave();
+        }
+      }
+    });
+    if (url) state.cover = url;
+    resetCoverDisplay();
+    renderCover();
+    scheduleSave();
+    toast("見出し画像を設定しました");
+  } catch (error) {
+    els.coverStatus.textContent = "反映に失敗しました";
+    toast(error.message, "error");
+  } finally {
+    coverUploading = false;
+    renderCover();
+  }
+}
+
+function removeCover() {
+  state.cover = "";
+  resetCoverDisplay();
+  renderCover();
+  scheduleSave();
 }
 
 /* ---- タグ編集（公開パネル） ---- */
@@ -1155,6 +1232,14 @@ async function boot() {
   els.publishPanel
     .querySelector(".dialog__backdrop")
     .addEventListener("click", () => closePublishPanel({ restoreCategory: true }));
+  els.coverSet.addEventListener("click", () => els.coverFile.click());
+  els.coverChange.addEventListener("click", () => els.coverFile.click());
+  els.coverRemove.addEventListener("click", removeCover);
+  els.coverFile.addEventListener("change", () => {
+    const file = els.coverFile.files?.[0];
+    els.coverFile.value = "";
+    setCoverFromFile(file).catch(() => {});
+  });
   els.tagInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === "," || event.key === "、") {
       event.preventDefault();

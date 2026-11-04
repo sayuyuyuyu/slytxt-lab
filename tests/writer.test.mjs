@@ -251,3 +251,18 @@ test("drafts: 旧 life は journal として読む", () => {
   assert.equal(normalizeDraft("x", { category: "life" }, "").category, "journal");
   assert.equal(normalizeDraft("y", { category: "notes" }, "").category, "notes");
 });
+
+test("drafts: 見出し画像（cover）が往復し、空にすると消える", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  const draft = await store.createDraft({ title: "カバー確認" });
+
+  await store.writeDraft(draft.id, { cover: "https://slytxt.dev/media/abc.png" });
+  const loaded = await store.readDraft(draft.id);
+  assert.equal(loaded.cover, "https://slytxt.dev/media/abc.png");
+  assert.match(kv.map.get(`draft:${draft.id}`), /cover: "https:\/\/slytxt\.dev\/media\/abc\.png"/);
+
+  await store.writeDraft(draft.id, { cover: "" });
+  assert.equal((await store.readDraft(draft.id)).cover, "");
+  assert.doesNotMatch(kv.map.get(`draft:${draft.id}`), /cover:/);
+});
