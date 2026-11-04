@@ -421,7 +421,9 @@ async function uploadMedia(file, hooks = {}) {
     }
     last = status;
   }
-  throw new Error(`画像の反映が終わりませんでした。PR を確認してください: ${last?.prUrl ?? ""}`);
+  throw new Error(
+    `画像の反映が時間内に終わりませんでした。再試行すると、同じ PR で続きから進みます: ${last?.prUrl ?? ""}`
+  );
 }
 
 let lastUploadDonePulse = 0;
@@ -705,6 +707,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function pollPublishStatus(id, initial) {
   const deadline = Date.now() + 13 * 60 * 1000;
   let last = initial;
+  let lastNote = "";
   while (Date.now() < deadline) {
     await sleep(5000);
     const status = await api(`/api/publish/${encodeURIComponent(id)}/status`);
@@ -712,9 +715,16 @@ async function pollPublishStatus(id, initial) {
     if (status.state === "failed") {
       throw new Error(status.message ?? `CI が失敗しました: ${status.prUrl ?? ""}`);
     }
+    // BEHIND 回復など、サーバー側で進展があったときだけログに残す。
+    if (status.note && status.note !== lastNote) {
+      appendLog(status.note);
+      lastNote = status.note;
+    }
     last = status;
   }
-  throw new Error(`CI が終わりませんでした。PR を確認してください: ${last?.prUrl ?? ""}`);
+  throw new Error(
+    `時間内に公開が完了しませんでした。もう一度「公開」を押すと、同じ PR で続きから進みます: ${last?.prUrl ?? ""}`
+  );
 }
 
 /* ---- メニューとダイアログ ---- */
