@@ -5,13 +5,12 @@ type Crumb = { label: string; href?: string };
 type Props = {
   title: string;
   eyebrow: string;
-  description?: string;
   count?: number;
   countLabel?: string;
   countLabelOne?: string;
   breadcrumbs?: Crumb[];
 };
-const { title, eyebrow, description, count, countLabel = "entries", countLabelOne, breadcrumbs } = Astro.props;
+const { title, eyebrow, count, countLabel = "entries", countLabelOne, breadcrumbs } = Astro.props;
 const countText = count === 1 ? (countLabelOne ?? countLabel) : countLabel;
 ---
 <header class="page-header" data-motion>
@@ -19,7 +18,6 @@ const countText = count === 1 ? (countLabelOne ?? countLabel) : countLabel;
     {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
     <p class="eyebrow">{eyebrow}</p>
     <h1 class="page-title">{title}</h1>
-    {description && <p class="page-lead">{description}</p>}
     {count !== undefined && count > 0 && <p class="page-count">{count} {countText}</p>}
   </div>
 </header>
