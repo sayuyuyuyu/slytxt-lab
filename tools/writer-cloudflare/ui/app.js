@@ -612,6 +612,7 @@ function openTask(title) {
   els.task.dataset.state = "running";
   els.task.dataset.log = "open";
   els.taskToggle.textContent = "⌃";
+  els.taskToggle.setAttribute("aria-expanded", "true");
   els.task.hidden = false;
 
   const started = Date.now();
@@ -1264,6 +1265,7 @@ async function boot() {
     const open = els.task.dataset.log === "open";
     els.task.dataset.log = open ? "closed" : "open";
     els.taskToggle.textContent = open ? "⌄" : "⌃";
+    els.taskToggle.setAttribute("aria-expanded", open ? "false" : "true");
   });
   els.save.addEventListener("click", () => {
     if (save.status === "error") flushSave().catch(() => {});
