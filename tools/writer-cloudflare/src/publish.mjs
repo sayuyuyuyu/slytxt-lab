@@ -73,8 +73,7 @@ export function normalizeSlug(raw, fallbackDate = today()) {
 /**
  * 公開時のタイトル。記事はタイトルが無ければ本文の書き出しで補う。
  * notes はタイトル不要なので、付いていなければ空のままにする
- * （本文の書き出しで代用しない。公開側の表示名は frontmatter の
- * title そのものを使う前提）。
+ * （本文の書き出しで代用しない。表示名はサイト側が本文の書き出しから作る）。
  */
 function deriveTitle(draft, body) {
   if (draft.title && draft.title !== "無題") return draft.title;
