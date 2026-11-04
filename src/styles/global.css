@@ -665,6 +665,19 @@ html.js .terminal__console {
     font-size: 16px;
   }
 }
+@media (max-width: 600px) {
+  /* On narrow screens the output is not a scroll box of its own: it
+     grows with the page, and lines wrap at spaces instead of sliding
+     sideways. The help text stacks to match (see the help command). */
+  .terminal__output {
+    max-height: none;
+    overflow: visible;
+  }
+  .terminal__line,
+  .terminal__block {
+    white-space: pre-wrap;
+  }
+}
 
 /* ---------------------------------------------------------------------------
    Not found: the 404 page as a terminal log
