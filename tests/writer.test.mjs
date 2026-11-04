@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDraftStore, normalizeDraft } from "../tools/writer-cloudflare/src/drafts-kv.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer-cloudflare/src/frontmatter.mjs";
-import { plainText, renderMarkdown } from "../tools/writer-cloudflare/src/markdown.mjs";
+import { plainText, renderMarkdown, truncateText } from "../tools/writer-cloudflare/src/markdown.mjs";
 import {
   deriveDescription,
   normalizeSlug,
@@ -11,7 +11,7 @@ import {
   publishStatus
 } from "../tools/writer-cloudflare/src/publish.mjs";
 import { mediaStatus, uploadMedia } from "../tools/writer-cloudflare/src/media.mjs";
-import { generateSummary, summaryConfig } from "../tools/writer-cloudflare/src/summary.mjs";
+import { cleanSummary, generateSummary, summaryConfig } from "../tools/writer-cloudflare/src/summary.mjs";
 
 /**
  * drafts-kv のテスト用に、Cloudflare KV の最小インターフェースを
@@ -277,6 +277,31 @@ test("description: 長い本文は文の途中で切らない", () => {
 test("description: 埋め込みの単独 URL 行は含めない", () => {
   const body = "動画を見た。\n\nhttps://www.youtube.com/watch?v=example\n\n面白かった。";
   assert.equal(deriveDescription(body), "動画を見た。 面白かった。");
+});
+
+test("truncate: 絵文字をコードポイント単位で切り、分断しない", () => {
+  assert.equal(truncateText("あ😀い", 2), "あ😀");
+  assert.equal(truncateText("😀".repeat(5), 3), "😀".repeat(3));
+  assert.equal(truncateText("短い", 10), "短い");
+});
+
+test("description: 境界の絵文字を分断しない", () => {
+  const body = `${"😀".repeat(50)}。${"あ".repeat(100)}`;
+  assert.equal(deriveDescription(body), `${"😀".repeat(50)}。`);
+});
+
+test("summary: 絵文字をコードポイント単位で切り詰める", () => {
+  const cleaned = cleanSummary("😀".repeat(250));
+  assert.equal(cleaned, "😀".repeat(200));
+  assert.equal(Array.from(cleaned).length, 200);
+});
+
+test("drafts: 一覧の excerpt が絵文字を分断しない", async () => {
+  const store = createDraftStore(memoryKv());
+  const draft = await store.createDraft({ title: "絵文字確認" });
+  await store.writeDraft(draft.id, { body: "😀".repeat(150) });
+  const [listed] = await store.listDrafts();
+  assert.equal(listed.excerpt, "😀".repeat(120));
 });
 
 test("drafts: 旧 life は journal として読む", () => {

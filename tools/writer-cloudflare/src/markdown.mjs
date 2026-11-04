@@ -338,6 +338,13 @@ export function textLength(source) {
 }
 
 /** 一覧やプレビューの見出しに使う、本文から最初の段落を抜き出す処理。 */
+/** 文字列をコードポイント単位で切り詰める。絵文字などのサロゲートペアを分断しない。 */
+export function truncateText(text, limit) {
+  const value = String(text ?? "");
+  const chars = Array.from(value);
+  return chars.length <= limit ? value : chars.slice(0, limit).join("");
+}
+
 export function plainText(source) {
   return String(source ?? "")
     .replace(/```[\s\S]*?```/g, " ")

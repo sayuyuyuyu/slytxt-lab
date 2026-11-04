@@ -17,7 +17,7 @@
  * Authorization: Bearer <key> で送る。モデルごとにネイティブ API は違うが、
  * 公式ドキュメント上、テキストモデルは他形式の API でも Console が変換して使える。
  */
-import { plainText } from "./markdown.mjs";
+import { plainText, truncateText } from "./markdown.mjs";
 
 export const SUMMARY_DEFAULT_URL =
   "https://opencode.ai/inference/go/openai/v1/chat/completions";
@@ -55,7 +55,7 @@ export function summaryConfig(env) {
 export function cleanSummary(raw) {
   let text = String(raw ?? "").replace(/\s+/g, " ").trim();
   if (/^「.*」$/.test(text) || /^".*"$/.test(text)) text = text.slice(1, -1).trim();
-  return text.slice(0, SUMMARY_MAX_CHARS);
+  return truncateText(text, SUMMARY_MAX_CHARS);
 }
 
 /**
@@ -87,7 +87,7 @@ export async function generateSummary(env, { title, body } = {}, fetchImpl = fet
           { role: "system", content: SYSTEM_PROMPT },
           {
             role: "user",
-            content: `タイトル: ${title || "無題"}\n\n本文:\n${text.slice(0, SUMMARY_MAX_BODY_CHARS)}`
+            content: `タイトル: ${title || "無題"}\n\n本文:\n${truncateText(text, SUMMARY_MAX_BODY_CHARS)}`
           }
         ]
       }),
