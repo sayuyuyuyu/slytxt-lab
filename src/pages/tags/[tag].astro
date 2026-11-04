@@ -37,7 +37,7 @@ const projects = entries.filter((entry) => entry.collection === "projects") as P
     countLabelOne="entry"
     breadcrumbs={[{ label: "Tags", href: "/tags/" }, { label: `#${label}` }]}
   />
-  <section class="listing">
+  <section class="listing" aria-label="Tag listing">
     <div class="container">
       {articles.length > 0 && (
         <>
