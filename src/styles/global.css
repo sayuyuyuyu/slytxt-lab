@@ -887,7 +887,7 @@ samp,
   border-color: var(--accent);
   box-shadow: 0 0 22px -6px var(--glow);
 }
-.pagination [aria-disabled="true"] {
+.pagination .pagination__disabled {
   color: var(--text-muted);
   border-color: transparent;
 }
