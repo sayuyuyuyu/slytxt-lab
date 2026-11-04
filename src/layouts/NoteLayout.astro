@@ -30,7 +30,7 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
   updated={entry.data.updated}
   searchable
 >
-  <article class="note" data-pagefind-filter={`category:${categoryLabels.notes}`}>
+  <article class="note" data-motion data-pagefind-filter={`category:${categoryLabels.notes}`}>
     <div class="container note__inner">
       <Breadcrumbs items={[{ label: "Notes", href: categoryPaths.notes }, { label }]} />
       <h1 class="sr-only" data-pagefind-meta="title">{label}</h1>
