@@ -1,5 +1,8 @@
 import { formatJst, formatRfc822 } from "./format.ts";
 import type { BookmarkItem, BookmarkSnapshot } from "./types.ts";
+import { escapeXml } from "../xml.ts";
+
+export { escapeXml };
 
 export type RenderOptions = {
   siteName: string;
@@ -17,15 +20,6 @@ export function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
-}
-
-export function escapeXml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
 }
 
 /** 本文は変えずに、裸の URL だけリンクにする。 */
