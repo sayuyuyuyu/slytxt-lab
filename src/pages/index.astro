@@ -10,6 +10,13 @@ const [articles, notes, projects, allEntries] = await Promise.all([getAllArticle
 const hasTags = collectTags(allEntries).size > 0;
 const recent = articles.slice(0, 6);
 const recentNotes = notes.slice(0, 4);
+// Config for the playable terminal in the hero: which collections actually
+// have a page worth opening right now.
+const terminalConfig = {
+  description: site.description,
+  counts: { articles: articles.length, notes: notes.length, projects: projects.length },
+  hasTags
+};
 ---
 <BaseLayout>
   <section class="home-hero" aria-labelledby="intro-title" data-motion>
@@ -33,6 +40,23 @@ const recentNotes = notes.slice(0, 4);
             {projects.length > 0 && <a href="/projects/">Projects <span>{projects.length}</span></a>}
             {hasTags && <a href="/tags/">Tags</a>}
           </nav>
+        </div>
+        <div class="terminal__console" data-play-terminal>
+          <div class="terminal__output" data-terminal-output role="log" aria-label="ターミナルの出力"></div>
+          <form class="terminal__input-line" data-terminal-form>
+            <label class="terminal__prompt" for="play-terminal-input">guest@slytxt-lab:~$</label>
+            <input
+              id="play-terminal-input"
+              class="terminal__input"
+              data-terminal-input
+              type="text"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+              aria-label="コマンドを入力"
+              placeholder="help"
+            />
+          </form>
         </div>
       </div>
     </div>
@@ -70,4 +94,307 @@ const recentNotes = notes.slice(0, 4);
     </div>
   </section>
   )}
+  <script define:vars={{ terminalConfig }}>
+    (() => {
+      const root = document.querySelector("[data-play-terminal]");
+      if (!root) return;
+      const output = root.querySelector("[data-terminal-output]");
+      const form = root.querySelector("[data-terminal-form]");
+      const input = root.querySelector("[data-terminal-input]");
+      if (!output || !form || !input) return;
+
+      const PROMPT = "guest@slytxt-lab:~$";
+
+      // Pages a visitor can actually open. A collection with nothing in it
+      // (or tags, while there are none) has no page worth sending people to.
+      const pages = {
+        articles: {
+          path: terminalConfig.counts.articles > 0 ? "/articles/" : null,
+          description: "技術系の記事と、それ以外の記事の一覧。"
+        },
+        tech: { path: "/articles/tech/", description: "AI、MCP、クラウド、プログラミングを試した記録。" },
+        journal: { path: "/articles/journal/", description: "旅行、ゲーム、音楽、ガジェットの話。" },
+        notes: {
+          path: terminalConfig.counts.notes > 0 ? "/notes/" : null,
+          description: "あとで記事にする前の、短いメモ。"
+        },
+        projects: {
+          path: terminalConfig.counts.projects > 0 ? "/projects/" : null,
+          description: "つくったものの置き場。"
+        },
+        tags: {
+          path: terminalConfig.hasTags ? "/tags/" : null,
+          description: "タグから記事とメモを探す。"
+        },
+        search: { path: "/search/", description: "サイト内検索。" },
+        about: { path: "/about/", description: "しらゆ（slytxt）のプロフィール。" },
+        bookmarks: { path: null, description: "ブックマークは非公開にしています。" }
+      };
+
+      const mokaLines = [
+        "モカです。隣で紅茶を飲みながら見てます。",
+        "モカです。そのコマンド、いいと思います。",
+        "モカです。……無理しないでくださいね。"
+      ];
+
+      const scrollDown = () => {
+        output.scrollTop = output.scrollHeight;
+      };
+
+      const print = (text) => {
+        const line = document.createElement("div");
+        line.className = "terminal__line";
+        line.textContent = text;
+        output.appendChild(line);
+        scrollDown();
+      };
+
+      const printBlock = (text) => {
+        const block = document.createElement("pre");
+        block.className = "terminal__block";
+        block.textContent = text;
+        output.appendChild(block);
+        scrollDown();
+      };
+
+      const printLink = (label, href) => {
+        const line = document.createElement("div");
+        line.className = "terminal__line";
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.textContent = label;
+        line.append("→ ", anchor);
+        output.appendChild(line);
+        scrollDown();
+      };
+
+      const echoCommand = (raw) => {
+        const line = document.createElement("div");
+        line.className = "terminal__line terminal__line--cmd";
+        const prompt = document.createElement("span");
+        prompt.className = "terminal__prompt";
+        prompt.textContent = PROMPT;
+        line.append(prompt, document.createTextNode(` ${raw}`));
+        output.appendChild(line);
+        scrollDown();
+      };
+
+      const lsNames = () => {
+        const names = ["about", "intro.txt"];
+        for (const [name, page] of Object.entries(pages)) {
+          if (name === "about" || name === "bookmarks") continue;
+          if (page.path) names.push(`${name}/`);
+        }
+        return names.sort();
+      };
+
+      const resolvePage = (name) => pages[name.replace(/\/$/, "")];
+
+      const openPage = (name) => {
+        if (!name) {
+          print("open: 開くページを指定してください。ls で一覧が見られます。");
+          return;
+        }
+        const page = resolvePage(name);
+        if (!page) {
+          print(`open: ${name}: そのページはありません。ls で一覧が見られます。`);
+          return;
+        }
+        if (!page.path) {
+          print(page.description);
+          return;
+        }
+        print(`${page.path} を開きます。`);
+        window.location.assign(page.path);
+      };
+
+      const describePage = (name) => {
+        const page = pages[name];
+        print(page.description);
+        if (page.path) {
+          printLink(page.path, page.path);
+          print(`開くには open ${name} でも構いません。`);
+        }
+      };
+
+      const commands = {
+        help() {
+          printBlock(
+            [
+              "使えるコマンド:",
+              "  help              この一覧",
+              "  about             管理人の紹介",
+              "  ls                ページとファイルの一覧",
+              "  open <ページ>     ページを開く（例: open notes）",
+              "  articles / notes / projects / tags / search / about",
+              "                    各ページの案内",
+              "  whoami            あなたは誰か",
+              "  date              現在の日時",
+              "  echo <文字>       そのまま表示する",
+              "  clear             出力を消す",
+              "  cat / tea / moka / sudo   小ネタ"
+            ].join("\n")
+          );
+        },
+        about() {
+          print("しらゆ（slytxt）。都内某所で SE として働いている人。");
+          print("このサイトは、AI やクラウドを試した記録と日々のこと、つくったものの置き場です。");
+          print("詳しくは about ページにあります。開くには open about。");
+        },
+        ls() {
+          print(lsNames().join("  "));
+        },
+        open(args) {
+          openPage(args[0]);
+        },
+        cd(args) {
+          openPage(args[0]);
+        },
+        whoami() {
+          print("guest — 通りすがりの訪問者です。ログインは要りません。");
+        },
+        date() {
+          const now = new Date();
+          const day = now.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+          print(`${day} ${now.toLocaleTimeString("ja-JP")}`);
+        },
+        echo(args) {
+          print(args.join(" "));
+        },
+        clear() {
+          output.replaceChildren();
+        },
+        cat(args) {
+          const target = args[0];
+          if (!target) {
+            printBlock([" /\\_/\\", "( o.o )", " > ^ <"].join("\n"));
+            print("猫です。ターミナルの隅に住んでいます。");
+            return;
+          }
+          if (target === "intro.txt") {
+            print(terminalConfig.description);
+            print("— intro.txt");
+            return;
+          }
+          print(`cat: ${target}: No such file or directory`);
+        },
+        sudo() {
+          print("[sudo] guest のパスワード: ********");
+          print("guest は sudoers に含まれていません。この件は記録……されません。安心してください。");
+        },
+        moka() {
+          print(mokaLines[Math.floor(Math.random() * mokaLines.length)]);
+        },
+        tea() {
+          print("紅茶を淹れました。今日はダージリンです。");
+        },
+        exit() {
+          print("ログアウトできません。タブを閉じるのは、あなたの仕事です。");
+        },
+        logout() {
+          commands.exit();
+        }
+      };
+
+      const pageCommands = ["articles", "tech", "journal", "notes", "projects", "tags", "search", "about", "bookmarks"];
+      for (const name of pageCommands) {
+        commands[name] = () => describePage(name);
+      }
+
+      const run = (raw) => {
+        const [name, ...args] = raw.trim().split(/\s+/);
+        const command = commands[name];
+        if (command) {
+          command(args);
+        } else {
+          print(`command not found: ${name} — help と入力すると使えるコマンドが出ます。`);
+        }
+      };
+
+      // History, shell-style: up/down walk it, the in-progress line is kept.
+      const history = [];
+      let historyIndex = -1;
+      let draft = "";
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const raw = input.value;
+        echoCommand(raw);
+        if (raw.trim()) {
+          history.push(raw);
+          run(raw);
+        }
+        historyIndex = -1;
+        draft = "";
+        input.value = "";
+      });
+
+      const completionsFor = (value) => {
+        const openMatch = value.match(/^(open|cd)\s+(\S*)$/);
+        if (openMatch) {
+          const prefix = openMatch[2];
+          return Object.keys(pages)
+            .filter((name) => name.startsWith(prefix))
+            .map((name) => `${openMatch[1]} ${name}`);
+        }
+        if (/^\S*$/.test(value)) {
+          const names = [...Object.keys(commands), ...pageCommands];
+          return [...new Set(names)].filter((name) => name.startsWith(value));
+        }
+        return [];
+      };
+
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          if (history.length === 0) return;
+          event.preventDefault();
+          if (historyIndex === -1) {
+            draft = input.value;
+            historyIndex = history.length;
+          }
+          historyIndex += event.key === "ArrowUp" ? -1 : 1;
+          if (historyIndex < 0) historyIndex = 0;
+          if (historyIndex >= history.length) {
+            historyIndex = -1;
+            input.value = draft;
+          } else {
+            input.value = history[historyIndex];
+          }
+          // Keep the caret at the end after jumping through history.
+          input.setSelectionRange(input.value.length, input.value.length);
+          return;
+        }
+        if (event.key === "Tab") {
+          const candidates = completionsFor(input.value);
+          if (candidates.length === 0) return;
+          event.preventDefault();
+          if (candidates.length === 1) {
+            input.value = candidates[0];
+            return;
+          }
+          let prefix = candidates[0];
+          for (const candidate of candidates.slice(1)) {
+            let i = 0;
+            while (i < prefix.length && prefix[i] === candidate[i]) i += 1;
+            prefix = prefix.slice(0, i);
+          }
+          if (prefix.length > input.value.length) {
+            input.value = prefix;
+          } else {
+            echoCommand(input.value);
+            print(candidates.join("  "));
+          }
+        }
+      });
+
+      // Clicking the console focuses the input, unless the visitor is
+      // selecting output text to copy it.
+      root.addEventListener("click", () => {
+        if (window.getSelection()?.toString()) return;
+        input.focus({ preventScroll: true });
+      });
+
+      print("slytxt.lab へようこそ。このターミナルは入力できます。help と打つと、使えるコマンドの一覧が出ます。");
+    })();
+  </script>
 </BaseLayout>
