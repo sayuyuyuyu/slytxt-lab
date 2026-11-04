@@ -30,7 +30,7 @@ const navTitle = (target: ArticleEntry) => target.data.title;
   updated={entry.data.updated}
   searchable
 >
-  <article class="note">
+  <article class="note" data-pagefind-filter={`category:${categoryLabels.notes}`}>
     <div class="container note__inner">
       <Breadcrumbs items={[{ label: "Notes", href: categoryPaths.notes }, { label }]} />
       <h1 class="sr-only">{label}</h1>
