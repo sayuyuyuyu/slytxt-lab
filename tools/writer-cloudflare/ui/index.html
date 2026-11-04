@@ -100,7 +100,7 @@
 
     <div id="publishPanel" class="dialog" hidden>
       <div class="dialog__backdrop"></div>
-      <div class="dialog__panel" role="dialog" aria-modal="true" aria-labelledby="publishPanelTitle">
+      <div class="dialog__panel" role="dialog" aria-modal="true" aria-labelledby="publishPanelTitle" aria-describedby="publishFile publishNote">
         <h2 id="publishPanelTitle" class="dialog__title">公開の確認</h2>
         <div class="dialog__row">
           <span class="dialog__label">タイトル</span>
@@ -111,7 +111,7 @@
           <select id="category" class="field"></select>
         </label>
         <p class="dialog__note" id="publishFile"></p>
-        <p class="dialog__note">PR を作成し、CI が通ると自動でマージされます。</p>
+        <p class="dialog__note" id="publishNote">PR を作成し、CI が通ると自動でマージされます。</p>
         <div class="dialog__actions">
           <button id="publishCancel" class="button" type="button">キャンセル</button>
           <button id="publishConfirm" class="button button--primary" type="button">投稿する</button>
@@ -121,7 +121,7 @@
 
     <div id="confirmDialog" class="dialog" hidden>
       <div class="dialog__backdrop"></div>
-      <div class="dialog__panel" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="dialog__panel" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
         <h2 id="confirmTitle" class="dialog__title">削除しますか</h2>
         <p id="confirmMessage" class="dialog__message"></p>
         <div class="dialog__actions">
