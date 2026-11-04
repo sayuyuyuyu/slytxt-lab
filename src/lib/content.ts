@@ -114,6 +114,9 @@ export function getAdjacentArticles<T extends ArticleEntry>(entries: T[], curren
 export function toPlainText(source: string): string {
   return String(source ?? "")
     .replace(/```[\s\S]*?```/g, " ")
+    // 生の HTML（<br /> など）は表示用の記号なので、文字列として残さない。
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<\/?[A-Za-z][^>\n]*>/g, " ")
     .replace(/^\s{0,3}#{1,6}\s+/gm, "")
     .replace(/^\s{0,3}>\s?/gm, "")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")

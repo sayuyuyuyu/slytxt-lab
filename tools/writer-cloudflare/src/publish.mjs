@@ -37,10 +37,25 @@ export function publicUrl(category, slug) {
 
 /** 一覧に出す説明。エージェントに書かせず、本文の書き出しから最小限だけ作る。 */
 export function deriveDescription(body, limit = 90) {
-  const withoutHeadings = String(body ?? "").replace(/^\s{0,3}#{1,6}\s+.*$/gm, "");
+  const withoutHeadings = String(body ?? "")
+    .replace(/^\s{0,3}#{1,6}\s+.*$/gm, "")
+    // 埋め込み専用の単独 URL 行は、抜粋の文章として読めないので含めない。
+    .replace(/^\s*https?:\/\/\S+\s*$/gm, "");
   const text = plainText(withoutHeadings).replace(/\s+/g, " ").trim();
   if (!text) return "";
-  return text.length <= limit ? text : `${text.slice(0, limit - 1).trimEnd()}…`;
+  if (text.length <= limit) return text;
+  const head = text.slice(0, limit);
+  // 文の途中で切らない。制限内に収まる最後の文末があれば、そこで終える。
+  const sentenceEnd = Math.max(
+    head.lastIndexOf("。"),
+    head.lastIndexOf("！"),
+    head.lastIndexOf("？")
+  );
+  if (sentenceEnd >= limit * 0.4) return head.slice(0, sentenceEnd + 1);
+  // 文末が無ければ、読点や空白の区切りで切る。
+  const phraseEnd = Math.max(head.lastIndexOf("、"), head.lastIndexOf(" "));
+  if (phraseEnd >= limit * 0.5) return `${head.slice(0, phraseEnd)}…`;
+  return `${head.slice(0, limit - 1).trimEnd()}…`;
 }
 
 export function normalizeSlug(raw, fallbackDate = today()) {
