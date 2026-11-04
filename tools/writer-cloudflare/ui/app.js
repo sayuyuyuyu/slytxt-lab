@@ -72,8 +72,11 @@ const SAVE_LABEL = {
 /* ---- 小さな道具 ---- */
 
 function toast(message, kind = "info") {
+  const isError = kind === "error";
+  els.toast.setAttribute("role", isError ? "alert" : "status");
+  els.toast.setAttribute("aria-live", isError ? "assertive" : "polite");
   els.toast.textContent = message;
-  els.toast.className = kind === "error" ? "toast toast--error" : "toast";
+  els.toast.className = isError ? "toast toast--error" : "toast";
   els.toast.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
