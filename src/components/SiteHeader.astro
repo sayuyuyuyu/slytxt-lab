@@ -135,26 +135,57 @@ function isCurrentSection(href: string) {
 
     const isOpen = () => button.getAttribute("aria-expanded") === "true";
 
-    const setOpen = (open: boolean) => {
+    const menuLinks = () => Array.from(menu.querySelectorAll<HTMLAnchorElement>("a"));
+
+    const setOpen = (open: boolean, options: { returnFocus?: boolean } = {}) => {
+      const returnFocus = options.returnFocus ?? menu.contains(document.activeElement);
       button.setAttribute("aria-expanded", String(open));
       button.setAttribute("aria-label", open ? "Close menu" : "Open menu");
       menu.hidden = !open;
       header.dataset.open = String(open);
-      if (open) header.dataset.hidden = "false";
+      if (open) {
+        header.dataset.hidden = "false";
+        // 開いたら最初の項目へ移し、Tab の流れを視覚順に合わせる
+        // （DOM 上は ThemeToggle がメニューより前にあるため、このままでは
+        // ボタンの次の Tab がテーマ切替へ進んでしまう）。
+        menuLinks()[0]?.focus();
+      } else if (returnFocus) {
+        button.focus();
+      }
     };
 
     button.addEventListener("click", () => setOpen(!isOpen()));
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && isOpen()) {
-        setOpen(false);
-        button.focus();
+        setOpen(false, { returnFocus: true });
       }
     });
 
     document.addEventListener("click", (event) => {
       if (!isOpen()) return;
       if (!header.contains(event.target as Node)) setOpen(false);
+    });
+
+    // writer のメニューと同水準: 矢印キー / Home / End で項目間を移動する。
+    menu.addEventListener("keydown", (event) => {
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+      const links = menuLinks();
+      if (links.length === 0) return;
+      event.preventDefault();
+      const index = links.indexOf(document.activeElement as HTMLAnchorElement);
+      if (event.key === "Home") links[0].focus();
+      else if (event.key === "End") links[links.length - 1].focus();
+      else if (event.key === "ArrowDown") links[index < 0 ? 0 : (index + 1) % links.length].focus();
+      else links[index < 0 ? links.length - 1 : (index - 1 + links.length) % links.length].focus();
+    });
+
+    // Tab でメニューの外へ出たら閉じる（フォーカスは移動先へそのまま渡す）。
+    menu.addEventListener("focusout", (event) => {
+      if (!isOpen()) return;
+      const next = event.relatedTarget as Node | null;
+      if (next && (menu.contains(next) || next === button)) return;
+      setOpen(false, { returnFocus: false });
     });
 
     // Hide the header while scrolling down and bring it back on the way up.
