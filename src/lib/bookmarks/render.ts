@@ -108,14 +108,14 @@ function cardHtml(item: BookmarkItem): string {
 }
 
 const STYLE = `
-:root{--bg:#fdfcf8;--surface:#f4f0e8;--card:#ffffff;--text:#292721;--text-muted:#706a60;--border:#e2dcd0;--accent:#a43d29}
-@media (prefers-color-scheme:dark){:root{--bg:#1d1b18;--surface:#292621;--card:#292621;--text:#f2eee5;--text-muted:#b8b0a1;--border:#413b33;--accent:#ee947d}}
+:root{--bg:#05070f;--surface:#101a2e;--card:#0b1220;--text:#d9e6f7;--text-muted:#7d8bab;--border:#1b2942;--accent:#4cc9f0;--font:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","YuGothic",sans-serif}
+@media (prefers-color-scheme:light){:root{--bg:#eef3fb;--surface:#d6e2f2;--card:#e2eaf6;--text:#0b1220;--text-muted:#4a5972;--border:#c3d0e4;--accent:#0b63c4}}
 *,*::before,*::after{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.9 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.9 var(--font)}
 a{color:var(--accent)}
 .wrap{max-width:680px;margin:0 auto;padding:48px 20px 80px}
 .eyebrow{margin:0;color:var(--text-muted);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase}
-h1{margin:8px 0 0;font:500 1.9rem/1.4 Georgia,"Hiragino Mincho ProN",serif}
+h1{margin:8px 0 0;font:400 1.9rem/1.4 var(--font)}
 .lead{margin:16px 0 0;color:var(--text-muted);font-size:.92rem}
 .links{display:flex;flex-wrap:wrap;gap:16px;margin:20px 0 0;font-size:.85rem}
 .notice{margin:24px 0 0;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px 16px;font-size:.85rem;color:var(--text-muted)}
@@ -158,6 +158,9 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${escapeHtml(title)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <style>${STYLE}</style>
 </head>
 <body>
