@@ -6,7 +6,7 @@
  * API 形状・直列化形式は移行時から変えていない。
  */
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
-import { plainText } from "./markdown.mjs";
+import { plainText, textLength } from "./markdown.mjs";
 
 export const CATEGORIES = ["tech", "journal", "notes"];
 export const CATEGORY_LABELS = { tech: "Tech", journal: "Journal", notes: "Notes" };
@@ -146,7 +146,7 @@ export function createDraftStore(kv) {
             updated: draft.updated,
             pr: draft.pr,
             excerpt: plainText(draft.body).slice(0, 120),
-            chars: draft.body.length
+            chars: textLength(draft.body)
           });
         } catch {
           // 壊れたレコードは一覧から落とすだけにして、他を開けなくしない。
