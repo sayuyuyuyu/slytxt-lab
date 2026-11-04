@@ -36,6 +36,8 @@ await writeFile(
     "",
     "## 埋め込みテスト",
     "",
+    "これはスタイル比較用の段落です。",
+    "",
     "https://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw",
     ""
   ].join("\n")

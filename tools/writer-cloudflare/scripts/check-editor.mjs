@@ -265,10 +265,14 @@ handle.setMarkdown(imagesToEditor(ALT_IMAGE));
 await sleep(300);
 check("alt とキャプションの分離（往復）", imagesFromEditor(handle.getMarkdown()), ALT_IMAGE);
 
-// 埋め込みプレビュー: URL だけの段落の下にカード風プレビューが出て、
-// markdown 自体は URL のまま変わらないことを緩く確認する。
+// 埋め込みの実物表示: URL だけの段落が隠れ（.embed-source）、公開側と
+// 同じプレイヤーが出ること。markdown 自体は URL のまま変わらない。
 const EMBEDS = [
   "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "",
+  "https://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw",
+  "",
+  "https://x.com/slytxt/status/1234567890123456789",
   "",
   "https://example.com/article",
   "",
@@ -276,20 +280,30 @@ const EMBEDS = [
 ].join("\n");
 handle.setMarkdown(imagesToEditor(EMBEDS));
 await sleep(300);
-const previews = document.querySelectorAll(".embed-preview");
+const embedRoots = document.querySelectorAll(".embed-embed");
+const embedSources = document.querySelectorAll(".embed-source");
+const embedMarkdown = handle.getMarkdown();
 if (
-  previews.length === 2 &&
-  document.querySelector(".embed-preview--youtube") &&
-  document.querySelector(".embed-preview--link") &&
-  handle.getMarkdown().includes("https://www.youtube.com/watch?v=dQw4w9WgXcQ") &&
-  handle.getMarkdown().includes("https://example.com/article")
+  embedRoots.length === 4 &&
+  embedSources.length === 4 &&
+  document.querySelector(
+    '.embed-embed--youtube iframe[src*="youtube-nocookie.com/embed/dQw4w9WgXcQ"]'
+  ) &&
+  document.querySelector(
+    '.embed-embed--spotify iframe[src*="open.spotify.com/embed/track/5oCptG3RbPTbXKFpVjUgmw"]'
+  ) &&
+  document.querySelector(".embed-embed--x blockquote.twitter-tweet") &&
+  document.querySelector(".embed-embed--link .embed-link-card") &&
+  embedMarkdown.includes("https://www.youtube.com/watch?v=dQw4w9WgXcQ") &&
+  embedMarkdown.includes("https://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw") &&
+  embedMarkdown.includes("https://example.com/article")
 ) {
-  console.log("ok: 埋め込みプレビュー（YouTube / リンクカード）");
+  console.log("ok: 埋め込みの実物表示（YouTube / Spotify / X / リンクカード）");
 } else {
-  failures.push("埋め込みプレビュー");
-  console.log("NG: 埋め込みプレビュー");
-  console.log("previews:", previews.length);
-  console.log(handle.getMarkdown());
+  failures.push("埋め込みの実物表示");
+  console.log("NG: 埋め込みの実物表示");
+  console.log("embeds:", embedRoots.length, "sources:", embedSources.length);
+  console.log(embedMarkdown);
 }
 
 await handle.destroy();

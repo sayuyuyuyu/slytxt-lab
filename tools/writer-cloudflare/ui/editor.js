@@ -22,6 +22,9 @@ import { liftListItem } from "@milkdown/kit/prose/schema-list";
 import { NodeSelection, Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
 import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
 import { $prose, replaceAll } from "@milkdown/kit/utils";
+// 埋め込みの判定と HTML 生成はプレビュー（markdown.mjs）と共用し、
+// 公開側（remark-embed）とのずれが起きないようにする。
+import { classifyEmbedUrl, spotifyEmbedHtml, xEmbedHtml, youtubeEmbedHtml } from "../src/markdown.mjs";
 // common/style.css は latex.css（KaTeX フォント一式）まで含むため、
 // 使う feature の分だけ個別に読む（Latex / AI / TopBar は無効化している）。
 import "@milkdown/crepe/theme/common/prosemirror.css";
@@ -189,47 +192,56 @@ const hrCaretPlugin = $prose(
 );
 
 /*
- * 埋め込みのプレビュー。
+ * 埋め込みの実物表示。
  *
  * 公開側（src/lib/remark-embed.mjs）は「URL だけの段落」を埋め込みに
- * 変える。編集画面でも公開時の見え方が分かるよう、同じ条件の段落の
- * 直下にカード風のプレビューを decoration で出す。あくまで表示だけで、
- * markdown は URL のまま変わらない（判定ルールは公開側と揃える）。
+ * 変える。編集画面でも公開時と同じ見え方にするため、同じ条件の段落の
+ * 本文は decoration で隠し、代わりに公開側と同じプレイヤー
+ * （YouTube / Spotify の iframe、X の公式ウィジェット）を出す。
+ * 判定と HTML の生成はプレビュー（markdown.mjs）と共用する。
+ * markdown は URL の段落のまま変わらない。
  * 一般 URL の OGP はブラウザから取得できない（CORS）ため、編集側では
- * ホスト名だけのカードにする。OGP の取得は公開側のビルド時に行う。
+ * タイトルを URL のままにしたカード風表示にする（OGP は公開側の
+ * ビルド時のみ。完全な確認はプレビューで行う）。
+ * 表示中のブロックは直接編集できないので、widget の操作ボタンと
+ * キー操作で「前後に段落を足す」「ブロックを削除」を提供する。
+ * widget の DOM は URL ごとに使い回し、入力のたびに iframe が
+ * 読み込み直されてちらつかないようにする。
  */
-function classifyUrlForPreview(url) {
-  let parsed;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return null;
+
+/**
+ * 段落が埋め込み対象なら URL を返す。公開側（remark-embed）の判定に合わせ、
+ * マーク無しのテキスト1つだけの段落と、「リンク文字 = リンク先 URL」の
+ * リンク1つだけの段落（貼り付けや入力で自動リンク化された形）を対象にする。
+ */
+function embedUrlOfParagraph(node) {
+  const url = loneUrlText(node);
+  if (!url || node.childCount !== 1) return null;
+  const child = node.firstChild;
+  if (child.marks.length === 0) return url;
+  if (
+    child.marks.length === 1 &&
+    child.marks[0].type.name === "link" &&
+    child.marks[0].attrs.href === url
+  ) {
+    return url;
   }
-  const host = parsed.hostname.replace(/^(www\.|m\.)/, "");
-  if (host === "youtu.be") {
-    const id = parsed.pathname.slice(1).split("/")[0];
-    return /^[A-Za-z0-9_-]{6,}$/.test(id) ? { type: "youtube", id, url } : { type: "link", url };
-  }
-  if (host === "youtube.com") {
-    let id = null;
-    if (parsed.pathname === "/watch") id = parsed.searchParams.get("v");
-    else id = parsed.pathname.match(/^\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{6,})/)?.[1] ?? null;
-    return id && /^[A-Za-z0-9_-]{6,}$/.test(id)
-      ? { type: "youtube", id, url }
-      : { type: "link", url };
-  }
-  const bareHost = parsed.hostname.replace(/^www\./, "");
-  if (bareHost === "x.com" || bareHost === "twitter.com") {
-    const match = parsed.pathname.match(/^\/([A-Za-z0-9_]+)\/status\/(\d+)/);
-    if (match) return { type: "x", user: match[1], id: match[2], url };
-  }
-  if (parsed.hostname === "open.spotify.com") {
-    const match = parsed.pathname.match(
-      /^\/(?:intl-[A-Za-z]{2}(?:-[A-Za-z]{2})?\/)?(track|album|playlist|episode|show|artist)\/([A-Za-z0-9]{10,})/
-    );
-    if (match) return { type: "spotify", kind: match[1], id: match[2], url };
-  }
-  return { type: "link", url };
+  return null;
+}
+
+/** 埋め込み対象の段落（トップレベルの段落だけ）を位置つきで拾う。 */
+function findEmbedParagraphs(doc) {
+  const found = [];
+  doc.forEach((node, offset) => {
+    if (node.type.name !== "paragraph") return;
+    const url = embedUrlOfParagraph(node);
+    if (!url) return;
+    const embed = classifyEmbedUrl(url);
+    if (embed) {
+      found.push({ from: offset, to: offset + node.nodeSize, embed, ordinal: found.length });
+    }
+  });
+  return found;
 }
 
 /** 段落の中身がテキストの URL 1つだけなら、その URL を返す。 */
@@ -245,64 +257,200 @@ function loneUrlText(node) {
   return /^https?:\/\/\S+$/.test(url) ? url : null;
 }
 
-function embedPreviewDom(embed) {
-  const root = document.createElement("div");
-  root.className = `embed-preview embed-preview--${embed.type}`;
-  root.setAttribute("contenteditable", "false");
-  if (embed.type === "youtube") {
-    const thumb = document.createElement("img");
-    thumb.className = "embed-preview__thumb";
-    thumb.src = `https://i.ytimg.com/vi/${embed.id}/hqdefault.jpg`;
-    thumb.alt = "";
-    thumb.loading = "lazy";
-    root.append(thumb);
+// X の公式ウィジェット。プレビュー側（app.js）と同じく widgets.js を
+// 一度だけ読み込み、対象要素に対して load を呼ぶ。
+let xWidgetsPromise = null;
+function loadXWidgets(root) {
+  if (window.twttr?.widgets?.load) {
+    window.twttr.widgets.load(root);
+    return;
   }
-  const meta = document.createElement("div");
-  meta.className = "embed-preview__meta";
-  const kind = document.createElement("span");
-  kind.className = "embed-preview__kind";
-  kind.textContent =
+  if (!xWidgetsPromise) {
+    xWidgetsPromise = new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://platform.twitter.com/widgets.js";
+      script.async = true;
+      script.addEventListener("load", resolve);
+      script.addEventListener("error", resolve);
+      document.head.append(script);
+    });
+  }
+  void xWidgetsPromise.then(() => {
+    if (root.isConnected) window.twttr?.widgets?.load(root);
+  });
+}
+
+const EMBED_ACTIONS = [
+  ["before", "上に段落を追加"],
+  ["after", "下に段落を追加"],
+  ["delete", "埋め込みを削除"]
+];
+
+/** 公開側と同じ構造の実物を組み立てる（リンクだけは遷移しない div 版）。 */
+function embedDom(embed) {
+  const root = document.createElement("div");
+  root.className = `embed-embed embed-embed--${embed.type}`;
+  root.setAttribute("contenteditable", "false");
+  root.dataset.embedUrl = embed.url;
+
+  const html =
     embed.type === "youtube"
-      ? "YouTube 埋め込み"
+      ? youtubeEmbedHtml(embed.id)
       : embed.type === "spotify"
-        ? "Spotify 埋め込み"
+        ? spotifyEmbedHtml(embed)
         : embed.type === "x"
-          ? "X のポスト"
-          : "リンクカード";
-  const url = document.createElement("span");
-  url.className = "embed-preview__url";
-  url.textContent = embed.url;
-  meta.append(kind, url);
-  root.append(meta);
+          ? xEmbedHtml(embed)
+          : null;
+  if (html) {
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    root.append(template.content);
+    if (embed.type === "x") requestAnimationFrame(() => loadXWidgets(root));
+  } else {
+    const card = document.createElement("div");
+    card.className = "embed-link-card";
+    const body = document.createElement("div");
+    body.className = "embed-link-card__body";
+    const title = document.createElement("span");
+    title.className = "embed-link-card__title";
+    title.textContent = embed.url;
+    const host = document.createElement("span");
+    host.className = "embed-link-card__host";
+    try {
+      host.textContent = new URL(embed.url).hostname;
+    } catch {
+      host.textContent = "";
+    }
+    body.append(title, host);
+    card.append(body);
+    root.append(card);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "embed-embed__actions";
+  for (const [action, label] of EMBED_ACTIONS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "embed-embed__action";
+    button.dataset.embedAction = action;
+    button.textContent = label;
+    actions.append(button);
+  }
+  root.append(actions);
   return root;
 }
 
-const embedPreviewPlugin = $prose(
-  () =>
-    new Plugin({
-      key: new PluginKey("slytxt-embed-preview"),
-      props: {
-        decorations(state) {
-          const items = [];
-          state.doc.forEach((node, offset) => {
-            if (node.type.name !== "paragraph") return;
-            const url = loneUrlText(node);
-            if (!url) return;
-            const embed = classifyUrlForPreview(url);
-            if (!embed) return;
-            items.push(
-              Decoration.widget(offset + node.nodeSize, () => embedPreviewDom(embed), {
-                side: 1,
-                ignoreSelection: true,
-                key: `embed:${url}`
-              })
-            );
-          });
-          return items.length ? DecorationSet.create(state.doc, items) : DecorationSet.empty;
+const embedPlugin = $prose(() => {
+  const domCache = new Map();
+
+  const applyEmbedAction = (view, root, action) => {
+    const { state } = view;
+    const target = findEmbedParagraphs(state.doc).find(
+      (entry) =>
+        entry.ordinal === Number(root.dataset.embedOrdinal) && entry.embed.url === root.dataset.embedUrl
+    );
+    if (!target) return;
+    const paragraph = state.schema.nodes.paragraph;
+    const tr = state.tr;
+    if (action === "delete") {
+      // 唯一の段落を消すと文書が空になるので、空段落に置き換える。
+      if (state.doc.childCount === 1) tr.replaceWith(target.from, target.to, paragraph.create());
+      else tr.delete(target.from, target.to);
+      const near = Math.min(target.from, tr.doc.content.size);
+      tr.setSelection(TextSelection.near(tr.doc.resolve(near), -1));
+    } else {
+      const at = action === "before" ? target.from : target.to;
+      tr.insert(at, paragraph.create());
+      tr.setSelection(TextSelection.create(tr.doc, at + 1));
+    }
+    view.dispatch(tr);
+    view.focus();
+  };
+
+  return new Plugin({
+    key: new PluginKey("slytxt-embed"),
+    view(editorView) {
+      const onClick = (event) => {
+        const button = event.target.closest?.("[data-embed-action]");
+        if (!button) return;
+        const root = button.closest(".embed-embed");
+        if (!root) return;
+        event.preventDefault();
+        event.stopPropagation();
+        applyEmbedAction(editorView, root, button.dataset.embedAction);
+      };
+      editorView.dom.addEventListener("click", onClick);
+      return {
+        destroy() {
+          editorView.dom.removeEventListener("click", onClick);
         }
+      };
+    },
+    props: {
+      decorations(state) {
+        const embeds = findEmbedParagraphs(state.doc);
+        if (!embeds.length) return DecorationSet.empty;
+        const items = [];
+        for (const entry of embeds) {
+          items.push(Decoration.node(entry.from, entry.to, { class: "embed-source" }));
+          const cacheKey = `${entry.ordinal}:${entry.embed.url}`;
+          let dom = domCache.get(cacheKey);
+          if (!dom || dom.dataset.embedUrl !== entry.embed.url) {
+            dom = embedDom(entry.embed);
+            domCache.set(cacheKey, dom);
+          }
+          dom.dataset.embedOrdinal = String(entry.ordinal);
+          items.push(
+            Decoration.widget(entry.to, () => dom, {
+              side: 1,
+              ignoreSelection: true,
+              key: cacheKey
+            })
+          );
+        }
+        return DecorationSet.create(state.doc, items);
+      },
+      handleDOMEvents: {
+        // 操作ボタンの mousedown でエディタの選択位置が動かないようにする。
+        mousedown(_view, event) {
+          if (event.target.closest?.("[data-embed-action]")) {
+            event.preventDefault();
+            return true;
+          }
+          return false;
+        }
+      },
+      handleKeyDown(view, event) {
+        // 埋め込み段落の中では Enter=後ろに段落、Backspace/Delete=削除に寄せる。
+        // 文字の入力はそのまま（URL を直せば実物表示が外れる）。
+        const { $from } = view.state.selection;
+        if ($from.depth !== 1 || $from.parent.type.name !== "paragraph") return false;
+        const url = embedUrlOfParagraph($from.parent);
+        if (!url || !classifyEmbedUrl(url)) return false;
+        const paragraph = view.state.schema.nodes.paragraph;
+        if (event.key === "Enter") {
+          const at = $from.after(1);
+          const tr = view.state.tr.insert(at, paragraph.create());
+          tr.setSelection(TextSelection.create(tr.doc, at + 1));
+          view.dispatch(tr);
+          return true;
+        }
+        if (event.key === "Backspace" || event.key === "Delete") {
+          const from = $from.before(1);
+          const to = $from.after(1);
+          const tr = view.state.tr;
+          if (view.state.doc.childCount === 1) tr.replaceWith(from, to, paragraph.create());
+          else tr.delete(from, to);
+          const near = Math.min(from, tr.doc.content.size);
+          tr.setSelection(TextSelection.near(tr.doc.resolve(near), -1));
+          view.dispatch(tr);
+          return true;
+        }
+        return false;
       }
-    })
-);
+    }
+  });
+});
 
 /**
  * エディタを作る。戻り値の handle:
@@ -438,7 +586,7 @@ export async function createCrepe(
     }
   });
   crepe.editor.use(hrCaretPlugin);
-  crepe.editor.use(embedPreviewPlugin);
+  crepe.editor.use(embedPlugin);
   if (onChange) {
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown, previous) => {
