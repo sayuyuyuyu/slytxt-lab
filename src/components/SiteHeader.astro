@@ -1,25 +1,40 @@
 ---
-import { getAllEntries, getProjects } from "@/lib/content";
+import { getAllEntries, getArticles, getProjects } from "@/lib/content";
 import { collectTags } from "@/lib/tags";
 import { navGroups, site } from "@/lib/site";
 import ThemeToggle from "./ThemeToggle.astro";
 
 const currentPath = Astro.url.pathname;
 
-const [projects, allEntries] = await Promise.all([getProjects(), getAllEntries()]);
+const [projects, allEntries, tech, journal] = await Promise.all([
+  getProjects(),
+  getAllEntries(),
+  getArticles("tech"),
+  getArticles("journal")
+]);
 const hasTags = collectTags(allEntries).size > 0;
 
 // Do not show a menu link to a section with no content (PR #19 rule).
-// The /projects/ page itself stays reachable by direct URL, and the
-// link returns automatically once a project is published.
+// The pages themselves stay reachable by direct URL, and each link
+// returns automatically once its section has published content.
+// Child links (Tech / Journal under Articles) follow their own counts.
+const hiddenHrefs = new Set<string>();
+if (tech.length + journal.length === 0) hiddenHrefs.add("/articles/");
+if (tech.length === 0) hiddenHrefs.add("/articles/tech/");
+if (journal.length === 0) hiddenHrefs.add("/articles/journal/");
+if (projects.length === 0) hiddenHrefs.add("/projects/");
+if (!hasTags) hiddenHrefs.add("/tags/");
+
 const visibleNavGroups = navGroups
   .map((group) => ({
     ...group,
-    items: group.items.filter(
-      (item) =>
-        (item.href !== "/projects/" || projects.length > 0) &&
-        (item.href !== "/tags/" || hasTags)
-    )
+    items: group.items
+      .filter((item) => !hiddenHrefs.has(item.href))
+      .map((item) => {
+        if (!item.children) return item;
+        const children = item.children.filter((child) => !hiddenHrefs.has(child.href));
+        return children.length > 0 ? { ...item, children } : { ...item, children: undefined };
+      })
   }))
   .filter((group) => group.items.length > 0);
 
