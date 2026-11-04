@@ -29,7 +29,7 @@ const hasTags = collectTags(await getAllEntries()).size > 0;
         <div class="listing-list">
           {page.entries.map((entry) =>
             variant === "note"
-              ? <NoteCard entry={entry} />
+              ? <NoteCard entry={entry} headingLevel="h2" />
               : <ArticleCard entry={entry} headingLevel="h2" />
           )}
         </div>

@@ -5,9 +5,10 @@ import { categoryLabels } from "@/lib/site";
 
 type Props = {
   entry: ArticleEntry;
+  headingLevel?: "h2" | "h3";
 };
 
-const { entry } = Astro.props;
+const { entry, headingLevel: Heading = "h3" } = Astro.props;
 const date = getEntryDate(entry);
 const preview = getEntryPreview(entry);
 ---
@@ -19,5 +20,7 @@ const preview = getEntryPreview(entry);
     <span aria-hidden="true"> / </span>
     <time datetime={date.toISOString()}>{formatDate(date)}</time>
   </div>
-  <a class="note-card__text" href={getEntryPath(entry)}>{preview}</a>
+  <Heading class="note-card__title">
+    <a class="note-card__text" href={getEntryPath(entry)}>{preview}</a>
+  </Heading>
 </article>

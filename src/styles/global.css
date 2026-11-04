@@ -1422,6 +1422,9 @@ body:has(.site-header[data-hidden="true"]) .toc {
   font-family: var(--font-mono);
   font-size: 0.76rem;
 }
+.note-card__title {
+  margin: 0;
+}
 .note-card__text {
   display: block;
   margin-top: 8px;
