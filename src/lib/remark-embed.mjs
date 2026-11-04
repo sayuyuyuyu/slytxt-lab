@@ -14,13 +14,9 @@
  *   取得できない場合はホスト名だけのカードに落とす（ビルドは止めない）。
  */
 
-const VIDEO_ID = /^[A-Za-z0-9_-]{6,}$/;
+import { escapeHtml } from "./html.ts";
 
-function escapeHtml(text) {
-  return String(text ?? "").replace(/[&<>"']/g, (char) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]
-  );
-}
+const VIDEO_ID = /^[A-Za-z0-9_-]{6,}$/;
 
 function youtubeId(url) {
   let parsed;
