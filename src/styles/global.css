@@ -32,8 +32,8 @@
   /* Header bar height including its bottom border. */
   --header-height: 65px;
   --font-body:
-    "Hina Mincho", "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho",
-    "YuMincho", serif;
+    "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+    "Yu Gothic", "YuGothic", sans-serif;
   --font-mono:
     ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
@@ -506,7 +506,7 @@ samp,
 .section-head h2 {
   margin: 0;
   font-family: var(--font-heading);
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.4;
   text-wrap: balance;
 }
@@ -698,7 +698,7 @@ samp,
 .entry-card__title,
 .project-card__title {
   margin: 0;
-  font: 400 1.24rem/1.6 var(--font-heading);
+  font: 500 1.24rem/1.6 var(--font-heading);
 }
 .entry-card__title a,
 .project-card__title a {
@@ -950,7 +950,7 @@ samp,
   position: relative;
   margin-top: 2.3em;
   padding-left: 0.7em;
-  font: 400 1.6rem/1.5 var(--font-heading);
+  font: 500 1.6rem/1.5 var(--font-heading);
 }
 .article-body h2::before {
   content: "";
