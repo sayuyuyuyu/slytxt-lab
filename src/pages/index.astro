@@ -22,7 +22,8 @@ const terminalConfig = {
     notes: articleSections.notes.description,
     projects: pageDescriptions.projects,
     tags: pageDescriptions.tags,
-    search: pageDescriptions.search
+    search: pageDescriptions.search,
+    about: pageDescriptions.about
   },
   hasTags
 };
@@ -145,7 +146,7 @@ const terminalConfig = {
           description: terminalConfig.descriptions.tags
         },
         search: { path: "/search/", description: terminalConfig.descriptions.search },
-        about: { path: "/about/", description: "しらゆ（slytxt）のプロフィール。" },
+        about: { path: "/about/", description: terminalConfig.descriptions.about },
         bookmarks: { path: null, description: "ブックマークは非公開にしています。" }
       };
 

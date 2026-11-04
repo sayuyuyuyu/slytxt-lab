@@ -77,6 +77,7 @@ export const articlesIndex: ArticleSection = {
 
 /** Descriptions for the pages outside the article sections, shared by each page and the home terminal. */
 export const pageDescriptions = {
+  about: "しらゆ（slytxt）のプロフィール。",
   projects: "しらゆがつくっているものと、いまの進み具合。",
   tags: "Tech、Journal、Notes、Projects をタグから辿れます。",
   search: "記事とメモ、つくったものを、書いてある言葉から探せます。"
