@@ -317,11 +317,11 @@ function renderList() {
   for (const draft of state.drafts) {
     const item = document.createElement("li");
     item.className = "drafts__item";
-    if (state.current?.id === draft.id) item.setAttribute("aria-current", "true");
 
     const select = document.createElement("button");
     select.type = "button";
     select.className = "drafts__select";
+    if (state.current?.id === draft.id) select.setAttribute("aria-current", "true");
 
     const title = document.createElement("span");
     title.className = "drafts__title";
