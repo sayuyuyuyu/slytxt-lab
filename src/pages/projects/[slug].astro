@@ -2,7 +2,7 @@
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
-import { getEntryDate, getEntrySlug, getProjects, hasXEmbed } from "@/lib/content";
+import { getEntryDate, getEntryDisplayTitle, getEntrySlug, getProjects, hasXEmbed } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels, projectStatusLabels, site } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
@@ -19,10 +19,11 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 const date = getEntryDate(entry);
+const displayTitle = getEntryDisplayTitle(entry);
 ---
 
 <BaseLayout
-  title={`${entry.data.title} - Projects - ${site.name}`}
+  title={`${displayTitle} - Projects - ${site.name}`}
   description={entry.data.description}
   image={`/og/projects/${getEntrySlug(entry)}.png`}
   type="article"
@@ -33,9 +34,9 @@ const date = getEntryDate(entry);
 >
   <header class="article-hero">
     <div class="container">
-      <Breadcrumbs items={[{ label: "Projects", href: "/projects/" }, { label: entry.data.title }]} />
+      <Breadcrumbs items={[{ label: "Projects", href: "/projects/" }, { label: displayTitle }]} />
       <p class="eyebrow">{categoryLabels.projects}</p>
-      <h1 class="page-title" data-pagefind-meta="title">{entry.data.title}</h1>
+      <h1 class="page-title" data-pagefind-meta="title">{displayTitle}</h1>
       <p class="page-lead">{entry.data.description}</p>
       <div class="article-meta">
         <span class="status">{projectStatusLabels[entry.data.status]}</span>

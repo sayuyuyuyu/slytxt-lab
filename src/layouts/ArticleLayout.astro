@@ -3,7 +3,7 @@ import AdultGate from "@/components/AdultGate.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
-import { getEntryDate, getEntryPath, getEntrySlug, hasXEmbed, type TechJournalEntry } from "@/lib/content";
+import { getEntryDate, getEntryDisplayTitle, getEntryPath, getEntrySlug, hasXEmbed, type TechJournalEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels, categoryPaths, site } from "@/lib/site";
 import BaseLayout from "./BaseLayout.astro";
@@ -23,12 +23,13 @@ type Props = {
 
 const { entry, headings, previous, next } = Astro.props;
 const date = getEntryDate(entry);
-const title = `${entry.data.title} - ${categoryLabels[entry.collection]} - ${site.name}`;
+const displayTitle = getEntryDisplayTitle(entry);
+const title = `${displayTitle} - ${categoryLabels[entry.collection]} - ${site.name}`;
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
 const crumbs = [
   { label: "Articles", href: "/articles/" },
   { label: categoryLabels[entry.collection], href: categoryPaths[entry.collection] },
-  { label: entry.data.title }
+  { label: displayTitle }
 ];
 ---
 
@@ -46,7 +47,7 @@ const crumbs = [
     <div class="container">
       <Breadcrumbs items={crumbs} />
       <p class="eyebrow">{categoryLabels[entry.collection]}</p>
-      <h1 class="page-title" data-pagefind-meta="title">{entry.data.title}</h1>
+      <h1 class="page-title" data-pagefind-meta="title">{displayTitle}</h1>
       {entry.data.description && <p class="page-lead">{entry.data.description}</p>}
       <div class="article-meta">
         <span>Published <time datetime={entry.data.published.toISOString()}>{formatDate(entry.data.published)}</time></span>
@@ -71,7 +72,7 @@ const crumbs = [
           previous ? (
             <a href={getEntryPath(previous)}>
               <span>Previous</span>
-              {previous.data.title}
+              {getEntryDisplayTitle(previous)}
             </a>
           ) : (
             <span></span>
@@ -81,7 +82,7 @@ const crumbs = [
           next ? (
             <a href={getEntryPath(next)}>
               <span>Next</span>
-              {next.data.title}
+              {getEntryDisplayTitle(next)}
             </a>
           ) : (
             <span></span>
