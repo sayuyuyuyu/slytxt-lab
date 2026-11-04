@@ -87,6 +87,17 @@
             </div>
           </div>
 
+          <!-- タイトルは本文と独立した欄（note と同じ「タイトル→本文」の構成）。
+               値の保存先は下書きの frontmatter の title。 -->
+          <input
+            id="title"
+            class="editor__title"
+            type="text"
+            placeholder="タイトル"
+            aria-label="タイトル"
+            autocomplete="off"
+          />
+
           <!-- WYSIWYG（editor.js）が有効なときはこちらを使い、textarea は隠れる。
                読み込めない場合は textarea のまま編集できる（フォールバック）。 -->
           <div id="editorRoot" class="editor__wysiwyg" hidden aria-label="本文"></div>

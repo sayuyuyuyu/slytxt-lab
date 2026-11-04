@@ -339,7 +339,7 @@ textarea {
   /* 列はコンテナ幅を超えない。バーのボタン群など中身の最小幅で
      列が広がり、操作ボタンが画面外へ出るのを防ぐ。 */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   min-height: 0;
   flex: 1;
   width: 100%;
@@ -371,6 +371,25 @@ textarea {
   color: var(--text-muted);
   font-size: 0.74rem;
   white-space: nowrap;
+}
+
+/* タイトル欄。本文とは独立した入力で、大きめの文字で出す。 */
+.editor__title {
+  width: 100%;
+  min-width: 0;
+  padding: 20px 20px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 1.55rem/1.5 var(--font-body);
+}
+
+.editor__title::placeholder {
+  color: var(--text-muted);
+}
+
+.editor__title:focus {
+  outline: none;
 }
 
 .editor__body {
@@ -664,6 +683,10 @@ textarea {
 
   .editor__bar,
   .editor__body {
+    padding-inline: 20px;
+  }
+
+  .editor__title {
     padding-inline: 20px;
   }
 
