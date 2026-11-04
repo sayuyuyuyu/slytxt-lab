@@ -9,7 +9,7 @@
 - 単一 Worker（`src/index.mjs`）+ Workers Static Assets（`public/`、生成物なので git 管理しない）。
 - 下書きは Cloudflare KV（バインディング `DRAFTS`）。キー `draft:<id>`、値は移行前のファイル保存版が `drafts/<id>.md` に書いていたテキストそのまま。直列化・正規化の規則はファイル保存版から変えていない（`src/drafts-kv.mjs`）。
 - 純粋モジュール（`frontmatter.mjs` / `markdown.mjs` と、日付の `date.mjs`）は `src/` に同梱している（旧ローカル版から引き継いだもの）。
-- 投稿は GitHub REST API（`src/github.mjs` / `src/publish.mjs`）。ブランチ作成 → ファイル作成 → PR 作成までを投稿リクエストの中で行い、CI 待ちと merge は `GET /api/publish/:id/status` を UI がポーリングして完了させる。ローカルの `pnpm run check` は持たず、PR の CI（チェック名 `ci`）が門番で、成功したら merge する。Cloudflare Pages の結果はマージ条件に入れない（2026-11-04 本人決定。投稿の待ちを CI だけにするため）。
+- 投稿は GitHub REST API（`src/github.mjs` / `src/publish.mjs`）。ブランチ作成 → ファイル作成 → PR 作成までを投稿リクエストの中で行い、CI 待ちと merge は UI のポーリング（`GET /api/publish/:id/status`）と Cron の見届け（`src/driver.mjs`、毎分）の両方が駆動して完了させる。どちらが先に merge しても冪等に収束し、タブを閉じても公開が完了する。結果は KV に `publish-result:<下書きID>` として残り、次回 writer を開いたときに UI が `GET /api/publish-results` で取得して知らせる。ローカルの `pnpm run check` は持たず、PR の CI（チェック名 `ci`）が門番で、成功したら merge する。Cloudflare Pages の結果はマージ条件に入れない（2026-11-04 本人決定。投稿の待ちを CI だけにするため）。
 - 投稿は下書きの本文をそのまま使う。誤字チェック pass（Anthropic API）は 2026-11-04 に廃止した。
 - 認証は Cloudflare Access が担う（`write.slytxt.dev` は本人のメールアドレスのみ許可。後述）。Worker 側にトークン認証は無い。`x-slytxt-client` による書き込み防御（認証とは別の層）は Worker 側に残してある。入口はカスタムドメインのみで、`workers_dev = false` で workers.dev 側を閉じてある（workers.dev は Access の外にあるため）。
 - UI はこのディレクトリの `ui/` が正（`index.html` / `style.css` / `app.js`）。note 風のレイアウト（編集画面のヘッダー、公開確認パネル、一覧の「…」メニュー）は Cloudflare 版だけの差分として `ui/` 側に持つ。`markdown.mjs` は `src/markdown.mjs` をデプロイ準備のときに `public/` へコピーする。`/theme.css` は `src/styles/global.css` の `:root` 変数ブロックから静的に生成する（サイト側の変数を変えたら再生成と再デプロイが要る）。
@@ -109,7 +109,7 @@ npx wrangler kv key list --binding DRAFTS --remote -c tools/writer-cloudflare/wr
 main は ruleset で「PR 経由＋チェック `ci` の成功」が必須のため、Contents API で main へ直接コミットはできない（409 になる）。そのため投稿フローと同じ形を取る:
 
 1. `POST /api/media` がブランチ `media/<uuid>` を作ってファイルを置き、PR を作成して返す（state は `waiting`）。
-2. UI が `GET /api/media/:key/status` をポーリングし、status 側が `ci` の成功を見て squash merge し、ブランチを消す（Cloudflare Pages の結果は待たない。投稿フローと同じ本人決定）。
+2. UI のポーリング（`GET /api/media/:key/status`）と Cron の見届け（`src/driver.mjs`、毎分）の両方が status を駆動し、`ci` の成功を見て squash merge し、ブランチを消す。どちらが先に merge しても冪等に収束し、タブを閉じても完了する（Cloudflare Pages の結果は待たない。投稿フローと同じ本人決定）。
 3. merge のコミットが Cloudflare Pages の本番デプロイを起こし、伝わって初めて URL が開ける。
 
 そのため、アップロード操作自体は CI と merge の分だけ（数十秒程度）かかり、画像が実際に表示できるようになるのは merge 後のデプロイ完了までで、合計で数分程度かかることがある（デプロイの所要時間は Cloudflare 側のばらつきに左右される）。アップロード直後にエディタ内で画像が見えないことがあるが、デプロイが伝われば表示される。`GITHUB_TOKEN` が未設定の環境では、`POST /api/media` は 501 を返す。
