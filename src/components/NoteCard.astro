@@ -1,5 +1,5 @@
 ---
-import { getEntryPath, type ArticleEntry } from "@/lib/content";
+import { getEntryPath, toPlainText, type ArticleEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels } from "@/lib/site";
 
@@ -13,7 +13,7 @@ const lines = (entry.body ?? "")
   .trim()
   .split("\n")
   .filter((line) => line.trim());
-const preview = lines.slice(0, 3).join("\n");
+const preview = toPlainText(lines.slice(0, 3).join("\n"));
 ---
 
 <article class="note-card" data-motion>

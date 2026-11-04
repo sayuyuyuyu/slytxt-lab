@@ -109,3 +109,16 @@ export function getAdjacentArticles<T extends ArticleEntry>(entries: T[], curren
     next: index >= 0 && index < entries.length - 1 ? entries[index + 1] : undefined
   };
 }
+
+/** Markdown の記号を落としてプレーンテキストにする。writer 側の plainText と扱いをそろえる。 */
+export function toPlainText(source: string): string {
+  return String(source ?? "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s{0,3}>\s?/gm, "")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[*_~`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}

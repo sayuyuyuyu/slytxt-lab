@@ -15,12 +15,10 @@ type Props = {
 const { entry, previous, next } = Astro.props;
 const date = entry.data.updated ?? entry.data.published;
 const text = (entry.body ?? "").trim();
-const firstLine = text.split("\n").find((line) => line.trim()) ?? categoryLabels.notes;
-const label = firstLine.slice(0, 80);
+const label = entry.data.title;
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
 
-const navTitle = (target: ArticleEntry) =>
-  (target.body ?? "").trim().split("\n").find((line) => line.trim()) ?? categoryLabels.notes;
+const navTitle = (target: ArticleEntry) => target.data.title;
 ---
 
 <BaseLayout
@@ -35,7 +33,7 @@ const navTitle = (target: ArticleEntry) =>
   <article class="note">
     <div class="container note__inner">
       <Breadcrumbs items={[{ label: "Notes", href: categoryPaths.notes }, { label }]} />
-      <h1 class="sr-only">{firstLine}</h1>
+      <h1 class="sr-only">{label}</h1>
       <p class="note__meta">
         <span>{categoryLabels.notes}</span>
         <span aria-hidden="true"> / </span>
