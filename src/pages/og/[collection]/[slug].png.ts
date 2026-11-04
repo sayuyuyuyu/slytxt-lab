@@ -1,5 +1,5 @@
 import type { APIContext } from "astro";
-import { getAllEntries, getEntryDate, getEntrySlug, type SiteEntry } from "@/lib/content";
+import { getAllEntries, getEntryDate, getEntryDisplayTitle, getEntrySlug, type SiteEntry } from "@/lib/content";
 import { renderOgPng } from "@/lib/og";
 
 export async function getStaticPaths() {
@@ -19,7 +19,7 @@ export async function getStaticPaths() {
 export function GET(context: APIContext) {
   const entry = context.props.entry as SiteEntry;
   const png = renderOgPng({
-    title: entry.data.title,
+    title: getEntryDisplayTitle(entry),
     date: getEntryDate(entry),
     category: entry.collection
   });
