@@ -78,7 +78,7 @@ const terminalConfig = {
     <div class="container">
       <div class="section-head">
         <div><p class="eyebrow">recent articles</p><h2 id="recent-title">Recent</h2></div>
-        <div class="section-links"><a href="/articles/">Articles</a><a href="/rss.xml">RSS</a></div>
+        <div class="section-links"><a class="link-button" href="/articles/">All articles <span aria-hidden="true">↗</span></a><a class="link-button" href="/rss.xml">RSS <span aria-hidden="true">↗</span></a></div>
       </div>
       <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div>
     </div>
