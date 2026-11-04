@@ -21,8 +21,8 @@ const projectSchema = z.object({
   started: z.coerce.date(),
   updated: z.coerce.date().optional(),
   status: z.enum(["planning", "active", "maintenance", "paused", "completed"]),
-  repo: z.string().url().optional(),
-  demo: z.string().url().optional(),
+  repo: z.url().optional(),
+  demo: z.url().optional(),
   tags: z.array(z.string()).default([]),
   draft: z.boolean().default(false)
 });
