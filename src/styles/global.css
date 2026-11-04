@@ -1028,6 +1028,79 @@ samp,
   border: 0;
   border-top: 1px dashed var(--border-strong);
 }
+/* 埋め込み（URL だけの段落から remark-embed が生成する） */
+.article-body .embed {
+  margin-block: 28px;
+}
+.article-body .embed--youtube iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+}
+.article-body .embed--x {
+  display: flex;
+  justify-content: center;
+}
+.article-body .embed--x .twitter-tweet {
+  margin: 0 !important;
+}
+.article-body .link-card {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  margin-block: 28px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.article-body .link-card:hover {
+  border-color: var(--border-strong);
+}
+.article-body .link-card__image {
+  flex: none;
+  width: 112px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.article-body .link-card__body {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-width: 0;
+}
+.article-body .link-card__title {
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.article-body .link-card__desc {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.article-body .link-card__host {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+@media (max-width: 560px) {
+  .article-body .link-card__image {
+    width: 84px;
+    height: 72px;
+  }
+}
 .toc {
   grid-column: 2;
   grid-row: 1;
