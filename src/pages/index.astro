@@ -43,6 +43,7 @@ const terminalConfig = {
         </div>
         <div class="terminal__console" data-play-terminal>
           <div class="terminal__output" data-terminal-output role="log" aria-label="ターミナルの出力"></div>
+          <div class="terminal__suggestions" data-terminal-suggestions hidden></div>
           <form class="terminal__input-line" data-terminal-form>
             <label class="terminal__prompt" for="play-terminal-input">guest@slytxt-lab:~$</label>
             <input
@@ -102,7 +103,8 @@ const terminalConfig = {
       const output = root.querySelector("[data-terminal-output]");
       const form = root.querySelector("[data-terminal-form]");
       const input = root.querySelector("[data-terminal-input]");
-      if (!output || !form || !input) return;
+      const suggestions = root.querySelector("[data-terminal-suggestions]");
+      if (!output || !form || !input || !suggestions) return;
 
       const PROMPT = "guest@slytxt-lab:~$";
 
@@ -334,6 +336,7 @@ const terminalConfig = {
         historyIndex = -1;
         draft = "";
         input.value = "";
+        updateSuggestions();
         input.focus({ preventScroll: true });
       });
 
@@ -351,6 +354,34 @@ const terminalConfig = {
         }
         return [];
       };
+
+      // Tappable version of the Tab candidates, for visitors without a
+      // Tab key: chips above the input line set the tapped command as the
+      // input instead of running it, so the visitor still confirms with
+      // Enter. Nothing is shown while the input is empty or already
+      // matches the only candidate.
+      const updateSuggestions = () => {
+        const candidates = input.value.trim()
+          ? completionsFor(input.value).filter((candidate) => candidate !== input.value)
+          : [];
+        suggestions.replaceChildren(
+          ...candidates.map((candidate) => {
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = "terminal__suggestion";
+            chip.textContent = candidate;
+            chip.addEventListener("click", () => {
+              input.value = candidate;
+              input.focus({ preventScroll: true });
+              updateSuggestions();
+            });
+            return chip;
+          })
+        );
+        suggestions.hidden = candidates.length === 0;
+      };
+
+      input.addEventListener("input", updateSuggestions);
 
       // The value the candidate list was last shown for. A second Tab on the
       // same value is left alone so keyboard users can move focus onward.
@@ -375,6 +406,7 @@ const terminalConfig = {
           }
           // Keep the caret at the end after jumping through history.
           input.setSelectionRange(input.value.length, input.value.length);
+          updateSuggestions();
           return;
         }
         if (event.key === "Tab" && !event.shiftKey) {
@@ -385,6 +417,7 @@ const terminalConfig = {
             if (candidates[0] === input.value) return;
             event.preventDefault();
             input.value = candidates[0];
+            updateSuggestions();
             return;
           }
           let prefix = candidates[0];
@@ -396,6 +429,7 @@ const terminalConfig = {
           if (prefix.length > input.value.length) {
             event.preventDefault();
             input.value = prefix;
+            updateSuggestions();
           } else if (tabListedFor !== input.value) {
             event.preventDefault();
             tabListedFor = input.value;
