@@ -3,7 +3,7 @@ import AdultGate from "@/components/AdultGate.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
-import { getEntryPath, getEntrySlug, type ArticleEntry } from "@/lib/content";
+import { getEntryPath, getEntrySlug, type TechJournalEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels, categoryPaths, site } from "@/lib/site";
 import BaseLayout from "./BaseLayout.astro";
@@ -15,27 +15,21 @@ type Heading = {
 };
 
 type Props = {
-  entry: ArticleEntry;
+  entry: TechJournalEntry;
   headings: Heading[];
-  previous?: ArticleEntry;
-  next?: ArticleEntry;
+  previous?: TechJournalEntry;
+  next?: TechJournalEntry;
 };
 
 const { entry, headings, previous, next } = Astro.props;
 const date = entry.data.updated ?? entry.data.published;
 const title = `${entry.data.title} - ${categoryLabels[entry.collection]} - ${site.name}`;
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
-const crumbs =
-  entry.collection === "notes"
-    ? [
-        { label: categoryLabels.notes, href: categoryPaths.notes },
-        { label: entry.data.title }
-      ]
-    : [
-        { label: "Articles", href: "/articles/" },
-        { label: categoryLabels[entry.collection], href: categoryPaths[entry.collection] },
-        { label: entry.data.title }
-      ];
+const crumbs = [
+  { label: "Articles", href: "/articles/" },
+  { label: categoryLabels[entry.collection], href: categoryPaths[entry.collection] },
+  { label: entry.data.title }
+];
 ---
 
 <BaseLayout
