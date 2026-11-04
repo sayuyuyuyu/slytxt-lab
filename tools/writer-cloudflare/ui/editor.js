@@ -20,6 +20,7 @@ import {
 import { lift } from "@milkdown/kit/prose/commands";
 import { liftListItem } from "@milkdown/kit/prose/schema-list";
 import { NodeSelection, Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
+import { Decoration, DecorationSet } from "@milkdown/kit/prose/view";
 import { $prose, replaceAll } from "@milkdown/kit/utils";
 // common/style.css は latex.css（KaTeX フォント一式）まで含むため、
 // 使う feature の分だけ個別に読む（Latex / AI / TopBar は無効化している）。
@@ -187,6 +188,114 @@ const hrCaretPlugin = $prose(
     })
 );
 
+/*
+ * 埋め込みのプレビュー。
+ *
+ * 公開側（src/lib/remark-embed.mjs）は「URL だけの段落」を埋め込みに
+ * 変える。編集画面でも公開時の見え方が分かるよう、同じ条件の段落の
+ * 直下にカード風のプレビューを decoration で出す。あくまで表示だけで、
+ * markdown は URL のまま変わらない（判定ルールは公開側と揃える）。
+ * 一般 URL の OGP はブラウザから取得できない（CORS）ため、編集側では
+ * ホスト名だけのカードにする。OGP の取得は公開側のビルド時に行う。
+ */
+function classifyUrlForPreview(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.replace(/^(www\.|m\.)/, "");
+  if (host === "youtu.be") {
+    const id = parsed.pathname.slice(1).split("/")[0];
+    return /^[A-Za-z0-9_-]{6,}$/.test(id) ? { type: "youtube", id, url } : { type: "link", url };
+  }
+  if (host === "youtube.com") {
+    let id = null;
+    if (parsed.pathname === "/watch") id = parsed.searchParams.get("v");
+    else id = parsed.pathname.match(/^\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{6,})/)?.[1] ?? null;
+    return id && /^[A-Za-z0-9_-]{6,}$/.test(id)
+      ? { type: "youtube", id, url }
+      : { type: "link", url };
+  }
+  const bareHost = parsed.hostname.replace(/^www\./, "");
+  if (bareHost === "x.com" || bareHost === "twitter.com") {
+    const match = parsed.pathname.match(/^\/([A-Za-z0-9_]+)\/status\/(\d+)/);
+    if (match) return { type: "x", user: match[1], id: match[2], url };
+  }
+  return { type: "link", url };
+}
+
+/** 段落の中身がテキストの URL 1つだけなら、その URL を返す。 */
+function loneUrlText(node) {
+  let text = "";
+  let onlyText = true;
+  node.forEach((child) => {
+    if (child.isText) text += child.text;
+    else onlyText = false;
+  });
+  if (!onlyText) return null;
+  const url = text.trim();
+  return /^https?:\/\/\S+$/.test(url) ? url : null;
+}
+
+function embedPreviewDom(embed) {
+  const root = document.createElement("div");
+  root.className = `embed-preview embed-preview--${embed.type}`;
+  root.setAttribute("contenteditable", "false");
+  if (embed.type === "youtube") {
+    const thumb = document.createElement("img");
+    thumb.className = "embed-preview__thumb";
+    thumb.src = `https://i.ytimg.com/vi/${embed.id}/hqdefault.jpg`;
+    thumb.alt = "";
+    thumb.loading = "lazy";
+    root.append(thumb);
+  }
+  const meta = document.createElement("div");
+  meta.className = "embed-preview__meta";
+  const kind = document.createElement("span");
+  kind.className = "embed-preview__kind";
+  kind.textContent =
+    embed.type === "youtube"
+      ? "YouTube 埋め込み"
+      : embed.type === "x"
+        ? "X のポスト"
+        : "リンクカード";
+  const url = document.createElement("span");
+  url.className = "embed-preview__url";
+  url.textContent = embed.url;
+  meta.append(kind, url);
+  root.append(meta);
+  return root;
+}
+
+const embedPreviewPlugin = $prose(
+  () =>
+    new Plugin({
+      key: new PluginKey("slytxt-embed-preview"),
+      props: {
+        decorations(state) {
+          const items = [];
+          state.doc.forEach((node, offset) => {
+            if (node.type.name !== "paragraph") return;
+            const url = loneUrlText(node);
+            if (!url) return;
+            const embed = classifyUrlForPreview(url);
+            if (!embed) return;
+            items.push(
+              Decoration.widget(offset + node.nodeSize, () => embedPreviewDom(embed), {
+                side: 1,
+                ignoreSelection: true,
+                key: `embed:${url}`
+              })
+            );
+          });
+          return items.length ? DecorationSet.create(state.doc, items) : DecorationSet.empty;
+        }
+      }
+    })
+);
+
 /**
  * エディタを作る。戻り値の handle:
  * - getMarkdown(): 現在の本文を markdown で返す
@@ -321,6 +430,7 @@ export async function createCrepe(
     }
   });
   crepe.editor.use(hrCaretPlugin);
+  crepe.editor.use(embedPreviewPlugin);
   if (onChange) {
     crepe.on((listener) => {
       listener.markdownUpdated((ctx, markdown, previous) => {

@@ -249,6 +249,33 @@ if (tableOut.includes("列1") && tableOut.includes("値2") && tableOut.includes(
   console.log(tableOut);
 }
 
+// 埋め込みプレビュー: URL だけの段落の下にカード風プレビューが出て、
+// markdown 自体は URL のまま変わらないことを緩く確認する。
+const EMBEDS = [
+  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "",
+  "https://example.com/article",
+  "",
+  "ただの段落。"
+].join("\n");
+handle.setMarkdown(imagesToEditor(EMBEDS));
+await sleep(300);
+const previews = document.querySelectorAll(".embed-preview");
+if (
+  previews.length === 2 &&
+  document.querySelector(".embed-preview--youtube") &&
+  document.querySelector(".embed-preview--link") &&
+  handle.getMarkdown().includes("https://www.youtube.com/watch?v=dQw4w9WgXcQ") &&
+  handle.getMarkdown().includes("https://example.com/article")
+) {
+  console.log("ok: 埋め込みプレビュー（YouTube / リンクカード）");
+} else {
+  failures.push("埋め込みプレビュー");
+  console.log("NG: 埋め込みプレビュー");
+  console.log("previews:", previews.length);
+  console.log(handle.getMarkdown());
+}
+
 await handle.destroy();
 
 if (failures.length > 0) {
