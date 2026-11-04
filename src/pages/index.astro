@@ -252,7 +252,7 @@ const terminalConfig = {
                 "    管理人の紹介",
                 "  ls",
                 "    ページとファイルの一覧",
-                "  open <ページ>",
+                "  open / cd <ページ>",
                 "    ページを開く（例: open notes）",
                 "  articles / tech / journal /",
                 "  notes / projects / tags /",
@@ -266,7 +266,8 @@ const terminalConfig = {
                 "    そのまま表示する",
                 "  clear",
                 "    出力を消す",
-                "  cat / tea / moka / sudo",
+                "  cat / tea / moka / sudo /",
+                "  exit / logout",
                 "    小ネタ"
               ].join("\n")
             );
@@ -278,14 +279,14 @@ const terminalConfig = {
               "  help              この一覧",
               "  about             管理人の紹介",
               "  ls                ページとファイルの一覧",
-              "  open <ページ>     ページを開く（例: open notes）",
+              "  open / cd <ページ>  ページを開く（例: open notes）",
               "  articles / tech / journal / notes / projects / tags / search",
               "                    各ページの案内",
               "  whoami            あなたは誰か",
               "  date              現在の日時",
               "  echo <文字>       そのまま表示する",
               "  clear             出力を消す",
-              "  cat / tea / moka / sudo   小ネタ"
+              "  cat / tea / moka / sudo / exit / logout   小ネタ"
             ].join("\n")
           );
         },
