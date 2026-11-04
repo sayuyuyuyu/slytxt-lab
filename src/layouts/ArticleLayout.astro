@@ -3,7 +3,7 @@ import AdultGate from "@/components/AdultGate.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
-import { getEntryPath, getEntrySlug, type TechJournalEntry } from "@/lib/content";
+import { getEntryDate, getEntryPath, getEntrySlug, type TechJournalEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels, categoryPaths, site } from "@/lib/site";
 import BaseLayout from "./BaseLayout.astro";
@@ -22,7 +22,7 @@ type Props = {
 };
 
 const { entry, headings, previous, next } = Astro.props;
-const date = entry.data.updated ?? entry.data.published;
+const date = getEntryDate(entry);
 const title = `${entry.data.title} - ${categoryLabels[entry.collection]} - ${site.name}`;
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
 const crumbs = [

@@ -2,7 +2,7 @@
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TableOfContents from "@/components/TableOfContents.astro";
 import TagList from "@/components/TagList.astro";
-import { getEntrySlug, getProjects } from "@/lib/content";
+import { getEntryDate, getEntrySlug, getProjects } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels, projectStatusLabels, site } from "@/lib/site";
 import BaseLayout from "@/layouts/BaseLayout.astro";
@@ -18,7 +18,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
-const date = entry.data.updated ?? entry.data.started;
+const date = getEntryDate(entry);
 ---
 
 <BaseLayout
