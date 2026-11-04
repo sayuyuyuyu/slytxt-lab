@@ -66,6 +66,12 @@
             <button id="back" class="button editor__back" type="button">← 一覧へ戻る</button>
 
             <div class="editor__bar-actions">
+              <span id="uploadStatus" class="upload-status" data-state="busy" hidden>
+                <span id="uploadStatusText">画像を反映中…</span>
+                <button id="uploadRetry" class="upload-status__retry" type="button" hidden>
+                  再試行
+                </button>
+              </span>
               <span id="count" class="editor__count"></span>
               <button id="save" class="save" type="button" data-state="idle">
                 <span class="save__dot" aria-hidden="true"></span>

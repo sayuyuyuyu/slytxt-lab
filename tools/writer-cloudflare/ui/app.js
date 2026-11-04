@@ -29,6 +29,9 @@ const els = {
   body: $("#body"),
   editorRoot: $("#editorRoot"),
   count: $("#count"),
+  uploadStatus: $("#uploadStatus"),
+  uploadStatusText: $("#uploadStatusText"),
+  uploadRetry: $("#uploadRetry"),
   back: $("#back"),
   editorMenu: $("#editorMenu"),
   publishOpen: $("#publishOpen"),
@@ -178,6 +181,13 @@ async function flushSave({ keepalive = false } = {}) {
   if (!state.current) return;
   clearTimeout(save.timer);
   save.timer = null;
+
+  // 画像の POST（最終 URL の確定）より先に保存すると、URL 未確定の画像が
+  // 下書きから落ちてしまう。POST 自体は速いのでここだけ待つ。
+  // PR のマージ完了までは待たない（保存は最終 URL で行い、反映は裏で進む）。
+  if (editorBridge.handle?.whenPosted) {
+    await editorBridge.handle.whenPosted().catch(() => {});
+  }
 
   const id = state.current.id;
   const payload = collect();
@@ -368,7 +378,7 @@ function editorSet(markdown) {
   }
 }
 
-async function uploadMedia(file) {
+async function uploadMedia(file, hooks = {}) {
   const form = new FormData();
   form.append("file", file);
   const response = await fetch("/api/media", {
@@ -380,6 +390,10 @@ async function uploadMedia(file) {
   if (!response.ok) {
     throw new Error(payload.error ?? `画像のアップロードに失敗しました (${response.status})`);
   }
+  // POST が通った時点で最終 URL は確定している。以後の反映待ちは
+  // hooks.onPosted 経由で呼び出し側（エディタの非同期アップロード）へ
+  // 知らせ、書き手はローカルプレビューのまま書き続けられる。
+  hooks.onPosted?.(payload.url);
   if (payload.state !== "waiting") return payload.url;
   // main へは PR 経由でしか入れられないため、CI と merge を見届けてから
   // URL を返す（投稿の pollPublishStatus と同じ形）。merge 後に Pages の
@@ -398,12 +412,38 @@ async function uploadMedia(file) {
   throw new Error(`画像の反映が終わりませんでした。PR を確認してください: ${last?.prUrl ?? ""}`);
 }
 
+let lastUploadDonePulse = 0;
+
+/** 画像の非同期アップロードの進捗をエディタバーへ出す。 */
+function renderUploadStatus({ active, failures, donePulse }) {
+  if (!els.uploadStatus) return;
+  if (failures.length) {
+    els.uploadStatus.hidden = false;
+    els.uploadStatus.dataset.state = "error";
+    els.uploadStatusText.textContent = "画像の反映に失敗しました";
+    els.uploadStatus.title = failures[0] ?? "";
+    els.uploadRetry.hidden = false;
+  } else if (active > 0) {
+    els.uploadStatus.hidden = false;
+    els.uploadStatus.dataset.state = "busy";
+    els.uploadStatusText.textContent = "画像を反映中…";
+    els.uploadStatus.title = "";
+    els.uploadRetry.hidden = true;
+  } else {
+    els.uploadStatus.hidden = true;
+    els.uploadRetry.hidden = true;
+    if (donePulse > lastUploadDonePulse) toast("画像を反映しました");
+  }
+  lastUploadDonePulse = donePulse;
+}
+
 async function setupEditor() {
   if (!window.SlytxtEditor?.mount) return;
   try {
     editorBridge.handle = await window.SlytxtEditor.mount(els.editorRoot, {
       value: "",
       onUpload: uploadMedia,
+      onUploadState: renderUploadStatus,
       onChange: (markdown) => {
         if (editorBridge.applying) {
           editorBridge.lastValue = markdown;
@@ -413,7 +453,11 @@ async function setupEditor() {
         if (markdown === editorBridge.lastValue) return;
         editorBridge.lastValue = markdown;
         // ブロック画像のキャプションは alt へ戻して保存する（editor.js 参照）。
-        const text = editorBridge.convert ? editorBridge.convert.from(markdown) : markdown;
+        let text = editorBridge.convert ? editorBridge.convert.from(markdown) : markdown;
+        // 画像のローカルプレビュー（blob URL）は最終 URL へ置き換えてから保存する。
+        if (editorBridge.handle?.resolveImageUrls) {
+          text = editorBridge.handle.resolveImageUrls(text);
+        }
         if (text === els.body.value) return;
         els.body.value = text;
         onInput();
@@ -944,6 +988,9 @@ async function boot() {
   // 狭い画面では一覧から始める（編集は下書きを選んだときに開く）。
   if (window.matchMedia("(max-width: 1000px)").matches) setView("list");
 
+  els.uploadRetry?.addEventListener("click", () => {
+    editorBridge.handle?.retryFailedUploads?.();
+  });
   els.body.addEventListener("input", onInput);
   els.titleInput.addEventListener("input", scheduleSave);
   els.titleInput.addEventListener("keydown", (event) => {
