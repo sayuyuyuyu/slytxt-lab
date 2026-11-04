@@ -5,11 +5,25 @@ import { collectTags } from "@/lib/tags";
 import { site } from "@/lib/site";
 
 const hasTags = collectTags(await getAllEntries()).size > 0;
+
+// One quiet line per day, picked by date in the visitor's browser so it
+// actually turns over daily on a static site. The first line is the
+// no-JS fallback.
+const footerQuotes = [
+  "今日も実験は続く。",
+  "紅茶が冷める前に、もう一口。",
+  "猫は今日もキーボードの上。",
+  "音量は少しだけ大きめで。",
+  "コミットは小さく、こまめに。",
+  "ターミナルの向こうは静か。",
+  "深呼吸してから、新しいタブ。"
+];
 ---
 
 <footer class="site-footer" data-pagefind-ignore>
   <div class="container site-footer__inner">
     <span class="site-footer__status"><span class="site-footer__dot" aria-hidden="true"></span>&copy; {getYear(new Date())} {site.name}</span>
+    <span class="site-footer__quote" data-footer-quote>{footerQuotes[0]}</span>
     <nav class="footer-links" aria-label="Links">
       {hasTags && <a href="/tags/">Tags</a>}
       <a href="/rss.xml">RSS</a>
@@ -17,4 +31,12 @@ const hasTags = collectTags(await getAllEntries()).size > 0;
       <a href={site.noteUrl} rel="me noreferrer">note</a>
     </nav>
   </div>
+  <script define:vars={{ footerQuotes }}>
+    const quoteEl = document.querySelector("[data-footer-quote]");
+    if (quoteEl && footerQuotes.length > 0) {
+      const now = new Date();
+      const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+      quoteEl.textContent = footerQuotes[dayOfYear % footerQuotes.length];
+    }
+  </script>
 </footer>
