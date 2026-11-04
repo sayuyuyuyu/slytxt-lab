@@ -116,7 +116,7 @@ textarea {
   opacity: 0.5;
 }
 
-.save[data-state="dirty"],
+.save[data-state="local"],
 .save[data-state="saving"] {
   color: var(--accent-strong);
 }

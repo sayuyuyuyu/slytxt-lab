@@ -413,3 +413,160 @@ test("writer: 閉じている間に完了した公開の結果が起動時に知
     { timeout: 15_000 }
   );
 });
+
+/** localStorage の下書きコピー（slytxt.draft:<id>）を読む。 */
+async function readLocalCopy(page) {
+  return page.evaluate(() => {
+    const key = Object.keys(localStorage).find((k) => k.startsWith("slytxt.draft:"));
+    if (!key) return null;
+    return { key, entry: JSON.parse(localStorage.getItem(key)) };
+  });
+}
+
+test("writer: 保存は端末へ即時、サーバー同期は間引きと同一内容の再送なし", async ({
+  page
+}) => {
+  let puts = 0;
+  page.on("request", (request) => {
+    if (request.method() === "PUT" && request.url().includes("/api/drafts/")) puts += 1;
+  });
+  await page.goto(`${WRITER_URL}/`);
+  await page.locator("#new").click();
+  // 新規の下書きが編集画面へ適用されるまで待つ（適用時の初期化で
+  // 先行入力が消える競合を避ける）。
+  await expect(page.locator("#body")).toHaveValue("");
+  const editor = page.locator('#editorRoot [contenteditable="true"]');
+  await editor.click();
+  await page.keyboard.type("即時保存テスト");
+
+  // (a) 入力直後、サーバー同期を待たずに localStorage へ書かれている。
+  // base（分岐元のサーバー版）と savedAt も一緒に持っている。
+  await expect
+    .poll(
+      async () => {
+        const local = await readLocalCopy(page);
+        return local?.entry?.payload?.body ?? "";
+      },
+      { timeout: 5_000 }
+    )
+    .toContain("即時保存テスト");
+  const local = await readLocalCopy(page);
+  expect(local.entry.base).toBeTruthy();
+  expect(local.entry.savedAt).toBeTruthy();
+  await expect(page.locator("#saveText")).toHaveText("端末に保存済み");
+
+  // 同期が済むとローカルコピーは片付き、表示は「保存済み」になる。
+  await expectSaved(page);
+  await expect.poll(async () => (await readLocalCopy(page)) === null).toBe(true);
+  const putsAfterFirstSync = puts;
+  expect(putsAfterFirstSync).toBeGreaterThanOrEqual(1);
+
+  // (c) 内容が変わっていないのに保存し直しても、PUT は再送されない。
+  await page.keyboard.press("ControlOrMeta+s");
+  await page.waitForTimeout(1500);
+  expect(puts).toBe(putsAfterFirstSync);
+
+  // (d) 打っては止める入力を繰り返しても、PUT は間引かれる
+  // （従来の「止まるたびに全文化」なら 6 回送るところ）。
+  const putsBeforeBurst = puts;
+  for (let i = 0; i < 6; i += 1) {
+    await page.keyboard.type(`追記${i}`);
+    await page.waitForTimeout(1200);
+  }
+  await expectSaved(page);
+  expect(puts - putsBeforeBurst).toBeLessThanOrEqual(3);
+});
+
+test("writer: サーバーへ送れなくても、リロードで端末コピーから復元される", async ({
+  page
+}) => {
+  // (b) PUT だけを落とす。本文はサーバーへ届かない状態にする。
+  await page.route("**/api/drafts/**", async (route) => {
+    if (route.request().method() === "PUT") await route.abort();
+    else await route.continue();
+  });
+  await page.goto(`${WRITER_URL}/`);
+  await page.locator("#new").click();
+  // 新規の下書きが編集画面へ適用されるまで待つ（適用時の初期化で
+  // 先行入力が消える競合を避ける）。
+  await expect(page.locator("#body")).toHaveValue("");
+  const editor = page.locator('#editorRoot [contenteditable="true"]');
+  await editor.click();
+  await page.keyboard.type("復元テスト本文");
+  await expect
+    .poll(
+      async () => {
+        const local = await readLocalCopy(page);
+        return local?.entry?.payload?.body ?? "";
+      },
+      { timeout: 5_000 }
+    )
+    .toContain("復元テスト本文");
+
+  await page.reload();
+  // 開き直すと、空のサーバー版ではなく端末コピーから本文が戻る。
+  await expect(page.locator("#body")).toHaveValue(/復元テスト本文/, { timeout: 15_000 });
+});
+
+test("writer: 他端末で進んだ下書きではサーバーが勝ち、端末コピーは退避される", async ({
+  page,
+  request
+}) => {
+  await page.goto(`${WRITER_URL}/`);
+  await page.locator("#new").click();
+  // 新規の下書きが編集画面へ適用されるまで待つ（適用時の初期化で
+  // 先行入力が消える競合を避ける）。
+  await expect(page.locator("#body")).toHaveValue("");
+  const editor = page.locator('#editorRoot [contenteditable="true"]');
+  await editor.click();
+  await page.keyboard.type("端末側の本文");
+  await expectSaved(page);
+
+  const headers = { "x-slytxt-client": "1", "content-type": "application/json" };
+  const list = await (await request.get(`${WRITER_URL}/api/drafts`)).json();
+  const id = list.drafts[0].id;
+  const { draft } = await (
+    await request.get(`${WRITER_URL}/api/drafts/${id}`, { headers })
+  ).json();
+
+  // 端末側に「古い分岐」のコピーを仕込む（base も savedAt もサーバーより古い）。
+  await page.evaluate(
+    ({ id, draft }) => {
+      const payload = {
+        category: draft.category,
+        title: draft.title === "無題" ? "" : draft.title,
+        tags: draft.tags ?? [],
+        cover: draft.cover ?? "",
+        description: draft.description ?? "",
+        body: "古い端末コピー"
+      };
+      localStorage.setItem(
+        `slytxt.draft:${id}`,
+        JSON.stringify({
+          payload,
+          base: "2000-01-01T00:00:00Z",
+          savedAt: "2000-01-01T00:00:00Z"
+        })
+      );
+    },
+    { id, draft }
+  );
+
+  // サーバー側を他端末から進める。
+  const put = await request.put(`${WRITER_URL}/api/drafts/${id}`, {
+    headers,
+    data: { ...draft, body: "サーバー側の新しい本文" }
+  });
+  expect(put.ok()).toBe(true);
+
+  await page.reload();
+  // サーバー側の本文が表示され、負けた端末コピーは退避キーに残る。
+  await expect(page.locator("#body")).toHaveValue(/サーバー側の新しい本文/, {
+    timeout: 15_000
+  });
+  const backup = await page.evaluate(
+    (id) => localStorage.getItem(`slytxt.draft-backup:${id}`),
+    id
+  );
+  expect(backup).toContain("古い端末コピー");
+});
