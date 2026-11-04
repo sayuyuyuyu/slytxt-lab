@@ -12,3 +12,7 @@ src/content/**/sample-*.md
 
 # 執筆ツールのドラフト。ローカルの下書きなのでコミットしない。
 drafts/
+
+# Playwright (E2E)
+test-results/
+playwright-report/
