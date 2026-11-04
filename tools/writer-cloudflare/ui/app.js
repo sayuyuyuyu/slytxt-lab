@@ -200,6 +200,9 @@ function draftName(draft) {
 /** 狭い画面用の一覧⇔編集の切り替え。広い画面では CSS が無視する。 */
 function setView(view) {
   document.body.dataset.view = view;
+  // 編集画面が表示されたら、隠れている間に測れなかったタイトルの
+  // 高さをここで合わせ直す（resizeTitle 側の再試行と二重の保険）。
+  if (view === "editor") resizeTitle();
 }
 
 /* ---- 保存 ---- */
@@ -581,6 +584,7 @@ function clearEditor() {
   els.publishDescription.value = "";
   editorSet("");
   els.titleInput.hidden = false;
+  resizeTitle();
   els.categoryNote.hidden = true;
   showEmpty(true);
   renderList();
@@ -672,9 +676,31 @@ function updateCategoryNote() {
  * タイトル欄を出さない（値は下書きに残るが、記事に戻すまで編集できない）。
  * 記事（tech / journal）ではタイトル欄を通常どおり出す。
  */
+/**
+ * タイトル欄（textarea）の高さを内容に合わせる。折り返した行数だけ
+ * 伸び、横スクロールにはならない。隠れている間は何もしない（表示に
+ * 切り替わったとき applyCategoryUi から呼び直される）。
+ * モバイルで一覧表示中はエディタ全体が display:none で測れない
+ * （scrollHeight が 0 になる）ため、その場合は高さを書かず、
+ * レイアウトされるまで次フレームで測り直す。
+ */
+function resizeTitle(retries = 0) {
+  const input = els.titleInput;
+  if (input.hidden) return;
+  if (input.clientWidth === 0) {
+    if (retries < 120) {
+      requestAnimationFrame(() => resizeTitle(retries + 1));
+    }
+    return;
+  }
+  input.style.height = "auto";
+  input.style.height = `${input.scrollHeight}px`;
+}
+
 function applyCategoryUi() {
   els.titleInput.hidden = els.category.value === "notes";
   updateCategoryNote();
+  resizeTitle();
 }
 
 /* ---- プレビュー ----
@@ -1850,6 +1876,12 @@ async function boot() {
   });
   els.body.addEventListener("input", onInput);
   els.titleInput.addEventListener("input", scheduleSave);
+  els.titleInput.addEventListener("input", resizeTitle);
+  window.addEventListener("resize", resizeTitle);
+  // Web フォントの読み込みで字幅が変わると折り返し位置も変わる。
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(() => resizeTitle()).catch(() => {});
+  }
   els.titleInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
