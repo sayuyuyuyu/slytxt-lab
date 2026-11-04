@@ -63,6 +63,7 @@ const els = {
   publishOpen: $("#publishOpen"),
   publishPanel: $("#publishPanel"),
   publishTitle: $("#publishTitle"),
+  publishTitleRow: $("#publishTitleRow"),
   publishCategory: $("#publishCategory"),
   categoryNote: $("#categoryNote"),
   publishDescription: $("#publishDescription"),
@@ -556,7 +557,7 @@ function applyDraft(draft) {
     setSaveStatus("idle");
   }
   updateCount();
-  updateCategoryNote();
+  applyCategoryUi();
   renderList();
   setBusy(state.busy);
 }
@@ -573,6 +574,7 @@ function clearEditor() {
   els.body.value = "";
   els.publishDescription.value = "";
   editorSet("");
+  els.titleInput.hidden = false;
   els.categoryNote.hidden = true;
   showEmpty(true);
   renderList();
@@ -657,6 +659,16 @@ function updateCategoryNote() {
     loneEmbedUrls(els.body.value).length > 0;
   els.categoryNote.hidden = !show;
   if (show) els.categoryNote.textContent = NOTE_EMBED_MESSAGE;
+}
+
+/*
+ * カテゴリで変わる編集画面の出し分け。notes はタイトル不要なので
+ * タイトル欄を出さない（値は下書きに残るが、記事に戻すまで編集できない）。
+ * 記事（tech / journal）ではタイトル欄を通常どおり出す。
+ */
+function applyCategoryUi() {
+  els.titleInput.hidden = els.category.value === "notes";
+  updateCategoryNote();
 }
 
 /* ---- プレビュー ----
@@ -1235,6 +1247,8 @@ function openPublishPanel() {
     title: els.titleInput.value.trim() || "無題",
     body: els.body.value
   });
+  // notes はタイトル不要なので、確認欄のタイトル行自体を出さない。
+  els.publishTitleRow.hidden = els.category.value === "notes";
   // カテゴリは編集画面の select が単一の状態で、ここでは表示だけする。
   els.publishCategory.textContent =
     state.meta?.categoryLabels?.[els.category.value] ?? els.category.value;
@@ -1465,7 +1479,7 @@ async function boot() {
   });
   els.category.addEventListener("change", () => {
     updatePublishFile();
-    updateCategoryNote();
+    applyCategoryUi();
     scheduleSave();
   });
   syncThemeToggle();

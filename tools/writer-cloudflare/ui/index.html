@@ -129,7 +129,8 @@
           </div>
 
           <!-- タイトルは本文と独立した欄（note と同じ「タイトル→本文」の構成）。
-               値の保存先は下書きの frontmatter の title。 -->
+               値の保存先は下書きの frontmatter の title。
+               notes はタイトル不要なので、カテゴリが notes の間は app.js が隠す。 -->
           <input
             id="title"
             class="editor__title"
@@ -190,7 +191,7 @@
       <div class="dialog__backdrop"></div>
       <div class="dialog__panel" role="dialog" aria-modal="true" aria-labelledby="publishPanelTitle" aria-describedby="publishFile publishNote publishDescriptionNote">
         <h2 id="publishPanelTitle" class="dialog__title">公開の確認</h2>
-        <div class="dialog__row">
+        <div class="dialog__row" id="publishTitleRow">
           <span class="dialog__label">タイトル</span>
           <p id="publishTitle" class="dialog__value"></p>
         </div>
