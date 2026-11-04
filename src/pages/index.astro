@@ -36,7 +36,7 @@ const terminalConfig = {
           <h1 id="intro-title">{site.name}</h1>
           <nav class="home-hero__links" aria-label="Writing and projects">
             {articles.length > 0 && <a href="/articles/">Articles <span>{articles.length}</span></a>}
-            <a href="/notes/">Notes {notes.length > 0 && <span>{notes.length}</span>}</a>
+            {notes.length > 0 && <a href="/notes/">Notes <span>{notes.length}</span></a>}
             {projects.length > 0 && <a href="/projects/">Projects <span>{projects.length}</span></a>}
             {hasTags && <a href="/tags/">Tags</a>}
           </nav>
