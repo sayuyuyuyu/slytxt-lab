@@ -115,9 +115,12 @@ description:
 published:
 updated:
 tags:
+cover:
 draft:
 adult:
 ```
+
+`cover` は見出し画像の URL です（任意）。
 
 ### Projects
 
