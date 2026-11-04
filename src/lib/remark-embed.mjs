@@ -10,7 +10,7 @@
  *
  * - YouTube: youtube-nocookie の iframe
  * - Spotify: 公式埋め込みの iframe
- * - X (Twitter): 公式埋め込み（blockquote + widgets.js）
+ * - X (Twitter): 公式埋め込み（blockquote。widgets.js は表示側がページに1回だけ読み込む）
  * - それ以外の URL: ビルド時に OGP を取得してリンクカードにする。
  *   取得できない場合はホスト名だけのカードに落とす（ビルドは止めない）。
  */
@@ -93,7 +93,7 @@ export function spotifyEmbedHtml({ kind, id }) {
 
 export function xEmbedHtml({ url }) {
   const safe = escapeHtml(url);
-  return `<div class="embed embed--x"><blockquote class="twitter-tweet" data-dnt="true"><a href="${safe}">${safe}</a></blockquote><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script></div>`;
+  return `<div class="embed embed--x"><blockquote class="twitter-tweet" data-dnt="true"><a href="${safe}">${safe}</a></blockquote></div>`;
 }
 
 export function linkCardHtml({ url, ogp }) {
