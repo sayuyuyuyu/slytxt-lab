@@ -1,6 +1,6 @@
 /**
  * 投稿フロー用の GitHub REST API クライアント。
- * ローカル版 publish.mjs が git / gh でやっていた操作の置き換え。
+ * git / gh を使わず、REST API で投稿フローの操作を行う。
  * トークンは Worker の secret（GITHUB_TOKEN）から渡される想定で、
  * このモジュール自体は値を保持しない。
  */

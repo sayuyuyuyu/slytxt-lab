@@ -21,7 +21,7 @@ import { MediaError, mediaStatus, uploadMedia } from "./media.mjs";
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /**
- * 他のサイトから書き込みAPIを叩かせない（server.mjs と同じ考え方）。
+ * 他のサイトから書き込みAPIを叩かせない。
  * 独自ヘッダ必須が本体。クロスオリジンの fetch はプリフライトが走り、
  * こちらは CORS ヘッダを返さないので本処理まで届かない。
  */
@@ -55,7 +55,7 @@ async function readJsonBody(request, limit = 2_000_000) {
   return JSON.parse(text);
 }
 
-/** ローカル版の streamTask と同じ NDJSON 形式で進捗を流す。 */
+/** NDJSON 形式で進捗を流す。 */
 function streamTask(task) {
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
