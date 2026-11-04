@@ -13,7 +13,7 @@
   --crepe-color-on-surface: var(--text);
   --crepe-color-on-surface-variant: var(--text-muted);
   --crepe-color-outline: var(--border);
-  --crepe-color-primary: var(--accent-cyan);
+  --crepe-color-primary: var(--accent);
   --crepe-color-secondary: var(--border);
   --crepe-color-on-secondary: var(--text);
   --crepe-color-inverse: var(--surface);
@@ -35,7 +35,7 @@
   padding: 10px 2px 56px;
   font-size: 1rem;
   line-height: 1.95;
-  caret-color: var(--accent-cyan);
+  caret-color: var(--accent);
   /* ProseMirror は grid レイアウトで、列幅は最も広いブロックの
      max-content で決まる。列をコンテナ幅に抑え、長い URL など
      折り返し不能な語も段落内で折り返す。スマホ幅で見出しや段落、
