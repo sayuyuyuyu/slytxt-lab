@@ -1132,12 +1132,24 @@ function setBusy(busy) {
   els.publishConfirm.disabled = busy;
 }
 
+/* 説明文候補の状態を、他の状態表示と同じ形で読み上げ対象にする。 */
+function setPublishDescriptionNote(message, state = "busy") {
+  els.publishDescriptionNote.textContent = message;
+  if (state === "error") {
+    els.publishDescriptionNote.setAttribute("role", "alert");
+    els.publishDescriptionNote.setAttribute("aria-live", "assertive");
+  } else {
+    els.publishDescriptionNote.setAttribute("role", "status");
+    els.publishDescriptionNote.setAttribute("aria-live", "polite");
+  }
+}
+
 /** 説明文が空のとき、AI 要約（無ければ抜粋）の候補を入れる。本人が直せる前提の下書き。 */
 async function fillDescriptionSuggestion() {
   const id = state.current?.id;
   if (!id) return;
   const token = ++publishSuggestionToken;
-  els.publishDescriptionNote.textContent = "説明文の候補を作っています…";
+  setPublishDescriptionNote("説明文の候補を作っています…");
   try {
     const data = await api(`/api/drafts/${encodeURIComponent(id)}/summary`, {
       method: "POST",
@@ -1148,14 +1160,17 @@ async function fillDescriptionSuggestion() {
     if (data.summary && !els.publishDescription.value.trim()) {
       els.publishDescription.value = data.summary;
     }
-    els.publishDescriptionNote.textContent =
+    setPublishDescriptionNote(
       data.source === "ai"
         ? "AI 要約の候補です。そのまま使っても、直しても大丈夫です。"
-        : "本文の抜粋です。そのまま使っても、直しても大丈夫です。";
+        : "本文の抜粋です。そのまま使っても、直しても大丈夫です。"
+    );
   } catch {
     if (token !== publishSuggestionToken || els.publishPanel.hidden) return;
-    els.publishDescriptionNote.textContent =
-      "候補を作れませんでした。空欄のままなら、公開時に自動で作られます。";
+    setPublishDescriptionNote(
+      "候補を作れませんでした。空欄のままなら、公開時に自動で作られます。",
+      "error"
+    );
   }
 }
 
