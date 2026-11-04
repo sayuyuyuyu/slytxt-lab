@@ -9,7 +9,7 @@ const hasTags = collectTags(await getAllEntries()).size > 0;
 ---
 <BaseLayout title={`Search - ${site.name}`} description={pageDescriptions.search} noindex>
   <PageHeader title="Search" eyebrow="search" />
-  <section class="listing" aria-label="Search"><div class="container">
+  <section class="listing" aria-label="Search listing"><div class="container">
     <div class="search-box">
       <div id="search"></div>
       <p id="search-status" class="muted" role="status">検索を読み込み中…</p>
