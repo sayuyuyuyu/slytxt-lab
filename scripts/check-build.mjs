@@ -19,6 +19,7 @@ const issues = [];
 let checkedLinks = 0;
 let checkedImages = 0;
 let checkedXmlUrls = 0;
+let checkedPagefindAssets = 0;
 function unescapeXml(value) {
   return value
     .replaceAll("&lt;", "<")
@@ -158,7 +159,15 @@ if (rssXml !== null) {
     else issues.push(`rss.xml: missing ${value}`);
   }
 }
+for (const asset of ["pagefind/pagefind-ui.js"]) {
+  try {
+    if (!(await stat(path.join(root, asset))).isFile()) throw new Error("not a file");
+    checkedPagefindAssets++;
+  } catch {
+    issues.push(asset + ": missing file");
+  }
+}
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedLinks} local links/assets, ${checkedImages} og images and ${checkedXmlUrls} XML urls.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedLinks} local links/assets, ${checkedImages} og images, ${checkedXmlUrls} XML urls and ${checkedPagefindAssets} Pagefind assets.`,
 );
