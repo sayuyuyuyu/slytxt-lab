@@ -135,3 +135,121 @@ test("writer: 編集画面のスタイルが公開記事ページと一致する
   expectClose(editorTitle.fontSize, siteTitle.fontSize, "タイトルのフォントサイズ");
   expectClose(editorTitle.lineHeight, siteTitle.lineHeight, "タイトルの行間");
 });
+
+/** ファイル選択を再現する（input へ File を渡して change を発火させる）。 */
+async function injectCoverFile(page, kind) {
+  await page.evaluate(async (kind) => {
+    let file;
+    if (kind === "oversize") {
+      file = new File([new Uint8Array(21 * 1024 * 1024)], "big.png", {
+        type: "image/png"
+      });
+    } else {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1600;
+      canvas.height = 1000;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#3a6ea5";
+      ctx.fillRect(0, 0, 1600, 1000);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      file = new File([blob], "cover.png", { type: "image/png" });
+    }
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const input = document.querySelector("#coverFile");
+    input.files = transfer.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, kind);
+}
+
+test("writer: 見出し画像の切り取り→反映→外す→付け直しと、大きすぎる画像の拒否", async ({
+  page
+}) => {
+  // 本番の media フロー（PR 作成→CI→マージ→Pages 伝播）はローカルで
+  // 再現できないため、POST /api/media は「マージ済み」で返し、最終 URL の
+  // 実体もその場で返す。検証するのはカバーまわりの UI 挙動。
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+    "base64"
+  );
+  await page.route("**/api/media", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          url: "https://slytxt.dev/media/e2e-cover.png",
+          key: "e2e-cover.png",
+          state: "merged",
+          prUrl: ""
+        })
+      });
+    } else {
+      await route.continue();
+    }
+  });
+  await page.route("https://slytxt.dev/media/**", async (route) => {
+    await route.fulfill({ contentType: "image/png", body: png });
+  });
+
+  await page.goto(`${WRITER_URL}/`);
+  // 起動時の下書き読み込み・選択が終わる前に操作すると、初期化側の
+  // 下書き選択と競合して別下書きを編集してしまう。初期化の最終ステップで
+  // テーマ切替ボタンが表示されるので、それを待ってから操作する。
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+  await page.locator("#new").click();
+  await expect(page.locator("#category")).toHaveValue("notes");
+  await page.locator("#category").selectOption("journal");
+  await page.locator("#title").fill("カバー確認用");
+  await expectSaved(page);
+
+  // 大きすぎる画像（20MB 超）: 切り取りは開かず、その場で断る。
+  await injectCoverFile(page, "oversize");
+  await expect(page.locator("#cropDialog")).toBeHidden();
+  await expect(page.locator("#toast")).toContainText("20MB");
+  await expect(page.locator("#coverSet")).toBeVisible();
+
+  // 通常の画像: 切り取りダイアログが出る。キャンセルでは何も変わらない。
+  await injectCoverFile(page, "image");
+  await expect(page.locator("#cropDialog")).toBeVisible();
+  await expect(page.locator("#cropImage")).toBeVisible();
+  await page.locator("#cropCancel").click();
+  await expect(page.locator("#cropDialog")).toBeHidden();
+  await expect(page.locator("#coverBox")).toBeHidden();
+  await expect(page.locator("#coverSet")).toBeVisible();
+
+  // 決定するとカバーが付き、blob から最終 URL へ切り替わる。
+  await injectCoverFile(page, "image");
+  await expect(page.locator("#cropDialog")).toBeVisible();
+  await page.locator("#cropOk").click();
+  await expect(page.locator("#cropDialog")).toBeHidden();
+  await expect(page.locator("#coverBox")).toBeVisible();
+  await expect(page.locator("#coverPreview")).toHaveAttribute(
+    "src",
+    "https://slytxt.dev/media/e2e-cover.png"
+  );
+
+  // プレビューにも反映される。
+  await page.locator("#previewOpen").click();
+  await expect(page.locator("#previewCover")).toBeVisible();
+  await page.locator("#previewClose").click();
+
+  // 外すとカバー UI が初期状態に戻り、タイトルは通常表示のまま。
+  await page.locator("#coverRemove").click();
+  await expect(page.locator("#coverBox")).toBeHidden();
+  await expect(page.locator("#coverSet")).toBeVisible();
+  await expect(page.locator("#title")).toBeVisible();
+
+  // 付け直し→外すの往復でも壊れない（2026-11-05 のバグ報告の回帰確認）。
+  await injectCoverFile(page, "image");
+  await expect(page.locator("#cropDialog")).toBeVisible();
+  await page.locator("#cropOk").click();
+  await expect(page.locator("#coverBox")).toBeVisible();
+  await expect(page.locator("#coverPreview")).toHaveAttribute(
+    "src",
+    "https://slytxt.dev/media/e2e-cover.png"
+  );
+  await page.locator("#coverRemove").click();
+  await expect(page.locator("#coverBox")).toBeHidden();
+  await expect(page.locator("#coverSet")).toBeVisible();
+  await expect(page.locator("#title")).toBeVisible();
+});
