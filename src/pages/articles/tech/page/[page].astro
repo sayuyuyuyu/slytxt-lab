@@ -1,14 +1,11 @@
 ---
 import { getArticles } from "@/lib/content";
-import { pageCount, paginateEntries } from "@/lib/pagination";
+import { pagedStaticPaths } from "@/lib/pagination";
 import { articleSections } from "@/lib/site";
 import ArticleListing from "@/layouts/ArticleListing.astro";
 export async function getStaticPaths() {
   const entries = await getArticles("tech");
-  return Array.from({ length: pageCount(entries.length) - 1 }, (_, index) => ({
-    params: { page: String(index + 2) },
-    props: { page: paginateEntries(entries, "/articles/tech", index + 2) }
-  }));
+  return pagedStaticPaths(entries, "/articles/tech");
 }
 const { page } = Astro.props;
 ---

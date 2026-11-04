@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  pagedStaticPaths,
   paginateEntries,
   pageCount,
   pagePath,
@@ -31,6 +32,19 @@ test("page boundaries preserve every entry and canonical first-page links", () =
   assert.equal(pages[0].nextUrl, "/tech/page/2/");
   assert.equal(pagePath("/life", 1), "/life/");
   assert.equal(pageCount(10), 1);
+});
+test("pagedStaticPaths only emits pages beyond the first", () => {
+  assert.deepEqual(pagedStaticPaths([], "/tech"), []);
+  const full = Array.from({ length: 10 }, (_, index) => index);
+  assert.deepEqual(pagedStaticPaths(full, "/tech"), []);
+  const overflow = Array.from({ length: 11 }, (_, index) => index);
+  const paths = pagedStaticPaths(overflow, "/tech");
+  assert.equal(paths.length, 1);
+  assert.deepEqual(paths[0].params, { page: "2" });
+  assert.deepEqual(paths[0].props.page.entries, [10]);
+  assert.equal(paths[0].props.page.currentPage, 2);
+  assert.equal(paths[0].props.page.prevUrl, "/tech/");
+  assert.equal(paths[0].props.page.nextUrl, undefined);
 });
 test("out-of-range inputs are clamped and invalid sizes rejected", () => {
   assert.equal(paginateEntries([1, 2], "/tech", 100, 1).currentPage, 2);
