@@ -265,6 +265,7 @@ function renderList() {
     menuButton.textContent = "…";
     menuButton.setAttribute("aria-label", `${displayTitle(draft)} の操作`);
     menuButton.setAttribute("aria-haspopup", "menu");
+    menuButton.setAttribute("aria-expanded", "false");
     menuButton.addEventListener("click", (event) => {
       event.stopPropagation();
       openMenu(menuButton, [
@@ -608,18 +609,27 @@ async function pollPublishStatus(id, initial) {
 /* ---- メニューとダイアログ ---- */
 
 let menuCleanup = null;
+let menuAnchor = null;
 
 function closeMenu() {
+  const anchor = menuAnchor;
+  menuAnchor = null;
   els.menu.hidden = true;
   els.menu.replaceChildren();
   if (menuCleanup) {
     menuCleanup();
     menuCleanup = null;
   }
+  if (anchor) {
+    anchor.setAttribute("aria-expanded", "false");
+    if (document.contains(anchor)) anchor.focus();
+  }
 }
 
 function openMenu(anchor, items) {
   closeMenu();
+  menuAnchor = anchor;
+  anchor.setAttribute("aria-expanded", "true");
   for (const item of items) {
     const button = document.createElement("button");
     button.type = "button";
@@ -633,6 +643,7 @@ function openMenu(anchor, items) {
     els.menu.append(button);
   }
   els.menu.hidden = false;
+  els.menu.querySelector("button")?.focus();
 
   const rect = anchor.getBoundingClientRect();
   const menuWidth = 180;
