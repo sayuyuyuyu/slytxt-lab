@@ -86,18 +86,22 @@ export function getEntryDate(entry: SiteEntry): Date {
   return entry.collection === "projects" ? projectDate(entry) : articleDate(entry);
 }
 
-/** 表示名。タイトルが空のときは NoteCard のプレビューと同じく本文の書き出しから作る。 */
-export function getEntryDisplayTitle(entry: SiteEntry): string {
-  const title = entry.data.title?.trim();
-  if (title) return title;
+/** 本文の書き出しから作るプレビュー。先頭3行をプレーンテキストにし、90字で切る。 */
+export function getEntryPreview(entry: SiteEntry): string {
   const lines = (entry.body ?? "")
     .trim()
     .split("\n")
     .filter((line) => line.trim());
   const text = toPlainText(lines.slice(0, 3).join("\n"));
   const chars = Array.from(text);
-  const derived = chars.length > 90 ? `${chars.slice(0, 90).join("")}…` : text;
-  return derived || "（無題）";
+  return chars.length > 90 ? `${chars.slice(0, 90).join("")}…` : text;
+}
+
+/** 表示名。タイトルが空のときはプレビュー（本文の書き出し）から作る。 */
+export function getEntryDisplayTitle(entry: SiteEntry): string {
+  const title = entry.data.title?.trim();
+  if (title) return title;
+  return getEntryPreview(entry) || "（無題）";
 }
 
 export function getEntrySlug(entry: SiteEntry): string {

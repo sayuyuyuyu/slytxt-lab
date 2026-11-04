@@ -1,5 +1,5 @@
 ---
-import { getEntryDate, getEntryPath, toPlainText, type ArticleEntry } from "@/lib/content";
+import { getEntryDate, getEntryPath, getEntryPreview, type ArticleEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels } from "@/lib/site";
 
@@ -9,13 +9,7 @@ type Props = {
 
 const { entry } = Astro.props;
 const date = getEntryDate(entry);
-const lines = (entry.body ?? "")
-  .trim()
-  .split("\n")
-  .filter((line) => line.trim());
-const previewText = toPlainText(lines.slice(0, 3).join("\n"));
-const previewChars = Array.from(previewText);
-const preview = previewChars.length > 90 ? `${previewChars.slice(0, 90).join("")}…` : previewText;
+const preview = getEntryPreview(entry);
 ---
 
 <article class="note-card" data-motion>
