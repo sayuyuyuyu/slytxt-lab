@@ -12,6 +12,7 @@ pnpm dev
 pnpm build
 pnpm preview
 pnpm run verify
+pnpm test:e2e
 ```
 
 Pagefind の検索インデックスは `pnpm build` 時に `dist/pagefind` へ生成されます。検索の動作確認は `pnpm build` 後に `pnpm preview` で行ってください。
@@ -153,11 +154,12 @@ draft:
 
 ### 検証
 
-Node.js 22以降で実行してください。追加のテスト依存関係は不要です。
+Node.js 22以降で実行してください。単体テスト（`pnpm test`）は追加のテスト依存関係なしで実行できます。E2Eテスト（`pnpm test:e2e`）は Playwright が必要です。手順は `e2e/README.md` を参照してください。
 
 ```sh
 pnpm test          # ページ送りの境界・大規模一覧、ブックマーク、執筆ツールのテスト
 pnpm run verify    # 型チェック、テスト、ビルド、生成物のリンク検証
+pnpm test:e2e      # サイトと writer の主要フローを Playwright で確認（手順は e2e/README.md）
 ```
 
 公開記事がない状態でも記事UIを検証するには、`pnpm run fixture:ui` を実行します。表示される一時ディレクトリへ移動し、`pnpm build` → `pnpm preview --port 4322` で確認できます。12件の技術メモ、2件のジャーナル、1件のメモ、完成済み制作物と下書きを含む検証用コピーです。元リポジトリや本番用 `dist` にサンプル記事は追加しません。
