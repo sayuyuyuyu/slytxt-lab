@@ -1447,7 +1447,7 @@ html.js .adult-gate[data-locked="true"] {
   display: grid;
   gap: 16px;
 }
-html.js [data-adult-content][data-locked="true"] {
+[data-adult-content][data-locked="true"] {
   display: none;
 }
 .adult-gate p {
