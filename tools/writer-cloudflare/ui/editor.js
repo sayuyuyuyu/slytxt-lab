@@ -433,7 +433,7 @@ export async function createCrepe(
   crepe.editor.use(embedPreviewPlugin);
   if (onChange) {
     crepe.on((listener) => {
-      listener.markdownUpdated((ctx, markdown, previous) => {
+      listener.markdownUpdated((_ctx, markdown, previous) => {
         if (markdown !== previous) onChange(markdown);
       });
     });

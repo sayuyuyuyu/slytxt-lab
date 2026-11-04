@@ -594,7 +594,7 @@ test("publish冪等: 既にマージ済みなら再マージせず成功とし�
     // 公開の再実行でも、新しい PR を作らず成功に収束する。
     const draft2 = await store.createDraft({ title: "マージ済み2", category: "notes" });
     await store.writeDraft(draft2.id, { body: "本文です。" });
-    const posted2 = await publishPost({ env: testEnv, store, id: draft2.id });
+    await publishPost({ env: testEnv, store, id: draft2.id });
     const pr2 = gh.state.pulls[1];
     pr2.merged = true;
     pr2.state = "closed";
