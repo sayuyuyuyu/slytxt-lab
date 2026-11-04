@@ -82,7 +82,7 @@ function isCurrentSection(href: string) {
             <p class="site-menu__label" aria-hidden="true">{group.label}</p>
             <ul>
               {group.items.map((item) => (
-                <li class:list={["site-menu__item", { "site-menu__item--branch": item.children }]}>
+                <li>
                   <a
                     href={item.href}
                     aria-current={isCurrentPage(item.href) ? "page" : undefined}
