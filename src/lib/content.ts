@@ -6,6 +6,7 @@ export type ArticleEntry =
   | CollectionEntry<"tech">
   | CollectionEntry<"journal">
   | CollectionEntry<"notes">;
+export type TechJournalEntry = CollectionEntry<"tech"> | CollectionEntry<"journal">;
 export type ProjectEntry = CollectionEntry<"projects">;
 export type SiteEntry = ArticleEntry | ProjectEntry;
 
@@ -42,13 +43,13 @@ export function sortProjects<T extends ProjectEntry>(entries: T[]): T[] {
 
 export async function getArticles(
   collection: "tech" | "journal"
-): Promise<ArticleEntry[]> {
+): Promise<TechJournalEntry[]> {
   const entries = await getCollection(collection, isPublished);
-  return sortArticles(entries as ArticleEntry[]);
+  return sortArticles(entries as TechJournalEntry[]);
 }
 
 /** Tech and Journal together. Notes are deliberately left out. */
-export async function getAllArticles(): Promise<ArticleEntry[]> {
+export async function getAllArticles(): Promise<TechJournalEntry[]> {
   const [tech, journal] = await Promise.all([
     getArticles("tech"),
     getArticles("journal")
@@ -100,7 +101,7 @@ export function getEntriesByTag(entries: SiteEntry[], tagSlug: string): SiteEntr
   );
 }
 
-export function getAdjacentArticles(entries: ArticleEntry[], currentId: string) {
+export function getAdjacentArticles<T extends ArticleEntry>(entries: T[], currentId: string) {
   const index = entries.findIndex((entry) => entry.id === currentId);
 
   return {
