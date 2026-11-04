@@ -653,6 +653,36 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tags:empty {
+  display: none;
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.82rem;
+}
+.tag-chip__remove {
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.tag-chip__remove:hover {
+  color: var(--accent-red);
+}
 .dialog__note {
   margin: 0 0 8px;
   color: var(--text-muted);

@@ -98,7 +98,8 @@ async function publishPostInner({ env, store, id, onLog }) {
 
   const title = deriveTitle(draft, body);
   const description = deriveDescription(body) || title;
-  const tags = draft.tags.slice(0, 6);
+  // タグの上限は note に合わせて10件（公開パネルの UI と揃える）。
+  const tags = draft.tags.slice(0, 10);
   const published = today();
   const slug = normalizeSlug(draft.id, published.replace(/-/g, "")) || draft.id;
   const note = draft.category === "notes";

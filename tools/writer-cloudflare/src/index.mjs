@@ -86,10 +86,15 @@ async function handleApi(request, env, url) {
   const method = request.method ?? "GET";
 
   if (resource === "meta" && method === "GET") {
+    // タグ候補は既存の下書きが使っているタグの集合。
+    // 公開済み記事のタグ一覧を Worker から辿る手段は無いためこれで代える。
+    const drafts = await store.listDrafts();
+    const tags = [...new Set(drafts.flatMap((draft) => draft.tags))].sort();
     return json({
       categories: CATEGORIES,
       categoryLabels: CATEGORY_LABELS,
-      draftsDir: "Cloudflare KV"
+      draftsDir: "Cloudflare KV",
+      tags
     });
   }
 

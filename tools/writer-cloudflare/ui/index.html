@@ -142,6 +142,19 @@
           <span class="dialog__label">カテゴリ</span>
           <select id="category" class="field"></select>
         </label>
+        <div class="dialog__row">
+          <span class="dialog__label" id="tagsLabel">タグ</span>
+          <div id="tags" class="tags" role="group" aria-labelledby="tagsLabel"></div>
+          <input
+            id="tagInput"
+            class="field"
+            type="text"
+            list="tagCandidates"
+            placeholder="タグを入力して Enter（最大10件）"
+            autocomplete="off"
+          />
+          <datalist id="tagCandidates"></datalist>
+        </div>
         <p class="dialog__note" id="publishFile"></p>
         <p class="dialog__note" id="publishNote">PR を作成し、CI が通ると自動でマージされます。</p>
         <div class="dialog__actions">
