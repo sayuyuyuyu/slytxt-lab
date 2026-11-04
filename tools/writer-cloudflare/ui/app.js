@@ -18,6 +18,7 @@ const els = {
   empty: $("#empty"),
   save: $("#save"),
   saveText: $("#saveText"),
+  saveRetry: $("#saveRetry"),
   drafts: $("#drafts"),
   draftCount: $("#draftCount"),
   newButton: $("#new"),
@@ -84,7 +85,7 @@ const SAVE_LABEL = {
   idle: "保存済み",
   dirty: "未保存",
   saving: "保存中…",
-  error: "保存できません・再試行"
+  error: "保存できません"
 };
 
 /* ---- テーマ（本体サイトと同じ localStorage の theme を使う） ---- */
@@ -178,7 +179,14 @@ function setSaveStatus(status) {
   save.status = status;
   els.save.dataset.state = status;
   els.saveText.textContent = SAVE_LABEL[status];
-  els.save.setAttribute("aria-live", "polite");
+  if (status === "error") {
+    els.save.setAttribute("role", "alert");
+    els.save.setAttribute("aria-live", "assertive");
+  } else {
+    els.save.setAttribute("role", "status");
+    els.save.setAttribute("aria-live", "polite");
+  }
+  if (els.saveRetry) els.saveRetry.hidden = status !== "error";
 }
 
 function scheduleSave() {
@@ -1294,8 +1302,8 @@ async function boot() {
     els.taskToggle.textContent = open ? "⌄" : "⌃";
     els.taskToggle.setAttribute("aria-expanded", open ? "false" : "true");
   });
-  els.save.addEventListener("click", () => {
-    if (save.status === "error") flushSave().catch(() => {});
+  els.saveRetry?.addEventListener("click", () => {
+    flushSave().catch(() => {});
   });
 
   els.body.addEventListener("keydown", (event) => {
