@@ -420,14 +420,20 @@ function renderUploadStatus({ active, failures, donePulse }) {
   if (failures.length) {
     els.uploadStatus.hidden = false;
     els.uploadStatus.dataset.state = "error";
-    els.uploadStatusText.textContent = "画像の反映に失敗しました";
-    els.uploadStatus.title = failures[0] ?? "";
+    els.uploadStatus.setAttribute("role", "alert");
+    els.uploadStatus.setAttribute("aria-live", "assertive");
+    els.uploadStatusText.textContent = failures[0]
+      ? "画像の反映に失敗しました: " + failures[0]
+      : "画像の反映に失敗しました";
+    els.uploadStatus.removeAttribute("title");
     els.uploadRetry.hidden = false;
   } else if (active > 0) {
     els.uploadStatus.hidden = false;
     els.uploadStatus.dataset.state = "busy";
+    els.uploadStatus.setAttribute("role", "status");
+    els.uploadStatus.setAttribute("aria-live", "polite");
     els.uploadStatusText.textContent = "画像を反映中…";
-    els.uploadStatus.title = "";
+    els.uploadStatus.removeAttribute("title");
     els.uploadRetry.hidden = true;
   } else {
     els.uploadStatus.hidden = true;
