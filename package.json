@@ -12,7 +12,8 @@
     "verify": "pnpm check && pnpm test && pnpm build && pnpm run check:build",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "fixture:ui": "node scripts/prepare-ui-fixture.mjs",
-    "check:build": "node scripts/check-build.mjs"
+    "check:build": "node scripts/check-build.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "0.4.6",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
+    "@playwright/test": "^1.64.1",
     "typescript": "^5.9.3"
   },
   "pnpm": {
