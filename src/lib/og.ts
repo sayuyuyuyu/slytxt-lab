@@ -1,19 +1,11 @@
 import { Resvg } from "@resvg/resvg-js";
 import { formatDate } from "./format";
+import { escapeXml } from "./xml";
 import { categoryLabels, site } from "./site";
 import type { SiteEntry } from "./content";
 
 const WIDTH = 1200;
 const HEIGHT = 630;
-
-function escapeXml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
 
 function wrapText(value: string, maxLength = 17): string[] {
   const characters = Array.from(value);

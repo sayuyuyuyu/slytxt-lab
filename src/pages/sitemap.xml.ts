@@ -10,15 +10,7 @@ import {
   getProjects
 } from "@/lib/content";
 import { collectTags, tagPath } from "@/lib/tags";
-
-function escapeXml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
+import { escapeXml } from "@/lib/xml";
 
 function urlNode(site: URL, path: string, lastmod?: Date): string {
   const loc = new URL(path, site).href;
