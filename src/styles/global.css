@@ -727,6 +727,26 @@ samp,
 .entry-card__meta time {
   white-space: nowrap;
 }
+.entry-card--with-thumb {
+  grid-template-columns: 170px minmax(0, 1fr) 104px;
+}
+.entry-card__thumb {
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  align-self: start;
+  width: 104px;
+  height: 104px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.note-card__thumb {
+  float: right;
+  width: 64px;
+  height: 64px;
+  margin-left: 14px;
+  object-fit: cover;
+  border-radius: 8px;
+}
 .project-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1027,6 +1047,25 @@ samp,
   margin-block: 32px;
   border: 0;
   border-top: 1px dashed var(--border-strong);
+}
+/* 見出し画像（frontmatter の cover） */
+.article-cover {
+  display: block;
+  width: 100%;
+  margin-top: 28px;
+  aspect-ratio: 191 / 100;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.note-cover {
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  aspect-ratio: 191 / 100;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 10px;
 }
 /* 画像とキャプション（rehype-figure が生成する） */
 .article-body figure {
@@ -1520,6 +1559,16 @@ html.theme-switching *::after {
   .entry-card__footer {
     grid-column: 1;
     grid-row: auto;
+  }
+  .entry-card--with-thumb {
+    grid-template-columns: 1fr;
+  }
+  .entry-card__thumb {
+    grid-column: 1;
+    grid-row: auto;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 191 / 100;
   }
   .page-header,
   .article-hero {

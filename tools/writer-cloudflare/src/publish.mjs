@@ -105,7 +105,10 @@ async function publishPostInner({ env, store, id, onLog }) {
   const note = draft.category === "notes";
   const file = `src/content/${draft.category}/${slug}.md`;
   const branch = `${note ? "note" : "write"}/${slug}`;
-  const content = stringifyFrontmatter({ title, description, published, tags }, body);
+  const content = stringifyFrontmatter(
+    { title, description, published, tags, cover: draft.cover || undefined },
+    body
+  );
   const commitMessage = `${note ? "note" : "post"}: ${title}`;
 
   const gh = createGitHubClient(env);

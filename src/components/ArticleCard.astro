@@ -13,7 +13,8 @@ const { entry, headingLevel: Heading = "h3" } = Astro.props;
 const date = entry.data.updated ?? entry.data.published;
 ---
 
-<article class="entry-card" data-motion>
+<article class:list={["entry-card", { "entry-card--with-thumb": entry.data.cover }]} data-motion>
+  {entry.data.cover && <img class="entry-card__thumb" src={entry.data.cover} alt="" loading="lazy" />}
   <div class="entry-card__meta">
     <span>{categoryLabels[entry.collection]}</span>
     <span aria-hidden="true"> / </span>
