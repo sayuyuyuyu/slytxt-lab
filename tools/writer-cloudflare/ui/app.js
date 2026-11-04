@@ -1,4 +1,4 @@
-import { plainText } from "/markdown.mjs";
+import { plainText, textLength } from "/markdown.mjs";
 
 /*
  * Cloudflare 版の UI 本体。index.html / style.css もこのディレクトリ
@@ -233,7 +233,7 @@ function patchListItem(id, draft) {
     title: draft.title,
     category: draft.category,
     updated: draft.updated,
-    chars: draft.body.length,
+    chars: textLength(draft.body),
     excerpt: plainText(draft.body).slice(0, 120)
   };
   state.drafts.sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
@@ -336,7 +336,8 @@ function showEmpty(empty) {
 
 function updateCount() {
   const text = els.body.value;
-  const chars = text.length;
+  // markdown ソースの長さではなく、本文の見た目の文字数を数える。
+  const chars = textLength(text);
   const lines = text ? text.split("\n").length : 0;
   els.count.textContent = `${chars}字・${lines}行`;
 }

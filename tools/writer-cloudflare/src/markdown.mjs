@@ -313,6 +313,30 @@ export function renderMarkdown(source) {
   return renderBlocks(text.split("\n")).join("\n");
 }
 
+/**
+ * 文字数表示用の数え方。本文の見た目の文字数を数えるため、
+ * plainText で markdown の記号・リンク URL・画像記法を落としてから、
+ * 空白と改行を除いて数える（note の「改行を除いた文字数」に寄せた）。
+ */
+export function textLength(source) {
+  const lines = String(source ?? "")
+    .split("\n")
+    .map((line) => {
+      // 表はセル内のテキストだけを数える（パイプと区切り行は記号）。
+      if (!/^\s*\|/.test(line)) return line;
+      if (/^[\s:|-]+$/.test(line)) return "";
+      return line.replace(/\|/g, " ");
+    });
+  const stripped = lines
+    .join("\n")
+    // 区切り線は丸ごと落とす（リスト記号より先に処理する）。
+    .replace(/^\s*[-*_](?:\s*[-*_]){2,}\s*$/gm, "")
+    // タスクリストのチェックボックスとリスト記号は数えない。
+    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, "")
+    .replace(/^\s*(?:[-*+]|\d{1,9}[.)])\s+/gm, "");
+  return [...plainText(stripped).replace(/\s/g, "")].length;
+}
+
 /** 一覧やプレビューの見出しに使う、本文から最初の段落を抜き出す処理。 */
 export function plainText(source) {
   return String(source ?? "")
