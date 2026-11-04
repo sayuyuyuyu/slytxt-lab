@@ -59,7 +59,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-weight: 700;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -301,7 +301,7 @@ textarea {
 }
 
 .drafts__title {
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -592,7 +592,7 @@ textarea {
 
 .dialog__value {
   margin: 0;
-  font-weight: 600;
+  font-weight: 400;
   overflow-wrap: anywhere;
 }
 
