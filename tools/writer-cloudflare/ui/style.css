@@ -388,6 +388,7 @@ textarea {
 
 .upload-status[data-state="error"] {
   border-color: var(--accent);
+  white-space: normal;
 }
 
 .upload-status__retry {
