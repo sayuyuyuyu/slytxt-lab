@@ -635,6 +635,45 @@ function resumePublishCheck(draft) {
   })();
 }
 
+const PUBLISH_RESULTS_SEEN_KEY = "slytxt.publishResultsSeen";
+
+/**
+ * タブを閉じている間にサーバー側（Cron の見届け）で完了した公開の結果を
+ * 起動時に知らせる。完了した下書きは後片付けで消えているため、結果は
+ * KV の publish-result レコードから受け取る。同じ結果を何度も出さない
+ * よう、表示済みのキー（下書きID＋状態＋PR）は localStorage に残す。
+ */
+async function showPendingPublishResults() {
+  try {
+    const { results } = await api("/api/publish-results");
+    if (!Array.isArray(results) || results.length === 0) return;
+    let seen = [];
+    try {
+      seen = JSON.parse(localStorage.getItem(PUBLISH_RESULTS_SEEN_KEY) ?? "[]");
+    } catch {
+      seen = [];
+    }
+    const seenSet = new Set(Array.isArray(seen) ? seen : []);
+    for (const result of results) {
+      const key = `${result.id}:${result.state}:${result.prUrl ?? ""}`;
+      if (seenSet.has(key)) continue;
+      seenSet.add(key);
+      const name = result.title || "記事";
+      if (result.state === "merged") {
+        toast(`公開しました：${name}${result.url ? ` ${result.url}` : ""}`);
+      } else if (result.state === "failed") {
+        toast(`公開できませんでした：${name}。${result.message ?? ""}`, "error");
+      }
+    }
+    localStorage.setItem(
+      PUBLISH_RESULTS_SEEN_KEY,
+      JSON.stringify([...seenSet].slice(-50))
+    );
+  } catch {
+    // 結果の表示は補助機能なので、失敗しても編集は止めない。
+  }
+}
+
 function collect() {
   return {
     category: els.category.value,
@@ -1868,6 +1907,8 @@ async function boot() {
   if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
   else clearEditor();
   setBusy(false);
+  // 閉じている間に完了した公開があれば知らせる（待たせない）。
+  void showPendingPublishResults();
   // 狭い画面では一覧から始める（編集は下書きを選んだときに開く）。
   if (window.matchMedia("(max-width: 1000px)").matches) setView("list");
 
