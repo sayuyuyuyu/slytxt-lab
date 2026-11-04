@@ -256,7 +256,7 @@ const terminalConfig = {
                 "    ページを開く（例: open notes）",
                 "  articles / tech / journal /",
                 "  notes / projects / tags /",
-                "  search / about",
+                "  search",
                 "    各ページの案内",
                 "  whoami",
                 "    あなたは誰か",
@@ -279,7 +279,7 @@ const terminalConfig = {
               "  about             管理人の紹介",
               "  ls                ページとファイルの一覧",
               "  open <ページ>     ページを開く（例: open notes）",
-              "  articles / tech / journal / notes / projects / tags / search / about",
+              "  articles / tech / journal / notes / projects / tags / search",
               "                    各ページの案内",
               "  whoami            あなたは誰か",
               "  date              現在の日時",
@@ -349,7 +349,7 @@ const terminalConfig = {
         }
       };
 
-      const pageCommands = ["articles", "tech", "journal", "notes", "projects", "tags", "search", "about", "bookmarks"];
+      const pageCommands = ["articles", "tech", "journal", "notes", "projects", "tags", "search", "bookmarks"];
       for (const name of pageCommands) {
         commands[name] = () => describePage(name);
       }
