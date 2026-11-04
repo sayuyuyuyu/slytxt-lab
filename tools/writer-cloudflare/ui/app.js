@@ -1366,13 +1366,8 @@ async function boot() {
     flushSave().catch(() => {});
   });
 
-  els.body.addEventListener("keydown", (event) => {
-    if (event.key === "Tab" && !event.metaKey && !event.ctrlKey) {
-      event.preventDefault();
-      els.body.setRangeText("  ", els.body.selectionStart, els.body.selectionEnd, "end");
-      onInput();
-    }
-  });
+  // 本文 textarea では Tab / Shift+Tab を奪わない。WYSIWYG 側と同じく
+  // フォーカス移動に渡し、キーボードだけで画面の操作を一巡できるようにする。
 
   document.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
