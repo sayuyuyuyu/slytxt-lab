@@ -17,6 +17,7 @@ import {
 import { PublishError, deriveDescription, publishPost, publishStatus } from "./publish.mjs";
 import { generateSummary } from "./summary.mjs";
 import { MediaError, mediaStatus, uploadMedia } from "./media.mjs";
+import { drivePendingPublishes, listPublishResults } from "./driver.mjs";
 
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -158,6 +159,12 @@ async function handleApi(request, env, url) {
     return json(await publishStatus({ env, store, id }));
   }
 
+  // タブを閉じている間に完了した公開の結果（driver.mjs が KV に残す）。
+  // UI が起動時に取得して知らせる。
+  if (resource === "publish-results" && !id && method === "GET") {
+    return json({ results: await listPublishResults(env) });
+  }
+
   if (resource === "publish" && id && !action && method === "POST") {
     return streamTask(async (send) =>
       publishPost({
@@ -205,5 +212,14 @@ export default {
               : 500;
       return json({ error: error?.message ?? String(error) }, status);
     }
+  },
+
+  /**
+   * Cron Triggers（wrangler.toml の [triggers]、毎分）: 保留中の投稿と
+   * 画像の見届けをサーバー側で進める。投稿後にタブを閉じても、CI 成功
+   * 後の merge と後片付けがここで完了する（driver.mjs）。
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(drivePendingPublishes(env));
   }
 };
