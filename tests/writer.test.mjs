@@ -232,6 +232,13 @@ test("plainText: 記号を落として1行にする", () => {
   );
 });
 
+test("plainText: 生の HTML タグを落とす", () => {
+  assert.equal(
+    plainText("1行目です。\n\n<br />\n\n2行目です。<br>続き。"),
+    "1行目です。 2行目です。 続き。"
+  );
+});
+
 test("drafts: 存在しないドラフトを保存で作り直さない", async () => {
   const store = createDraftStore(memoryKv());
 
@@ -248,6 +255,27 @@ test("description: 本文の書き出しから最小限だけ作る", () => {
   const long = deriveDescription("あ".repeat(200));
   assert.equal(long.length, 90);
   assert.ok(long.endsWith("…"));
+});
+
+test("description: <br /> が文字列として残らない", () => {
+  const body = "皆さま、これが本文です。\n\n<br />\n\n次の段落です。";
+  const description = deriveDescription(body);
+  assert.equal(description, "皆さま、これが本文です。 次の段落です。");
+  assert.ok(!description.includes("<"));
+});
+
+test("description: 長い本文は文の途中で切らない", () => {
+  const body =
+    "一文目は短いです。二文目は少し長くして、全体が制限の九十字を超えるように調整します。三文目も同じくらいの長さで続きますが、ここで制限に届くはずです。四文目は制限の外にあるので、抜粋には含まれません。";
+  const description = deriveDescription(body);
+  assert.ok(description.length <= 90);
+  assert.ok(description.endsWith("。"), description);
+  assert.ok(!description.includes("四文目"), description);
+});
+
+test("description: 埋め込みの単独 URL 行は含めない", () => {
+  const body = "動画を見た。\n\nhttps://www.youtube.com/watch?v=example\n\n面白かった。";
+  assert.equal(deriveDescription(body), "動画を見た。 面白かった。");
 });
 
 test("drafts: 旧 life は journal として読む", () => {
