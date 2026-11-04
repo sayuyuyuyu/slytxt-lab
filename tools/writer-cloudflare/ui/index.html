@@ -251,13 +251,13 @@
     </div>
 
     <!-- 見出し画像の切り取り。アスペクト比は公開側の .article-cover と同じ
-         191:100 固定で、ドラッグ移動とズーム（スライダー／ホイール／ピンチ）で
+         191:100 固定で、ドラッグ／矢印キー移動とズーム（スライダー／ホイール／ピンチ）で
          調整する。決定すると横 1280px までの JPEG にして通常の media フローへ渡す。 -->
     <div id="cropDialog" class="dialog dialog--crop" hidden>
       <div class="dialog__backdrop"></div>
       <div class="dialog__panel" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
         <h2 id="cropTitle" class="dialog__title">見出し画像を切り取る</h2>
-        <div id="cropStage" class="crop__stage">
+        <div id="cropStage" class="crop__stage" tabindex="0" role="group" aria-label="切り取り位置（矢印キーで移動）">
           <img id="cropImage" class="crop__img" alt="" draggable="false" />
         </div>
         <div class="crop__controls">
@@ -265,7 +265,7 @@
           <input id="cropZoom" class="crop__zoom" type="range" min="1" max="3" step="0.01" value="1" />
         </div>
         <p class="dialog__note">
-          ドラッグで位置を動かし、スライダー・ホイール・ピンチで拡大できます。公開時の表示（横長
+          ドラッグや矢印キー（Shift 同時押しで大きく移動）で位置を動かし、スライダー・ホイール・ピンチで拡大できます。公開時の表示（横長
           191:100）に合わせて切り取り、横 1280px までの JPEG で保存します。
         </p>
         <div class="dialog__actions">
