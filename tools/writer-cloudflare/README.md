@@ -54,6 +54,7 @@ npx wrangler secret put GITHUB_TOKEN -c tools/writer-cloudflare/wrangler.toml
 ```
 
 - `GITHUB_TOKEN`: 手順3の PAT（必須）。
+- `OPENCODE_GO_API_KEY`: OpenCode Go の API キー（任意）。登録すると、公開時のディスクリプションに AI 要約が使われる（公開パネルで候補として表示され、編集もできる）。未設定の場合は要約をせず、本文の抜粋で公開される。エンドポイントとモデルは `wrangler.toml` の `[vars]`（`OPENCODE_GO_API_URL` / `OPENCODE_GO_MODEL`）で差し替えられる。
 
 ### 5. 静的ファイルを用意してデプロイする
 

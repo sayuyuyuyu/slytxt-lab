@@ -15,6 +15,7 @@
  */
 import { stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText } from "./markdown.mjs";
+import { generateSummary } from "./summary.mjs";
 import { today } from "./date.mjs";
 import { GitHubError, createGitHubClient } from "./github.mjs";
 
@@ -35,7 +36,7 @@ export function publicUrl(category, slug) {
   return base ? `${SITE_ORIGIN}/${base}/${slug}/` : "";
 }
 
-/** 一覧に出す説明。エージェントに書かせず、本文の書き出しから最小限だけ作る。 */
+/** 一覧に出す説明のフォールバック。本文の書き出しから最小限だけ作る。 */
 export function deriveDescription(body, limit = 90) {
   const withoutHeadings = String(body ?? "")
     .replace(/^\s{0,3}#{1,6}\s+.*$/gm, "")
@@ -101,6 +102,25 @@ export async function publishPost({ env, store, id, onLog = () => {} }) {
   }
 }
 
+/**
+ * ディスクリプションの決定。優先順位は
+ * 1. 下書きに保存済みの文（公開パネルで本人が決めたもの。AI で上書きしない）
+ * 2. AI 要約（OpenCode Go。キーが無い／失敗したら次へ）
+ * 3. 本文の抜粋（deriveDescription）
+ * AI 要約が作れたら下書きに書き戻し、再投稿でも同じ文になるようにする。
+ */
+async function resolveDescription({ env, store, id, draft, title, body, onLog }) {
+  const saved = String(draft.description ?? "").trim();
+  if (saved) return saved;
+  const summary = await generateSummary(env, { title, body });
+  if (summary) {
+    onLog("ディスクリプションは AI 要約を使います。");
+    await store.writeDraft(id, { description: summary }).catch(() => {});
+    return summary;
+  }
+  return deriveDescription(body) || title;
+}
+
 async function publishPostInner({ env, store, id, onLog }) {
   if (!env.GITHUB_TOKEN) {
     throw new PublishError(
@@ -116,7 +136,7 @@ async function publishPostInner({ env, store, id, onLog }) {
   const body = draft.body.trim();
 
   const title = deriveTitle(draft, body);
-  const description = deriveDescription(body) || title;
+  const description = await resolveDescription({ env, store, id, draft, title, body, onLog });
   // タグの上限は note に合わせて10件（公開パネルの UI と揃える）。
   const tags = draft.tags.slice(0, 10);
   const published = today();

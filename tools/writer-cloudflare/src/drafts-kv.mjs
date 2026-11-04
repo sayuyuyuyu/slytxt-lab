@@ -44,6 +44,7 @@ function asTags(value) {
 
 const MANAGED_KEYS = new Set([
   "title",
+  "description",
   "category",
   "tags",
   "cover",
@@ -78,6 +79,7 @@ export function normalizeDraft(id, data, body, raw = []) {
   return {
     id,
     title: asString(data.title).trim() || "無題",
+    description: asString(data.description),
     category,
     tags: asTags(data.tags),
     cover: asString(data.cover),
@@ -94,6 +96,7 @@ export function serializeDraft(draft) {
   return stringifyFrontmatter(
     {
       title: draft.title,
+      description: draft.description || undefined,
       category: draft.category,
       tags: draft.tags,
       cover: draft.cover || undefined,
@@ -170,6 +173,7 @@ export function createDraftStore(kv) {
       assertId(id),
       {
         title: patch.title ?? base.title,
+        description: patch.description ?? base.description,
         category: patch.category ?? base.category,
         tags: patch.tags ?? base.tags,
         cover: patch.cover ?? base.cover,
