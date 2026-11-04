@@ -47,3 +47,39 @@
 .milkdown .ProseMirror:focus {
   outline: none;
 }
+
+/* 埋め込みプレビュー（editor.js の decoration。公開時の見え方の目安） */
+.milkdown .embed-preview {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 4px 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  user-select: none;
+}
+.milkdown .embed-preview__thumb {
+  flex: none;
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.milkdown .embed-preview__meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.milkdown .embed-preview__kind {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.milkdown .embed-preview__url {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
