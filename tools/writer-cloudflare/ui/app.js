@@ -37,6 +37,9 @@ const els = {
   publishOpen: $("#publishOpen"),
   publishPanel: $("#publishPanel"),
   publishTitle: $("#publishTitle"),
+  tags: $("#tags"),
+  tagInput: $("#tagInput"),
+  tagCandidates: $("#tagCandidates"),
   publishFile: $("#publishFile"),
   publishCancel: $("#publishCancel"),
   publishConfirm: $("#publishConfirm"),
@@ -60,7 +63,8 @@ const state = {
   meta: null,
   drafts: [],
   current: null,
-  busy: false
+  busy: false,
+  tags: []
 };
 
 const save = { status: "idle", pending: null, timer: null, retryTimer: null, attempt: 0 };
@@ -490,6 +494,8 @@ function applyDraft(draft) {
   els.category.value = draft.category;
   els.titleInput.value = draft.title && draft.title !== "無題" ? draft.title : "";
   els.body.value = draft.body;
+  state.tags = [...(draft.tags ?? [])];
+  renderTags();
   editorSet(draft.body);
   showEmpty(false);
 
@@ -505,6 +511,8 @@ function applyDraft(draft) {
 
 function clearEditor() {
   state.current = null;
+  state.tags = [];
+  renderTags();
   els.titleInput.value = "";
   els.body.value = "";
   editorSet("");
@@ -563,6 +571,7 @@ function collect() {
     // 空ならサーバー側で「無題」として保持され、表示・公開時は従来どおり
     // 本文の書き出しから導出される。
     title: els.titleInput.value.trim(),
+    tags: [...state.tags],
     body: els.body.value
   };
 }
@@ -751,6 +760,7 @@ let confirmResolve = null;
 let confirmReturnFocus = null;
 let publishReturnFocus = null;
 let publishCategorySnapshot = null;
+let publishTagsSnapshot = null;
 
 // ダイアログ用: 開く前にフォーカスがあった要素へ戻し、開いている間は Tab を内側で循環させる。
 function rememberFocus() {
@@ -808,6 +818,78 @@ function settleConfirm(value) {
   }
 }
 
+/* ---- タグ編集（公開パネル） ---- */
+/*
+ * note の公開設定と同じく、タグは公開パネルで編集する。
+ * 上限は note に合わせて10件・1件30文字。候補は /api/meta が返す
+ * 既存の下書きのタグ集合を datalist で出す。
+ */
+const MAX_TAGS = 10;
+const MAX_TAG_LENGTH = 30;
+
+function normalizeTag(raw) {
+  return String(raw ?? "").trim().replace(/^#+/, "").trim();
+}
+
+function renderTags() {
+  els.tags.replaceChildren();
+  for (const tag of state.tags) {
+    const chip = document.createElement("span");
+    chip.className = "tag-chip";
+    const label = document.createElement("span");
+    label.textContent = tag;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "tag-chip__remove";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label", tag + " を外す");
+    remove.addEventListener("click", () => removeTag(tag));
+    chip.append(label, remove);
+    els.tags.append(chip);
+  }
+}
+
+function addTag(raw) {
+  const tag = normalizeTag(raw);
+  if (!tag) return false;
+  if (tag.length > MAX_TAG_LENGTH) {
+    toast("タグは30文字までです。", "error");
+    return false;
+  }
+  if (state.tags.includes(tag)) return false;
+  if (state.tags.length >= MAX_TAGS) {
+    toast("タグは10件までです。", "error");
+    return false;
+  }
+  state.tags.push(tag);
+  renderTags();
+  scheduleSave();
+  return true;
+}
+
+function removeTag(tag) {
+  state.tags = state.tags.filter((item) => item !== tag);
+  renderTags();
+  scheduleSave();
+}
+
+/** 入力欄の内容をタグとして確定する（カンマ・読点区切りも受ける）。 */
+function commitTagInput() {
+  const value = els.tagInput.value;
+  if (!value.trim()) return;
+  for (const part of value.split(/[,、]/)) addTag(part);
+  els.tagInput.value = "";
+}
+
+function fillTagCandidates() {
+  els.tagCandidates.replaceChildren();
+  for (const tag of state.meta?.tags ?? []) {
+    const option = document.createElement("option");
+    option.value = tag;
+    els.tagCandidates.append(option);
+  }
+}
+
 /* ---- 公開の確認パネル ---- */
 
 /** 投稿先ファイルの表示用（サーバー側の slug 規則に合わせた見た目だけの計算）。 */
@@ -840,6 +922,8 @@ function openPublishPanel() {
     body: els.body.value
   });
   publishCategorySnapshot = els.category.value;
+  publishTagsSnapshot = [...state.tags];
+  renderTags();
   updatePublishFile();
   publishReturnFocus = rememberFocus();
   els.publishPanel.hidden = false;
@@ -849,13 +933,26 @@ function openPublishPanel() {
 function closePublishPanel({ restoreCategory = false } = {}) {
   const wasHidden = els.publishPanel.hidden;
   els.publishPanel.hidden = true;
-  if (restoreCategory && publishCategorySnapshot !== null && els.category.value !== publishCategorySnapshot) {
-    els.category.value = publishCategorySnapshot;
-    updatePublishFile();
-    // 変更時に先行して保存済み／保存予定でも、戻したカテゴリで保存し直す。
-    scheduleSave();
+  if (restoreCategory && publishCategorySnapshot !== null) {
+    let changed = false;
+    if (els.category.value !== publishCategorySnapshot) {
+      els.category.value = publishCategorySnapshot;
+      updatePublishFile();
+      changed = true;
+    }
+    if (
+      publishTagsSnapshot !== null &&
+      JSON.stringify(state.tags) !== JSON.stringify(publishTagsSnapshot)
+    ) {
+      state.tags = [...publishTagsSnapshot];
+      renderTags();
+      changed = true;
+    }
+    // 変更時に先行して保存済み／保存予定でも、戻した内容で保存し直す。
+    if (changed) scheduleSave();
   }
   publishCategorySnapshot = null;
+  publishTagsSnapshot = null;
   if (!wasHidden) {
     restoreFocus(publishReturnFocus);
     publishReturnFocus = null;
@@ -979,6 +1076,7 @@ async function boot() {
   }
 
   fillSelect(els.category, state.meta.categories, state.meta.categoryLabels);
+  fillTagCandidates();
 
   await setupEditor();
   await loadDrafts();
@@ -1025,7 +1123,17 @@ async function boot() {
   els.publishPanel
     .querySelector(".dialog__backdrop")
     .addEventListener("click", () => closePublishPanel({ restoreCategory: true }));
+  els.tagInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === "," || event.key === "、") {
+      event.preventDefault();
+      commitTagInput();
+    } else if (event.key === "Backspace" && els.tagInput.value === "" && state.tags.length > 0) {
+      removeTag(state.tags[state.tags.length - 1]);
+    }
+  });
+  els.tagInput.addEventListener("change", commitTagInput);
   els.publishConfirm.addEventListener("click", () => {
+    commitTagInput();
     closePublishPanel();
     runPublish();
   });
