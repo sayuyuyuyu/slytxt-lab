@@ -88,7 +88,7 @@ export async function uploadMedia(request, env) {
   const path = `${MEDIA_DIR}/${name}`;
   const branch = `media/${hash}`;
   const url = `${SITE_ORIGIN}/media/${name}`;
-  const base = { url, key: name, path };
+  const base = { url, key: name, path, prUrl: "" };
 
   const gh = createGitHubClient(env);
   try {
@@ -167,7 +167,7 @@ export async function mediaStatus(env, key) {
   const name = `${idPart}.${ext}`;
   const path = `${MEDIA_DIR}/${name}`;
   const branch = `media/${idPart}`;
-  const base = { url: `${SITE_ORIGIN}/media/${name}`, key: name };
+  const base = { url: `${SITE_ORIGIN}/media/${name}`, key: name, prUrl: "" };
 
   if (!env.GITHUB_TOKEN) {
     throw new MediaError(
