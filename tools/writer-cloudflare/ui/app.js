@@ -662,7 +662,7 @@ function showResult(parts) {
       els.taskResult.append(link);
     } else {
       const span = document.createElement("span");
-      span.className = "editor__count";
+      span.className = "task__result-label";
       span.textContent = part.label;
       els.taskResult.append(span);
     }
