@@ -1028,6 +1028,20 @@ samp,
   border: 0;
   border-top: 1px dashed var(--border-strong);
 }
+/* 画像とキャプション（rehype-figure が生成する） */
+.article-body figure {
+  margin-inline: 0;
+}
+.article-body figure img {
+  display: block;
+  border-radius: 10px;
+}
+.article-body figcaption {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
 /* 埋め込み（URL だけの段落から remark-embed が生成する） */
 .article-body .embed {
   margin-block: 28px;

@@ -494,18 +494,31 @@ export async function createCrepe(
 }
 
 /*
- * 画像の alt の受け渡し。
+ * 画像の alt とキャプションの受け渡し。
+ *
+ * 保存形式は ![alt](url "caption") とし、alt（代替テキスト）と
+ * キャプション（読者向けの説明文）を分けて持つ。公開側は title を
+ * キャプションとして画像下に表示する（src/lib/rehype-figure.mjs）。
  *
  * Crepe のブロック画像は、markdown の alt 欄を「表示比率」の保存に使う
  * （serialize すると alt が "1.00" のような数値になる）。そのままでは
- * 既存の下書きの alt テキストが編集のたびに消えてしまうため、
- * エディタへ渡すときに alt をキャプション（title 欄）へ移し、
- * エディタから戻るときにキャプションを alt へ戻す。比率はサイト側の
- * 表示に影響しない（通常の img として描画される）ので捨てる。
+ * 本来の alt が編集のたびに消えてしまうため、受け渡しはこうする:
+ * - エディタへ渡すとき: キャプションは title 欄（Crepe のキャプション欄）
+ *   にそのまま置き、本来の alt は URL をキーにこのモジュールへ退避する。
+ * - エディタから戻るとき: 退避した alt を URL で引き戻して
+ *   ![alt](url "caption") に組み直す。比率はサイト側の表示に影響しない
+ *   ので捨てる。
  * 対象は行単独の画像（ブロック画像）だけで、コードブロック内は触らない。
+ *
+ * 旧形式 ![キャプション](url)（alt 欄にキャプションが入っている既存の
+ * 下書き）は、読み込み時にキャプションを title 欄へ移す。次に保存すると
+ * 新形式にそろう。
  */
 const IMAGE_LINE = /^!\[([^\]]*)\]\(\s*(\S+?)(?:\s+["']([^"']*)["'])?\s*\)$/;
 const RATIO_LIKE = /^\d+(\.\d+)?$/;
+
+/** エディタ表示中だけ保持する、本来の alt（URL → alt）。 */
+const imageAltByUrl = new Map();
 
 function mapImageLines(markdown, convert) {
   let inFence = false;
@@ -524,19 +537,35 @@ function mapImageLines(markdown, convert) {
     .join("\n");
 }
 
-/** textarea の markdown → エディタ用（alt をキャプションへ移す）。 */
+/** textarea の markdown → エディタ用（alt を退避し、キャプションを title 欄へ）。 */
 export function imagesToEditor(markdown) {
   return mapImageLines(markdown, ({ alt, url, title }) => {
-    if (!alt || RATIO_LIKE.test(alt) || title || alt.includes('"')) return null;
+    if (title) {
+      // 新形式: キャプションは title のまま、alt だけ退避する。
+      if (alt && !RATIO_LIKE.test(alt) && !alt.includes('"')) {
+        imageAltByUrl.set(url, alt);
+        return `![](${url} "${title}")`;
+      }
+      return null;
+    }
+    if (!alt || RATIO_LIKE.test(alt) || alt.includes('"')) return null;
+    // 旧形式: alt 欄のキャプションを title 欄へ移す（alt は空として記録）。
+    imageAltByUrl.set(url, "");
     return `![](${url} "${alt}")`;
   });
 }
 
-/** エディタの markdown → 保存用（キャプションを alt へ戻し、比率は捨てる）。 */
+/** エディタの markdown → 保存用（退避した alt を戻し、キャプションは title へ）。 */
 export function imagesFromEditor(markdown) {
   return mapImageLines(markdown, ({ alt, url, title }) => {
     if (!RATIO_LIKE.test(alt)) return null;
-    return title ? `![${title}](${url})` : `![](${url})`;
+    const realAlt = imageAltByUrl.get(url) ?? "";
+    const head = realAlt ? `![${realAlt}](${url}` : `![](${url}`;
+    if (!title) return `${head})`;
+    if (!title.includes('"')) return `${head} "${title}")`;
+    if (!title.includes("'")) return `${head} '${title}')`;
+    // 引用符を両方含むキャプションは title に載せられないため、旧形式に落とす。
+    return `![${title}](${url})`;
   });
 }
 

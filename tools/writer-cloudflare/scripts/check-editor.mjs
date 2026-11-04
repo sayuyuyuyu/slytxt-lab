@@ -188,6 +188,12 @@ const SAMPLE = [
   "最後の段落。"
 ].join("\n");
 
+// 旧形式 ![キャプション](url) は、保存時に新形式 ![](url "キャプション") へそろう。
+const SAMPLE_ROUNDTRIP = SAMPLE.replace(
+  "![代替テキスト](https://example.com/image.png)",
+  "![](https://example.com/image.png \"代替テキスト\")"
+);
+
 const failures = [];
 function check(label, actual, expected) {
   if (normalize(actual) === normalize(expected)) {
@@ -214,7 +220,7 @@ const handle = await createCrepe(document.querySelector("#root"), {
   onUpload: async () => "https://example.com/uploaded.png"
 });
 await sleep(300);
-check("初期読み込みの往復変換（alt の受け渡し込み）", imagesFromEditor(handle.getMarkdown()), SAMPLE);
+check("初期読み込みの往復変換（alt の受け渡し込み）", imagesFromEditor(handle.getMarkdown()), SAMPLE_ROUNDTRIP);
 
 // 編集のシミュレーション: 文書末尾に文字を挿入し、onChange が届くか見る。
 lastChange = null;
@@ -248,6 +254,16 @@ if (tableOut.includes("列1") && tableOut.includes("値2") && tableOut.includes(
   console.log("NG: 表の往復");
   console.log(tableOut);
 }
+
+// alt とキャプションを分けた新形式が、そのまま往復すること。
+const ALT_IMAGE = [
+  '![川の写真](https://example.com/river.jpg "夕方の川")',
+  "",
+  "本文。"
+].join("\n");
+handle.setMarkdown(imagesToEditor(ALT_IMAGE));
+await sleep(300);
+check("alt とキャプションの分離（往復）", imagesFromEditor(handle.getMarkdown()), ALT_IMAGE);
 
 // 埋め込みプレビュー: URL だけの段落の下にカード風プレビューが出て、
 // markdown 自体は URL のまま変わらないことを緩く確認する。
