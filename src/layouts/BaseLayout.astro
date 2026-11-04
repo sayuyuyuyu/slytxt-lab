@@ -15,6 +15,7 @@ type Props = {
   noindex?: boolean;
   noCanonical?: boolean;
   searchable?: boolean;
+  loadXWidgets?: boolean;
 };
 
 const {
@@ -26,7 +27,8 @@ const {
   updated,
   noindex = false,
   noCanonical = false,
-  searchable = false
+  searchable = false,
+  loadXWidgets = false
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -138,6 +140,7 @@ const imageUrl = new URL(image, Astro.site);
         }
       }
     </script>
+    {loadXWidgets && <script is:inline async src="https://platform.twitter.com/widgets.js" charset="utf-8" />}
     <SiteEggs />
   </body>
 </html>

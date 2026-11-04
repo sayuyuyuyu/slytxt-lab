@@ -48,6 +48,7 @@ test("embeds: URL でないものは対象外", () => {
 test("embeds: 生成 HTML に必要な要素が入る", () => {
   assert.match(youtubeEmbedHtml("dQw4w9WgXcQ"), /youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/);
   assert.match(xEmbedHtml({ url: "https://x.com/a/status/1" }), /twitter-tweet/);
+  assert.doesNotMatch(xEmbedHtml({ url: "https://x.com/a/status/1" }), /widgets\.js/);
   const card = linkCardHtml({
     url: "https://example.com/a?x=1&y=2",
     ogp: { title: "タイトル <b>", description: "説明", image: "https://example.com/i.png" }

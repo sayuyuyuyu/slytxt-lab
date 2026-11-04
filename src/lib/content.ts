@@ -125,3 +125,17 @@ export function toPlainText(source: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** X のポスト URL だけの段落（埋め込みになる形）が本文にあるか。widgets.js の読み込み判定に使う。 */
+export function hasXEmbed(body: string | undefined): boolean {
+  if (!body) return false;
+  const post = /^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/[A-Za-z0-9_]+\/status\/\d+/;
+  return body.split("\n").some((line) => {
+    const text = line.trim();
+    const link = text.match(/^\[([^\]]+)\]\((\S+)\)$/);
+    if (link) return link[1] === link[2] && post.test(link[2]);
+    const autolink = text.match(/^<(\S+)>$/);
+    if (autolink) return post.test(autolink[1]);
+    return /^\S+$/.test(text) && post.test(text);
+  });
+}
