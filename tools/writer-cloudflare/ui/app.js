@@ -39,6 +39,12 @@ const els = {
   coverChange: $("#coverChange"),
   coverRemove: $("#coverRemove"),
   coverFile: $("#coverFile"),
+  cropDialog: $("#cropDialog"),
+  cropStage: $("#cropStage"),
+  cropImage: $("#cropImage"),
+  cropZoom: $("#cropZoom"),
+  cropCancel: $("#cropCancel"),
+  cropOk: $("#cropOk"),
   titleInput: $("#title"),
   body: $("#body"),
   editorRoot: $("#editorRoot"),
@@ -1042,6 +1048,7 @@ function trapTab(event, container) {
 document.addEventListener("keydown", (event) => {
   if (!els.confirmDialog.hidden) trapTab(event, els.confirmDialog);
   else if (!els.publishPanel.hidden) trapTab(event, els.publishPanel);
+  else if (!els.cropDialog.hidden) trapTab(event, els.cropDialog);
 });
 
 function confirmAction({ title, message, okLabel = "削除する" }) {
@@ -1072,17 +1079,94 @@ function settleConfirm(value) {
  * 保存先は下書き frontmatter の cover（URL）。画像の保存自体は本文画像と
  * 同じ media フロー（PR 経由）で、POST が通った時点で最終 URL が確定する。
  * 反映完了まではローカルの blob プレビューで見せる。
+ *
+ * 注意: 最終 URL が「確定」しても、Cloudflare Pages のデプロイが伝わるまで
+ * 実際には開けない（media.mjs のコメント参照）。その間に blob を破棄して
+ * 最終 URL へ切り替えると、カバー枠が壊れた画像アイコンだけの大きな枠に
+ * なる（2026-11-05 のバグ報告）。blob は最終 URL が実際に読み込めるまで
+ * 出し続け、読み込み確認が取れてから切り替える。
  */
 let coverDisplayUrl = "";
 let coverUploading = false;
+/** 最終 URL の画像が読み込めなかった間は true。壊れた枠を出さないために使う。 */
+let coverBroken = false;
+/** 進行中の URL 確認を無効化するための世代番号。 */
+let coverProbeToken = 0;
 
 function renderCover() {
   const has = Boolean(state.cover || coverDisplayUrl);
   els.coverSet.hidden = has;
   els.coverBox.hidden = !has;
-  if (has) els.coverPreview.src = coverDisplayUrl || state.cover;
+  if (has) {
+    const src = coverDisplayUrl || state.cover;
+    if (els.coverPreview.getAttribute("src") !== src) els.coverPreview.src = src;
+    els.coverPreview.hidden = coverBroken;
+  } else {
+    els.coverPreview.removeAttribute("src");
+    els.coverPreview.hidden = false;
+  }
   els.coverChange.disabled = coverUploading;
   els.coverRemove.disabled = coverUploading;
+}
+
+/**
+ * 最終 URL が実際に読み込めるか、間隔を空けて確認する。
+ * 読み込めたら onReady、規定回数（5秒×36回≒3分）で諦めたら onGiveUp。
+ * 下書き切替・外す・再設定で世代が進むと、古い確認は静かに終わる。
+ */
+function probeCoverRemote(url, { onReady, onGiveUp }) {
+  const token = ++coverProbeToken;
+  let tries = 0;
+  const attempt = () => {
+    if (token !== coverProbeToken || state.cover !== url || !url) return;
+    tries += 1;
+    const probe = new Image();
+    probe.onload = () => {
+      if (token === coverProbeToken && state.cover === url) onReady();
+    };
+    probe.onerror = () => {
+      if (token !== coverProbeToken || state.cover !== url) return;
+      if (tries < 36) setTimeout(attempt, 5000);
+      else onGiveUp();
+    };
+    // 404 がキャッシュに残ると再試行が空振りするため、確認だけは
+    // クエリを付けて実状態を見に行く。
+    probe.src = `${url}${url.includes("?") ? "&" : "?"}cover-probe=${tries}`;
+  };
+  attempt();
+}
+
+/** アップロード直後: 最終 URL が開けるようになるまで blob を出し続ける。 */
+function keepCoverBlobUntilRemoteReady(url) {
+  probeCoverRemote(url, {
+    onReady: () => {
+      resetCoverDisplay();
+      renderCover();
+    },
+    onGiveUp: () => {
+      // blob のまま編集画面では見え続ける。保存済み URL は伝播後に開ける。
+      setCoverStatus("画像の反映に時間がかかっています。このまま編集を続けて構いません。");
+    }
+  });
+}
+
+/** 既存カバーが読み込めなかったとき: 伝播で直るのを待ち、直ったら戻す。 */
+function watchBrokenCover(url) {
+  probeCoverRemote(url, {
+    onReady: () => {
+      coverBroken = false;
+      setCoverStatus("");
+      // 失敗した読み込みをやり直させるため、src を付け直してから描く。
+      els.coverPreview.removeAttribute("src");
+      renderCover();
+    },
+    onGiveUp: () => {
+      setCoverStatus(
+        "見出し画像を読み込めませんでした。変更するか、外して付け直してください。",
+        "error"
+      );
+    }
+  });
 }
 
 /** 見出し画像の反映状態を、本文画像（uploadStatus）と同じ形で読み上げ対象にする。 */
@@ -1098,6 +1182,8 @@ function setCoverStatus(message, state = "busy") {
 }
 
 function resetCoverDisplay() {
+  coverProbeToken += 1;
+  coverBroken = false;
   if (coverDisplayUrl) URL.revokeObjectURL(coverDisplayUrl);
   coverDisplayUrl = "";
   setCoverStatus("");
@@ -1120,10 +1206,13 @@ async function setCoverFromFile(file) {
       }
     });
     if (url) state.cover = url;
-    resetCoverDisplay();
+    setCoverStatus("");
     renderCover();
     scheduleSave();
     toast("見出し画像を設定しました");
+    // blob プレビューはここでは破棄しない。最終 URL が実際に読み込める
+    // ようになってから切り替える（keepCoverBlobUntilRemoteReady）。
+    if (url) keepCoverBlobUntilRemoteReady(url);
   } catch (error) {
     setCoverStatus(
       error.message
@@ -1143,6 +1232,293 @@ function removeCover() {
   resetCoverDisplay();
   renderCover();
   scheduleSave();
+}
+
+/* ---- 見出し画像のサイズ制限と切り取り ----
+ *
+ * 入力は 20MB まで（超えたらその場で断る）。選んだ画像は切り取り
+ * ダイアログを出し、公開側の表示アスペクト比（.article-cover の 191:100。
+ * note の見出し画像推奨 1280×670 と同じ比率）に固定で切り取る。
+ * 出力は横 1280px までの JPEG（quality 0.85）にして、従来の media
+ * フロー（uploadMedia）へ渡す。Worker 側にも media.mjs の上限（10MB）が
+ * あるが、切り取り後の JPEG はそれより十分小さくなる。
+ * アニメーション GIF は切り取ると静止画になってしまうため、サイズ
+ * 確認だけして従来どおりそのまま渡す。
+ */
+const COVER_MAX_INPUT_BYTES = 20 * 1024 * 1024;
+const COVER_ASPECT_W = 191;
+const COVER_ASPECT_H = 100;
+const COVER_OUTPUT_WIDTH = 1280;
+const COVER_JPEG_QUALITY = 0.85;
+const COVER_MAX_ZOOM = 3;
+
+function handleCoverFile(file) {
+  if (!file || coverUploading) return;
+  if (file.size > COVER_MAX_INPUT_BYTES) {
+    setCoverStatus("画像が大きすぎます。20MB までの画像を選んでください。", "error");
+    toast("画像が大きすぎます（20MB まで）", "error");
+    return;
+  }
+  if (file.type === "image/gif") {
+    setCoverFromFile(file).catch(() => {});
+    return;
+  }
+  openCropDialog(file)
+    .then((cropped) => (cropped ? setCoverFromFile(cropped) : null))
+    .catch(() => {});
+}
+
+let cropSession = null;
+let cropReturnFocus = null;
+
+function openCropDialog(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      cropReturnFocus = rememberFocus();
+      cropSession = {
+        resolve,
+        url,
+        image,
+        natW: image.naturalWidth,
+        natH: image.naturalHeight,
+        zoom: 1,
+        baseScale: 0,
+        scale: 0,
+        offsetX: 0,
+        offsetY: 0,
+        stageW: 0,
+        stageH: 0,
+        pointers: new Map(),
+        pinch: null,
+        busy: false
+      };
+      els.cropImage.src = url;
+      els.cropImage.style.visibility = "hidden";
+      els.cropZoom.value = "1";
+      els.cropOk.disabled = false;
+      els.cropDialog.hidden = false;
+      layoutCrop(true);
+      els.cropImage.style.visibility = "";
+      els.cropOk.focus();
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      setCoverStatus(
+        "画像を読み込めませんでした。対応形式は jpeg / png / gif / webp です。",
+        "error"
+      );
+      resolve(null);
+    };
+    image.src = url;
+  });
+}
+
+function layoutCrop(center = false) {
+  const session = cropSession;
+  if (!session) return;
+  const rect = els.cropStage.getBoundingClientRect();
+  if (rect.width === 0) return;
+  session.stageW = rect.width;
+  session.stageH = rect.height;
+  session.baseScale = Math.max(
+    session.stageW / session.natW,
+    session.stageH / session.natH
+  );
+  session.scale = session.baseScale * session.zoom;
+  if (center) {
+    session.offsetX = (session.stageW - session.natW * session.scale) / 2;
+    session.offsetY = (session.stageH - session.natH * session.scale) / 2;
+  }
+  clampCropOffsets();
+  applyCropTransform();
+}
+
+function clampCropOffsets() {
+  const session = cropSession;
+  if (!session) return;
+  const width = session.natW * session.scale;
+  const height = session.natH * session.scale;
+  session.offsetX = Math.min(0, Math.max(session.stageW - width, session.offsetX));
+  session.offsetY = Math.min(0, Math.max(session.stageH - height, session.offsetY));
+}
+
+function applyCropTransform() {
+  const session = cropSession;
+  if (!session) return;
+  els.cropImage.style.width = `${session.natW}px`;
+  els.cropImage.style.height = `${session.natH}px`;
+  els.cropImage.style.transform =
+    `translate(${session.offsetX}px, ${session.offsetY}px) scale(${session.scale})`;
+}
+
+/** anchor（ステージ座標）を固定したまま拡大率を変える。 */
+function setCropZoom(zoom, anchorX, anchorY) {
+  const session = cropSession;
+  if (!session || session.scale === 0) return;
+  const next = Math.min(COVER_MAX_ZOOM, Math.max(1, zoom));
+  const oldScale = session.scale;
+  session.zoom = next;
+  session.scale = session.baseScale * next;
+  const ratio = session.scale / oldScale;
+  session.offsetX = anchorX - (anchorX - session.offsetX) * ratio;
+  session.offsetY = anchorY - (anchorY - session.offsetY) * ratio;
+  els.cropZoom.value = String(next);
+  clampCropOffsets();
+  applyCropTransform();
+}
+
+function closeCropDialog(result) {
+  const session = cropSession;
+  if (!session) return;
+  cropSession = null;
+  els.cropDialog.hidden = true;
+  els.cropImage.removeAttribute("src");
+  URL.revokeObjectURL(session.url);
+  restoreFocus(cropReturnFocus);
+  cropReturnFocus = null;
+  session.resolve(result);
+}
+
+async function confirmCrop() {
+  const session = cropSession;
+  if (!session || session.busy) return;
+  session.busy = true;
+  els.cropOk.disabled = true;
+  try {
+    const sourceW = session.stageW / session.scale;
+    const sourceH = session.stageH / session.scale;
+    const outW = Math.max(1, Math.min(COVER_OUTPUT_WIDTH, Math.round(sourceW)));
+    const outH = Math.max(
+      1,
+      Math.round((outW * COVER_ASPECT_H) / COVER_ASPECT_W)
+    );
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext("2d");
+    // JPEG は透過できないため、透過 PNG は白で下地を敷く。
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, outW, outH);
+    ctx.drawImage(
+      session.image,
+      -session.offsetX / session.scale,
+      -session.offsetY / session.scale,
+      sourceW,
+      sourceH,
+      0,
+      0,
+      outW,
+      outH
+    );
+    const blob = await new Promise((resolveBlob) =>
+      canvas.toBlob(resolveBlob, "image/jpeg", COVER_JPEG_QUALITY)
+    );
+    if (!blob) throw new Error("toBlob failed");
+    closeCropDialog(new File([blob], "cover.jpg", { type: "image/jpeg" }));
+  } catch {
+    toast("画像の切り取りに失敗しました", "error");
+    session.busy = false;
+    els.cropOk.disabled = false;
+  }
+}
+
+/** 切り取りダイアログの操作（ドラッグ／ピンチ／ホイール／スライダー）。 */
+function initCropEvents() {
+  const stage = els.cropStage;
+  stage.addEventListener("pointerdown", (event) => {
+    const session = cropSession;
+    if (!session) return;
+    stage.setPointerCapture(event.pointerId);
+    session.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (session.pointers.size === 2) {
+      const [a, b] = [...session.pointers.values()];
+      session.pinch = {
+        distance: Math.hypot(a.x - b.x, a.y - b.y),
+        zoom: session.zoom
+      };
+    }
+  });
+  stage.addEventListener("pointermove", (event) => {
+    const session = cropSession;
+    if (!session || !session.pointers.has(event.pointerId)) return;
+    const prev = session.pointers.get(event.pointerId);
+    const dx = event.clientX - prev.x;
+    const dy = event.clientY - prev.y;
+    session.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (session.pointers.size === 1) {
+      session.offsetX += dx;
+      session.offsetY += dy;
+      clampCropOffsets();
+      applyCropTransform();
+    } else if (session.pointers.size === 2 && session.pinch) {
+      const [a, b] = [...session.pointers.values()];
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      const rect = stage.getBoundingClientRect();
+      const midX = (a.x + b.x) / 2 - rect.left;
+      const midY = (a.y + b.y) / 2 - rect.top;
+      // 中点の移動分（片指の半分）もドラッグとして効かせる。
+      session.offsetX += dx / 2;
+      session.offsetY += dy / 2;
+      if (session.pinch.distance > 0) {
+        setCropZoom(
+          session.pinch.zoom * (distance / session.pinch.distance),
+          midX,
+          midY
+        );
+      } else {
+        clampCropOffsets();
+        applyCropTransform();
+      }
+    }
+  });
+  const endPointer = (event) => {
+    const session = cropSession;
+    if (!session) return;
+    session.pointers.delete(event.pointerId);
+    if (session.pointers.size < 2) session.pinch = null;
+  };
+  stage.addEventListener("pointerup", endPointer);
+  stage.addEventListener("pointercancel", endPointer);
+  stage.addEventListener(
+    "wheel",
+    (event) => {
+      const session = cropSession;
+      if (!session) return;
+      event.preventDefault();
+      const rect = stage.getBoundingClientRect();
+      const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+      setCropZoom(
+        session.zoom * factor,
+        event.clientX - rect.left,
+        event.clientY - rect.top
+      );
+    },
+    { passive: false }
+  );
+  els.cropZoom.addEventListener("input", () => {
+    const session = cropSession;
+    if (!session) return;
+    setCropZoom(
+      Number.parseFloat(els.cropZoom.value),
+      session.stageW / 2,
+      session.stageH / 2
+    );
+  });
+  els.cropCancel.addEventListener("click", () => closeCropDialog(null));
+  els.cropOk.addEventListener("click", () => {
+    confirmCrop().catch(() => {});
+  });
+  els.cropDialog
+    .querySelector(".dialog__backdrop")
+    .addEventListener("click", () => closeCropDialog(null));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !els.cropDialog.hidden) closeCropDialog(null);
+  });
+  window.addEventListener("resize", () => {
+    if (cropSession) layoutCrop(false);
+  });
 }
 
 /* ---- タグ編集（公開パネル） ---- */
@@ -1515,8 +1891,19 @@ async function boot() {
   els.coverFile.addEventListener("change", () => {
     const file = els.coverFile.files?.[0];
     els.coverFile.value = "";
-    setCoverFromFile(file).catch(() => {});
+    handleCoverFile(file);
   });
+  // 最終 URL の画像が読み込めなかったら、壊れた枠を出さずに状態を知らせ、
+  // 伝播で開けるようになるのを裏で見届ける。
+  els.coverPreview.addEventListener("error", () => {
+    const src = els.coverPreview.getAttribute("src") ?? "";
+    if (!src || src.startsWith("blob:") || coverBroken) return;
+    coverBroken = true;
+    setCoverStatus("見出し画像を読み込めません。反映を確認しています…");
+    renderCover();
+    watchBrokenCover(state.cover);
+  });
+  initCropEvents();
   els.tagInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === "," || event.key === "、") {
       event.preventDefault();

@@ -482,6 +482,57 @@ textarea {
   font-size: 0.8rem;
 }
 
+/* 見出し画像の切り取りダイアログ。枠のアスペクト比は公開側の
+   .article-cover と同じ 191:100。画像は transform（平行移動＋拡大）で動かす。 */
+.dialog--crop .dialog__panel {
+  width: min(100%, 560px);
+}
+
+.crop__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 191 / 100;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  touch-action: none;
+  cursor: grab;
+}
+
+.crop__stage:active {
+  cursor: grabbing;
+}
+
+.crop__img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+.crop__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.crop__zoom-label {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.crop__zoom {
+  flex: 1;
+  min-width: 0;
+}
+
 /* タイトル欄。本文とは独立した入力で、公開側の .page-title と
    同じタイポグラフィ（太さ・サイズ・行間・最大幅）で出す。 */
 .editor__title {
