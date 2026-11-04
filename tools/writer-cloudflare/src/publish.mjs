@@ -14,7 +14,7 @@
  *   成功として収束させる。詳細は publishStatus 側のコメントを参照。
  */
 import { stringifyFrontmatter } from "./frontmatter.mjs";
-import { plainText } from "./markdown.mjs";
+import { plainText, truncateText } from "./markdown.mjs";
 import { generateSummary } from "./summary.mjs";
 import { today } from "./date.mjs";
 import { GitHubError, createGitHubClient } from "./github.mjs";
@@ -44,19 +44,20 @@ export function deriveDescription(body, limit = 90) {
     .replace(/^\s*https?:\/\/\S+\s*$/gm, "");
   const text = plainText(withoutHeadings).replace(/\s+/g, " ").trim();
   if (!text) return "";
-  if (text.length <= limit) return text;
-  const head = text.slice(0, limit);
+  const chars = Array.from(text);
+  if (chars.length <= limit) return text;
+  const head = chars.slice(0, limit);
   // 文の途中で切らない。制限内に収まる最後の文末があれば、そこで終える。
   const sentenceEnd = Math.max(
     head.lastIndexOf("。"),
     head.lastIndexOf("！"),
     head.lastIndexOf("？")
   );
-  if (sentenceEnd >= limit * 0.4) return head.slice(0, sentenceEnd + 1);
+  if (sentenceEnd >= limit * 0.4) return head.slice(0, sentenceEnd + 1).join("");
   // 文末が無ければ、読点や空白の区切りで切る。
   const phraseEnd = Math.max(head.lastIndexOf("、"), head.lastIndexOf(" "));
-  if (phraseEnd >= limit * 0.5) return `${head.slice(0, phraseEnd)}…`;
-  return `${head.slice(0, limit - 1).trimEnd()}…`;
+  if (phraseEnd >= limit * 0.5) return `${head.slice(0, phraseEnd).join("")}…`;
+  return `${head.slice(0, limit - 1).join("").trimEnd()}…`;
 }
 
 export function normalizeSlug(raw, fallbackDate = today()) {
@@ -74,7 +75,7 @@ function deriveTitle(draft, body) {
   if (draft.title && draft.title !== "無題") return draft.title;
   const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
   const text = plainText(firstLine).replace(/\s+/g, " ").trim();
-  return (text || "無題").slice(0, 40);
+  return truncateText(text || "無題", 40);
 }
 
 function publishTarget(draft) {

@@ -6,7 +6,7 @@
  * API 形状・直列化形式は移行時から変えていない。
  */
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
-import { plainText, textLength } from "./markdown.mjs";
+import { plainText, textLength, truncateText } from "./markdown.mjs";
 
 export const CATEGORIES = ["tech", "journal", "notes"];
 export const CATEGORY_LABELS = { tech: "Tech", journal: "Journal", notes: "Notes" };
@@ -151,7 +151,7 @@ export function createDraftStore(kv) {
             tags: draft.tags,
             updated: draft.updated,
             pr: draft.pr,
-            excerpt: plainText(draft.body).slice(0, 120),
+            excerpt: truncateText(plainText(draft.body), 120),
             chars: textLength(draft.body)
           });
         } catch {

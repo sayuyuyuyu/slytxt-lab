@@ -1,4 +1,4 @@
-import { plainText, textLength } from "/markdown.mjs";
+import { plainText, textLength, truncateText } from "/markdown.mjs";
 
 /*
  * Cloudflare 版の UI 本体。index.html / style.css もこのディレクトリ
@@ -156,7 +156,7 @@ function displayTitle(draft) {
   if (draft.title && draft.title !== "無題") return draft.title;
   const first = String(draft.excerpt ?? "").trim();
   if (!first) return "新しいメモ";
-  return first.length > 32 ? `${first.slice(0, 32)}…` : first;
+  return Array.from(first).length > 32 ? `${truncateText(first, 32)}…` : first;
 }
 
 /** 本文を持つ下書き（編集中の1件）の表示名。本文の書き出しから作る。 */
@@ -165,7 +165,7 @@ function draftName(draft) {
   if (draft.body) {
     const firstLine = draft.body.split("\n").find((line) => line.trim()) ?? "";
     const text = plainText(firstLine).replace(/\s+/g, " ").trim();
-    if (text) return text.length > 32 ? `${text.slice(0, 32)}…` : text;
+    if (text) return Array.from(text).length > 32 ? `${truncateText(text, 32)}…` : text;
   }
   return displayTitle(draft);
 }
@@ -266,7 +266,7 @@ function patchListItem(id, draft) {
     category: draft.category,
     updated: draft.updated,
     chars: textLength(draft.body),
-    excerpt: plainText(draft.body).slice(0, 120)
+    excerpt: truncateText(plainText(draft.body), 120)
   };
   state.drafts.sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
   renderList();
@@ -302,7 +302,7 @@ function renderList() {
     if (draft.title !== "無題" && excerpt) {
       const text = document.createElement("span");
       text.className = "drafts__excerpt";
-      text.textContent = excerpt.slice(0, 90);
+      text.textContent = truncateText(excerpt, 90);
       select.append(text);
     }
 
