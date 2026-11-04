@@ -1,4 +1,10 @@
-import { plainText, renderPreviewMarkdown, textLength, truncateText } from "/markdown.mjs";
+import {
+  loneEmbedUrls,
+  plainText,
+  renderPreviewMarkdown,
+  textLength,
+  truncateText
+} from "/markdown.mjs";
 
 /*
  * Cloudflare 版の UI 本体。index.html / style.css もこのディレクトリ
@@ -52,10 +58,13 @@ const els = {
   previewLead: $("#previewLead"),
   previewCover: $("#previewCover"),
   previewBody: $("#previewBody"),
+  previewEmbedWarning: $("#previewEmbedWarning"),
   previewTags: $("#previewTags"),
   publishOpen: $("#publishOpen"),
   publishPanel: $("#publishPanel"),
   publishTitle: $("#publishTitle"),
+  publishCategory: $("#publishCategory"),
+  categoryNote: $("#categoryNote"),
   publishDescription: $("#publishDescription"),
   publishDescriptionNote: $("#publishDescriptionNote"),
   tags: $("#tags"),
@@ -547,6 +556,7 @@ function applyDraft(draft) {
     setSaveStatus("idle");
   }
   updateCount();
+  updateCategoryNote();
   renderList();
   setBusy(state.busy);
 }
@@ -563,6 +573,7 @@ function clearEditor() {
   els.body.value = "";
   els.publishDescription.value = "";
   editorSet("");
+  els.categoryNote.hidden = true;
   showEmpty(true);
   renderList();
   setBusy(state.busy);
@@ -627,7 +638,25 @@ function collect() {
 
 function onInput() {
   updateCount();
+  updateCategoryNote();
   scheduleSave();
+}
+
+/*
+ * notes では単独行の URL が埋め込みにならない（公開側もプレーンテキスト）。
+ * 埋め込み対象の URL が本文にあるときだけ、カテゴリ欄の横に注意を出す。
+ * 記事カテゴリでは出さない。プレビュー側にも同じ趣旨の注意を出す。
+ */
+const NOTE_EMBED_MESSAGE =
+  "メモでは埋め込みできません。カテゴリを記事（Tech / Journal）に変えると、リンクがプレイヤーで表示されます。";
+
+function updateCategoryNote() {
+  const show =
+    state.current !== null &&
+    els.category.value === "notes" &&
+    loneEmbedUrls(els.body.value).length > 0;
+  els.categoryNote.hidden = !show;
+  if (show) els.categoryNote.textContent = NOTE_EMBED_MESSAGE;
 }
 
 /* ---- プレビュー ----
@@ -685,6 +714,12 @@ function openPreview() {
   els.previewCover.hidden = !cover;
   if (cover) els.previewCover.src = cover;
   else els.previewCover.removeAttribute("src");
+
+  // notes では埋め込み対象の URL があってもプレーンテキストのままになる。
+  // 記事との差に気づけるよう、プレビューの先頭に注意を出す。
+  const showEmbedWarning = isNote && loneEmbedUrls(data.body).length > 0;
+  els.previewEmbedWarning.hidden = !showEmbedWarning;
+  if (showEmbedWarning) els.previewEmbedWarning.textContent = NOTE_EMBED_MESSAGE;
 
   els.previewBody.replaceChildren();
   if (isNote) {
@@ -959,7 +994,6 @@ function openMenu(anchor, items) {
 let confirmResolve = null;
 let confirmReturnFocus = null;
 let publishReturnFocus = null;
-let publishCategorySnapshot = null;
 let publishTagsSnapshot = null;
 let publishDescriptionSnapshot = null;
 let publishSuggestionToken = 0;
@@ -1202,7 +1236,9 @@ function openPublishPanel() {
     title: els.titleInput.value.trim() || "無題",
     body: els.body.value
   });
-  publishCategorySnapshot = els.category.value;
+  // カテゴリは編集画面の select が単一の状態で、ここでは表示だけする。
+  els.publishCategory.textContent =
+    state.meta?.categoryLabels?.[els.category.value] ?? els.category.value;
   publishTagsSnapshot = [...state.tags];
   publishDescriptionSnapshot = els.publishDescription.value;
   renderTags();
@@ -1213,17 +1249,14 @@ function openPublishPanel() {
   if (!els.publishDescription.value.trim()) void fillDescriptionSuggestion();
 }
 
-function closePublishPanel({ restoreCategory = false } = {}) {
+function closePublishPanel({ restore = false } = {}) {
   publishSuggestionToken += 1;
   const wasHidden = els.publishPanel.hidden;
   els.publishPanel.hidden = true;
-  if (restoreCategory && publishCategorySnapshot !== null) {
+  // 戻すのはパネル内だけで変えられるタグと説明文だけ。
+  // カテゴリは編集画面の select が単一の状態なので、ここでは触らない。
+  if (restore) {
     let changed = false;
-    if (els.category.value !== publishCategorySnapshot) {
-      els.category.value = publishCategorySnapshot;
-      updatePublishFile();
-      changed = true;
-    }
     if (
       publishTagsSnapshot !== null &&
       JSON.stringify(state.tags) !== JSON.stringify(publishTagsSnapshot)
@@ -1242,7 +1275,6 @@ function closePublishPanel({ restoreCategory = false } = {}) {
     // 変更時に先行して保存済み／保存予定でも、戻した内容で保存し直す。
     if (changed) scheduleSave();
   }
-  publishCategorySnapshot = null;
   publishTagsSnapshot = null;
   publishDescriptionSnapshot = null;
   if (!wasHidden) {
@@ -1434,6 +1466,7 @@ async function boot() {
   });
   els.category.addEventListener("change", () => {
     updatePublishFile();
+    updateCategoryNote();
     scheduleSave();
   });
   syncThemeToggle();
@@ -1456,10 +1489,10 @@ async function boot() {
   els.publishOpen.addEventListener("click", openPublishPanel);
   els.previewOpen.addEventListener("click", togglePreview);
   els.previewClose.addEventListener("click", closePreview);
-  els.publishCancel.addEventListener("click", () => closePublishPanel({ restoreCategory: true }));
+  els.publishCancel.addEventListener("click", () => closePublishPanel({ restore: true }));
   els.publishPanel
     .querySelector(".dialog__backdrop")
-    .addEventListener("click", () => closePublishPanel({ restoreCategory: true }));
+    .addEventListener("click", () => closePublishPanel({ restore: true }));
   els.coverSet.addEventListener("click", () => els.coverFile.click());
   els.coverChange.addEventListener("click", () => els.coverFile.click());
   els.coverRemove.addEventListener("click", removeCover);
@@ -1510,7 +1543,7 @@ async function boot() {
     }
     if (event.key === "Escape") {
       if (!els.confirmDialog.hidden) settleConfirm(false);
-      else if (!els.publishPanel.hidden) closePublishPanel({ restoreCategory: true });
+      else if (!els.publishPanel.hidden) closePublishPanel({ restore: true });
       else if (!els.preview.hidden) closePreview();
       else if (!els.task.hidden) closeTask();
     }

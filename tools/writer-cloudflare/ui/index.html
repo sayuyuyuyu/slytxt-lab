@@ -97,6 +97,15 @@
             </div>
           </div>
 
+          <!-- カテゴリは編集画面でいつでも変えられる単一の select。
+               公開パネルでは現在の値を表示するだけ（状態はここだけが持つ）。
+               値の保存先は下書きの frontmatter の category。 -->
+          <div class="editor__meta">
+            <label class="editor__meta-label" for="category">カテゴリ</label>
+            <select id="category" class="field editor__category"></select>
+            <span id="categoryNote" class="editor__meta-note" role="note" hidden></span>
+          </div>
+
           <!-- 見出し画像（note と同じ「見出し画像 → タイトル → 本文」の並び）。
                値の保存先は下書きの frontmatter の cover。 -->
           <div class="editor__cover">
@@ -150,6 +159,7 @@
               <h1 id="previewTitle" class="preview__title"></h1>
               <p id="previewLead" class="preview__lead" hidden></p>
               <img id="previewCover" class="preview__cover" alt="" hidden />
+              <p id="previewEmbedWarning" class="preview__warning" role="note" hidden></p>
               <div id="previewBody" class="preview__body"></div>
               <ul id="previewTags" class="preview__tags" hidden></ul>
             </article>
@@ -184,10 +194,10 @@
           <span class="dialog__label">タイトル</span>
           <p id="publishTitle" class="dialog__value"></p>
         </div>
-        <label class="dialog__row">
+        <div class="dialog__row">
           <span class="dialog__label">カテゴリ</span>
-          <select id="category" class="field"></select>
-        </label>
+          <p id="publishCategory" class="dialog__value"></p>
+        </div>
         <div class="dialog__row">
           <span class="dialog__label" id="tagsLabel">タグ</span>
           <div id="tags" class="tags" role="group" aria-labelledby="tagsLabel"></div>

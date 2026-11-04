@@ -12,6 +12,7 @@ const HR = /^\s*([-*_])(?:\s*\1){2,}\s*$/;
 const LIST = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/;
 const TABLE_SEP = /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/;
 const QUOTE = /^\s{0,3}>/;
+const BR_LINE = /^\s*<br\s*\/?>\s*$/i;
 
 const ATTR = { left: ' style="text-align:left"', center: ' style="text-align:center"', right: ' style="text-align:right"' };
 
@@ -97,6 +98,7 @@ function isBlockStart(line, next = "") {
     HEADING.test(line) ||
     QUOTE.test(line) ||
     LIST.test(line) ||
+    BR_LINE.test(line) ||
     (line.includes("|") && TABLE_SEP.test(next))
   );
 }
@@ -261,6 +263,14 @@ function renderBlocks(lines) {
       continue;
     }
 
+    // <br /> だけの行は、公開側（生 HTML を通す）と同じく改行として出す。
+    // 本文中の生 HTML は inline 側でエスケープされるので、対象は単独行だけ。
+    if (BR_LINE.test(line)) {
+      out.push("<br />");
+      index += 1;
+      continue;
+    }
+
     const heading = line.match(HEADING);
     if (heading) {
       const level = heading[1].length;
@@ -302,7 +312,15 @@ function renderBlocks(lines) {
       buffer.push(lines[index]);
       index += 1;
     }
-    out.push(`<p>${inline(buffer.join("\n"))}</p>`);
+    // 行末のバックスラッシュは公開側（CommonMark）と同じく強制改行にする。
+    // エスケープされた \\ は対象外（末尾の \ が奇数個のときだけ1つ取り除く）。
+    // inline の退避用コードポイント（\u0000 / \u0001）と衝突しない \u0002 を使う。
+    const marked = buffer.map((raw) => {
+      const trimmed = raw.replace(/[ \t]+$/, "");
+      const trailing = trimmed.match(/\\+$/)?.[0].length ?? 0;
+      return trailing % 2 === 1 ? `${trimmed.slice(0, -1)}\u0002` : raw;
+    });
+    out.push(`<p>${inline(marked.join("\n")).replaceAll("\u0002", "<br />")}</p>`);
   }
 
   return out;
@@ -411,6 +429,24 @@ export function linkCardHtml({ url }) {
     // URL として読めない場合はそのまま出す（到達しないはず）。
   }
   return `<a class="link-card" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"><span class="link-card__body"><span class="link-card__title">${escapeHtml(url)}</span><span class="link-card__host">${escapeHtml(host)}</span></span></a>`;
+}
+
+/**
+ * 本文から「単独段落の埋め込み対象 URL」を拾う。
+ * 公開側の埋め込み判定（段落が URL 1つだけ）と同じ条件で、空行で区切った
+ * 段落が URL 単独行（山括弧の autolink 形式を含む）のときだけ対象にする。
+ * 一般 URL（type: "link"）は含めない。notes の注意表示に使う。
+ */
+export function loneEmbedUrls(source) {
+  const found = [];
+  for (const block of String(source ?? "").split(/\n[ \t]*\n/)) {
+    const line = block.trim();
+    if (line === "" || line.includes("\n")) continue;
+    const autolink = line.match(/^<(https?:\/\/[^>\s]+)>$/);
+    const classified = classifyEmbedUrl(autolink ? autolink[1] : line);
+    if (classified && classified.type !== "link") found.push(classified);
+  }
+  return found;
 }
 
 /** URL から埋め込み HTML を作る。埋め込み対象でなければ null。 */

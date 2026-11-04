@@ -348,7 +348,7 @@ textarea {
   /* 列はコンテナ幅を超えない。バーのボタン群など中身の最小幅で
      列が広がり、操作ボタンが画面外へ出るのを防ぐ。 */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   min-height: 0;
   flex: 1;
   width: 100%;
@@ -408,6 +408,26 @@ textarea {
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* カテゴリは編集画面の単一の select（公開パネルは表示のみ）。 */
+.editor__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 12px 20px 0;
+}
+
+.editor__meta-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.editor__meta-note {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
 }
 
 /* 見出し画像（タイトル欄の上）。 */
@@ -640,6 +660,18 @@ textarea {
   border-radius: 12px;
 }
 
+/* notes で埋め込みできない URL があるときの注意（app.js が出し分ける）。 */
+.preview__warning {
+  margin: 24px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
 /* notes は公開側がプレーンテキスト表示（.note__text と同じ値）。 */
 .preview__notetext {
   margin: 20px 0 28px;
@@ -726,7 +758,9 @@ textarea {
   height: auto;
 }
 
-.preview__body pre {
+/* notes の本文（.preview__notetext）も pre 要素だが、コードブロックの
+   見た目を当てない。公開側の .note__text と同じ本文表示にする。 */
+.preview__body pre:not(.preview__notetext) {
   max-width: 100%;
   overflow-x: auto;
   padding: 18px;
