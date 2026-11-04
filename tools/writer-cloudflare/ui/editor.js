@@ -6,7 +6,8 @@
  * 従来の textarea にフォールバックする。
  */
 import { Crepe } from "@milkdown/crepe";
-import { replaceAll } from "@milkdown/kit/utils";
+import { NodeSelection, Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
+import { $prose, replaceAll } from "@milkdown/kit/utils";
 // common/style.css は latex.css（KaTeX フォント一式）まで含むため、
 // 使う feature の分だけ個別に読む（Latex / AI / TopBar は無効化している）。
 import "@milkdown/crepe/theme/common/prosemirror.css";
@@ -22,6 +23,42 @@ import "@milkdown/crepe/theme/common/toolbar.css";
 import "@milkdown/crepe/theme/common/table.css";
 import "@milkdown/crepe/theme/frame.css";
 import "./editor.css";
+
+/*
+ * 区切り線（`---` など）の入力変換の直後、キャレットを区切り線の
+ * 後ろの段落へ移すためのプラグイン。
+ *
+ * Crepe 標準の insertHrInputRule は、変換後に hr ノード自身が選択された
+ * 状態（NodeSelection）で終わる。そのまま打ち続けると入力した文字が
+ * 区切り線を置き換えて消してしまい、Enter を押すと線の上に段落ができて
+ * しまう（note では線の下で書き続けられる）。文書を変えた transaction の
+ * 結果として hr が選択されていた場合だけ、後続の段落へキャレットを移す。
+ * 既存の hr をクリックで選んだだけの選択変更では発火しない。
+ */
+const hrCaretPlugin = $prose(
+  () =>
+    new Plugin({
+      key: new PluginKey("slytxt-hr-caret"),
+      appendTransaction(transactions, _oldState, newState) {
+        if (!transactions.some((tr) => tr.docChanged)) return null;
+        const { selection, doc } = newState;
+        if (!(selection instanceof NodeSelection)) return null;
+        if (selection.node.type.name !== "hr") return null;
+
+        const after = selection.from + selection.node.nodeSize;
+        const tr = newState.tr;
+        const next = after < doc.content.size ? doc.nodeAt(after) : null;
+        if (next?.isTextblock) {
+          return tr.setSelection(TextSelection.near(tr.doc.resolve(after + 1), 1));
+        }
+        // 後ろに段落が無い（またはテキストブロックでない）場合は段落を足して入る。
+        const paragraph = doc.type.schema.nodes.paragraph;
+        if (!paragraph) return null;
+        tr.insert(after, paragraph.create());
+        return tr.setSelection(TextSelection.near(tr.doc.resolve(after + 1), 1));
+      }
+    })
+);
 
 /**
  * エディタを作る。戻り値の handle:
@@ -56,6 +93,7 @@ export async function createCrepe(root, { value = "", onChange, onUpload, featur
       }
     }
   });
+  crepe.editor.use(hrCaretPlugin);
   if (onChange) {
     crepe.on((listener) => {
       listener.markdownUpdated((ctx, markdown, previous) => {
