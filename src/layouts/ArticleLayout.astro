@@ -50,7 +50,7 @@ const crumbs = [
       <div class="article-meta">
         <span>Published <time datetime={entry.data.published.toISOString()}>{formatDate(entry.data.published)}</time></span>
         {entry.data.updated && <span>Updated <time datetime={date.toISOString()}>{formatDate(date)}</time></span>}
-        {entry.data.adult && <span aria-label="Includes an adult content review"> / 🔞</span>}
+        {entry.data.adult && <span role="img" aria-label="Includes an adult content review"> / 🔞</span>}
       </div>
       <TagList tags={entry.data.tags} />
     </div>
