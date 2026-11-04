@@ -75,6 +75,13 @@ export const articlesIndex: ArticleSection = {
   emptyDescription: "まだありません。長い文章がここに並びます。"
 };
 
+/** Descriptions for the pages outside the article sections, shared by each page and the home terminal. */
+export const pageDescriptions = {
+  projects: "しらゆがつくっているものと、いまの進み具合。",
+  tags: "Tech、Journal、Notes、Projects をタグから辿れます。",
+  search: "記事とメモ、つくったものを、書いてある言葉から探せます。"
+} as const;
+
 export const projectStatusLabels = {
   planning: "Planning",
   active: "Active",

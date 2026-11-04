@@ -3,7 +3,7 @@ import ArticleCard from "@/components/ArticleCard.astro";
 import NoteCard from "@/components/NoteCard.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { getAllArticles, getAllEntries, getArticles, getNotes, getProjects } from "@/lib/content";
-import { articleSections, articlesIndex, site } from "@/lib/site";
+import { articleSections, articlesIndex, pageDescriptions, site } from "@/lib/site";
 import { collectTags } from "@/lib/tags";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 const [articles, notes, projects, allEntries, tech, journal] = await Promise.all([getAllArticles(), getNotes(), getProjects(), getAllEntries(), getArticles("tech"), getArticles("journal")]);
@@ -19,7 +19,10 @@ const terminalConfig = {
     articles: articlesIndex.description,
     tech: articleSections.tech.description,
     journal: articleSections.journal.description,
-    notes: articleSections.notes.description
+    notes: articleSections.notes.description,
+    projects: pageDescriptions.projects,
+    tags: pageDescriptions.tags,
+    search: pageDescriptions.search
   },
   hasTags
 };
@@ -135,13 +138,13 @@ const terminalConfig = {
         },
         projects: {
           path: terminalConfig.counts.projects > 0 ? "/projects/" : null,
-          description: "つくったものの置き場。"
+          description: terminalConfig.descriptions.projects
         },
         tags: {
           path: terminalConfig.hasTags ? "/tags/" : null,
-          description: "タグから記事とメモを探す。"
+          description: terminalConfig.descriptions.tags
         },
-        search: { path: "/search/", description: "サイト内検索。" },
+        search: { path: "/search/", description: terminalConfig.descriptions.search },
         about: { path: "/about/", description: "しらゆ（slytxt）のプロフィール。" },
         bookmarks: { path: null, description: "ブックマークは非公開にしています。" }
       };
