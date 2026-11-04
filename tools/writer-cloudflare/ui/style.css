@@ -219,6 +219,11 @@ textarea {
   outline: none;
 }
 
+.field:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ---- 全体の骨格 ---- */
 
 .app {
