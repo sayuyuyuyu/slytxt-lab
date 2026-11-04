@@ -3,7 +3,7 @@ import ArticleCard from "@/components/ArticleCard.astro";
 import NoteCard from "@/components/NoteCard.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { getAllArticles, getAllEntries, getArticles, getNotes, getProjects } from "@/lib/content";
-import { site } from "@/lib/site";
+import { articleSections, articlesIndex, site } from "@/lib/site";
 import { collectTags } from "@/lib/tags";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 const [articles, notes, projects, allEntries, tech, journal] = await Promise.all([getAllArticles(), getNotes(), getProjects(), getAllEntries(), getArticles("tech"), getArticles("journal")]);
@@ -15,6 +15,12 @@ const recentNotes = notes.slice(0, 4);
 const terminalConfig = {
   description: site.description,
   counts: { articles: articles.length, tech: tech.length, journal: journal.length, notes: notes.length, projects: projects.length },
+  descriptions: {
+    articles: articlesIndex.description,
+    tech: articleSections.tech.description,
+    journal: articleSections.journal.description,
+    notes: articleSections.notes.description
+  },
   hasTags
 };
 ---
@@ -113,19 +119,19 @@ const terminalConfig = {
       const pages = {
         articles: {
           path: terminalConfig.counts.articles > 0 ? "/articles/" : null,
-          description: "技術系の記事と、それ以外の記事の一覧。"
+          description: terminalConfig.descriptions.articles
         },
         tech: {
           path: terminalConfig.counts.tech > 0 ? "/articles/tech/" : null,
-          description: "AI、MCP、クラウド、プログラミングを試した記録。"
+          description: terminalConfig.descriptions.tech
         },
         journal: {
           path: terminalConfig.counts.journal > 0 ? "/articles/journal/" : null,
-          description: "旅行、ゲーム、音楽、ガジェットの話。"
+          description: terminalConfig.descriptions.journal
         },
         notes: {
           path: terminalConfig.counts.notes > 0 ? "/notes/" : null,
-          description: "あとで記事にする前の、短いメモ。"
+          description: terminalConfig.descriptions.notes
         },
         projects: {
           path: terminalConfig.counts.projects > 0 ? "/projects/" : null,
