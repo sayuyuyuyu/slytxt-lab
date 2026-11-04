@@ -13,7 +13,9 @@ const lines = (entry.body ?? "")
   .trim()
   .split("\n")
   .filter((line) => line.trim());
-const preview = toPlainText(lines.slice(0, 3).join("\n"));
+const previewText = toPlainText(lines.slice(0, 3).join("\n"));
+const previewChars = Array.from(previewText);
+const preview = previewChars.length > 90 ? `${previewChars.slice(0, 90).join("")}…` : previewText;
 ---
 
 <article class="note-card" data-motion>
