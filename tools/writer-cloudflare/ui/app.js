@@ -624,6 +624,8 @@ function openTask(title) {
   els.taskLog.textContent = "";
   els.taskResult.replaceChildren();
   els.taskResult.hidden = true;
+  els.taskResult.setAttribute("role", "status");
+  els.taskResult.setAttribute("aria-live", "polite");
   els.task.dataset.state = "running";
   els.task.dataset.log = "open";
   els.taskToggle.textContent = "⌃";
@@ -649,7 +651,9 @@ function finishTask() {
   els.task.dataset.state = "done";
 }
 
-function showResult(parts) {
+function showResult(parts, isError = false) {
+  els.taskResult.setAttribute("role", isError ? "alert" : "status");
+  els.taskResult.setAttribute("aria-live", isError ? "assertive" : "polite");
   els.taskResult.replaceChildren();
   for (const part of parts) {
     if (part.href) {
@@ -1210,7 +1214,7 @@ async function runPublish() {
   } catch (error) {
     finishTask();
     appendLog(`失敗: ${error.message}`);
-    showResult([{ label: "失敗しました。" }]);
+    showResult([{ label: "失敗しました。" }], true);
     toast(error.message, "error");
   } finally {
     setBusy(false);
