@@ -234,6 +234,38 @@ const terminalConfig = {
 
       const commands = {
         help() {
+          // Narrow screens cannot fit the two columns without sideways
+          // scrolling, so each command gets its own line there and the
+          // description follows indented. The wording is unchanged.
+          if (window.matchMedia("(max-width: 600px)").matches) {
+            printBlock(
+              [
+                "使えるコマンド:",
+                "  help",
+                "    この一覧",
+                "  about",
+                "    管理人の紹介",
+                "  ls",
+                "    ページとファイルの一覧",
+                "  open <ページ>",
+                "    ページを開く（例: open notes）",
+                "  articles / notes / projects /",
+                "  tags / search / about",
+                "    各ページの案内",
+                "  whoami",
+                "    あなたは誰か",
+                "  date",
+                "    現在の日時",
+                "  echo <文字>",
+                "    そのまま表示する",
+                "  clear",
+                "    出力を消す",
+                "  cat / tea / moka / sudo",
+                "    小ネタ"
+              ].join("\n")
+            );
+            return;
+          }
           printBlock(
             [
               "使えるコマンド:",
