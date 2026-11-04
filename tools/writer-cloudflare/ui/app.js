@@ -1489,7 +1489,7 @@ async function confirmCrop() {
   }
 }
 
-/** 切り取りダイアログの操作（ドラッグ／ピンチ／ホイール／スライダー）。 */
+/** 切り取りダイアログの操作（ドラッグ／ピンチ／ホイール／スライダー／矢印キー）。 */
 function initCropEvents() {
   const stage = els.cropStage;
   stage.addEventListener("pointerdown", (event) => {
@@ -1562,6 +1562,25 @@ function initCropEvents() {
     },
     { passive: false }
   );
+  // キーボードだけでも位置を選べるよう、ステージにフォーカスがある間は
+  // 矢印キーでドラッグと同じ移動をする（Shift 同時押しで大きく動く）。
+  stage.addEventListener("keydown", (event) => {
+    const session = cropSession;
+    if (!session) return;
+    const step = event.shiftKey ? 32 : 8;
+    let dx = 0;
+    let dy = 0;
+    if (event.key === "ArrowLeft") dx = -step;
+    else if (event.key === "ArrowRight") dx = step;
+    else if (event.key === "ArrowUp") dy = -step;
+    else if (event.key === "ArrowDown") dy = step;
+    else return;
+    event.preventDefault();
+    session.offsetX += dx;
+    session.offsetY += dy;
+    clampCropOffsets();
+    applyCropTransform();
+  });
   els.cropZoom.addEventListener("input", () => {
     const session = cropSession;
     if (!session) return;

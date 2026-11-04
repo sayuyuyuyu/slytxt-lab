@@ -254,6 +254,48 @@ test("writer: 見出し画像の切り取り→反映→外す→付け直しと
   await expect(page.locator("#title")).toBeVisible();
 });
 
+test("writer: 見出し画像の切り取り位置を矢印キーで動かせる", async ({ page }) => {
+  await page.goto(`${WRITER_URL}/`);
+  // 初期化の最終ステップ（テーマ切替の表示）を待ってから操作する。
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+  await page.locator("#new").click();
+  await expect(page.locator("#category")).toHaveValue("notes");
+  await page.locator("#category").selectOption("journal");
+
+  await injectCoverFile(page, "image");
+  await expect(page.locator("#cropDialog")).toBeVisible();
+
+  // 拡大してから測る（拡大率1では動かせる範囲が小さいため）。
+  await page.locator("#cropZoom").evaluate((el) => {
+    el.value = "2";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const image = page.locator("#cropImage");
+  const translate = async () => {
+    const transform = await image.evaluate((el) => el.style.transform);
+    const match = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(transform);
+    return { x: Number(match[1]), y: Number(match[2]) };
+  };
+  const before = await translate();
+
+  // ステージはフォーカスでき、矢印キーで画像がその方向へ 8px 動く。
+  const stage = page.locator("#cropStage");
+  await stage.focus();
+  await expect(stage).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  const afterDown = await translate();
+  expect(afterDown.y).toBeCloseTo(before.y + 8, 1);
+  expect(afterDown.x).toBeCloseTo(before.x, 1);
+
+  // Shift 同時押しでは 32px 動く。
+  await page.keyboard.press("Shift+ArrowUp");
+  const afterShiftUp = await translate();
+  expect(afterShiftUp.y).toBeCloseTo(afterDown.y - 32, 1);
+
+  await page.locator("#cropCancel").click();
+  await expect(page.locator("#cropDialog")).toBeHidden();
+});
+
 test("writer: 長いタイトルが折り返し、本文と重ならず、編集列がスクロールできる", async ({
   page
 }) => {
