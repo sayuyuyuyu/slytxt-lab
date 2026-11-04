@@ -87,7 +87,7 @@ export function getEntryDate(entry: SiteEntry): Date {
 }
 
 export function getEntrySlug(entry: SiteEntry): string {
-  return entry.id.replace(/(\.sample)?\.(md|mdx)$/, "");
+  return entry.id.replace(/(\.sample)?\.md$/, "");
 }
 
 export function getEntryPath(entry: SiteEntry): string {

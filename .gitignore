@@ -7,8 +7,8 @@ dist
 !.env.example
 
 # Local-only content samples. Real published content should use normal .md files.
-src/content/**/*.sample.mdx
-src/content/**/sample-*.mdx
+src/content/**/*.sample.md
+src/content/**/sample-*.md
 
 # 執筆ツールのドラフト。ローカルの下書きなのでコミットしない。
 drafts/
