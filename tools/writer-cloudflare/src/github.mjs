@@ -156,6 +156,23 @@ export function createGitHubClient(env) {
       return Array.isArray(data) && data.length > 0 ? data[0] : null;
     },
 
+    /** open な PR をすべて返す（Cron の見届けが media/* を拾うために使う）。 */
+    async listOpenPulls() {
+      const query = new URLSearchParams({ state: "open", per_page: "100" });
+      const data = await must(`/pulls?${query}`, {}, "PR 一覧の取得");
+      return Array.isArray(data) ? data : [];
+    },
+
+    /** PR の変更ファイル一覧（filename を含む）。 */
+    async getPullFiles(number) {
+      const data = await must(
+        `/pulls/${number}/files?per_page=100`,
+        {},
+        `PR #${number} のファイル取得`
+      );
+      return Array.isArray(data) ? data : [];
+    },
+
     /**
      * ブランチに紐づく PR を新しい順にすべて返す（open / closed / merged 込み）。
      * 公開フローの冪等化の要: 同じ下書き・同じ画像の PR はブランチ名で一意に

@@ -14,6 +14,11 @@ routes = [{ pattern = "write.slytxt.dev", custom_domain = true }]
 directory = "./public"
 binding = "ASSETS"
 
+# 投稿・画像の見届け（src/driver.mjs）。投稿後にタブを閉じても、CI 成功後の
+# merge と後片付けがサーバー側で完了するよう、毎分 scheduled を回す。
+[triggers]
+crons = ["* * * * *"]
+
 # 下書きの KV。デプロイ前に
 #   npx wrangler kv namespace create slytxt-writer-drafts
 # で作った ID に差し替えること（README 参照）。

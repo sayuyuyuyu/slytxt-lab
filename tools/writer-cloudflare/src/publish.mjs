@@ -4,8 +4,9 @@
  * - 投稿は GitHub REST API で行う（git / pnpm / gh の spawn はしない）。
  * - ローカル check は持たず、PR の CI を門番にする（設計書 2.5）。
  * - CI 待ちと merge は publishStatus 側に分けた。投稿リクエストは
- *   PR 作成までで返り、UI が GET /api/publish/:id/status を叩いて
- *   merge と後片付けを完了させる（設計書 2.4）。
+ *   PR 作成までで返り、UI のポーリング（GET /api/publish/:id/status）と
+ *   Cron の見届け（driver.mjs、毎分）が publishStatus を叩いて merge と
+ *   後片付けを完了させる。タブを閉じても公開は最後まで進む。
  * - CI 失敗後に本文を直して再投稿すると、既存ブランチのファイルを
  *   更新して同じ PR で CI を回し直す。
  * - 冪等性: 投稿 PR の同一性は「下書き ID から決まるブランチ名」で担保する。
@@ -239,7 +240,7 @@ async function publishPostInner({ env, store, id, onLog }) {
     body: "執筆ツール（write.slytxt.dev）から投稿。"
   });
   onLog(`PR を作成しました: ${pr.html_url}`);
-  onLog("CI の完了待ちです。このまま画面を開いておくと merge まで進みます。");
+  onLog("CI が終わり次第、自動で公開されます。画面を閉じても大丈夫です。");
 
   await store.writeDraft(id, { pr: pr.html_url });
   return {

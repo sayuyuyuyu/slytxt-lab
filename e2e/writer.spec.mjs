@@ -315,7 +315,13 @@ test("writer: 長いタイトルが折り返し、本文と重ならず、編集
   // 回帰確認）。リロードして一覧から開き直す。
   await page.reload();
   await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
-  await page.locator(".drafts__select").first().click();
+  // 先頭とは限らない（他のテストの下書きが残っている）ので、このテストの
+  // 下書きをタイトルで特定して開き直す。
+  await page
+    .locator(".drafts__item", { hasText: "折り返しの確認用" })
+    .locator(".drafts__select")
+    .first()
+    .click();
   await expect(title).toHaveValue(/折り返しの確認用/);
   await expect
     .poll(() => title.evaluate((el) => el.getBoundingClientRect().height), {
@@ -327,4 +333,31 @@ test("writer: 長いタイトルが折り返し、本文と重ならず、編集
     clientWidth: el.clientWidth
   }));
   expect(reopened.scrollWidth).toBeLessThanOrEqual(reopened.clientWidth + 1);
+});
+
+test("writer: 閉じている間に完了した公開の結果が起動時に知らされる", async ({ page }) => {
+  // サーバー側の見届け（Cron）が残した公開結果を、次回起動時に表示する。
+  await page.route("**/api/publish-results", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        results: [
+          {
+            id: "2026-01-01-closed-tab",
+            title: "閉じている間に公開された記事",
+            state: "merged",
+            url: "https://slytxt.dev/articles/journal/2026-01-01-closed-tab/",
+            prUrl: "https://github.com/sayuyuyuyu/slytxt-lab/pull/999",
+            message: "",
+            at: "2026-01-01T00:00:00.000Z"
+          }
+        ]
+      })
+    });
+  });
+  await page.goto(`${WRITER_URL}/`);
+  await expect(page.locator("#toast")).toContainText(
+    "公開しました：閉じている間に公開された記事",
+    { timeout: 15_000 }
+  );
 });
