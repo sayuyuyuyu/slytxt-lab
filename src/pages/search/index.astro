@@ -17,7 +17,7 @@ const hasTags = collectTags(await getAllEntries()).size > 0;
     </div>
     <p class="search-help">短い言葉のほうが見つかりやすくなります。</p>
   </div></section>
-  <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
+  <link slot="head" href="/pagefind/pagefind-ui.css" rel="stylesheet" />
   <script is:inline define:vars={{ hasTags }}>
     (() => {
       const status = document.getElementById("search-status");
