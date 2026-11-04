@@ -86,6 +86,20 @@ export function getEntryDate(entry: SiteEntry): Date {
   return entry.collection === "projects" ? projectDate(entry) : articleDate(entry);
 }
 
+/** 表示名。タイトルが空のときは NoteCard のプレビューと同じく本文の書き出しから作る。 */
+export function getEntryDisplayTitle(entry: SiteEntry): string {
+  const title = entry.data.title?.trim();
+  if (title) return title;
+  const lines = (entry.body ?? "")
+    .trim()
+    .split("\n")
+    .filter((line) => line.trim());
+  const text = toPlainText(lines.slice(0, 3).join("\n"));
+  const chars = Array.from(text);
+  const derived = chars.length > 90 ? `${chars.slice(0, 90).join("")}…` : text;
+  return derived || "（無題）";
+}
+
 export function getEntrySlug(entry: SiteEntry): string {
   return entry.id.replace(/(\.sample)?\.md$/, "");
 }

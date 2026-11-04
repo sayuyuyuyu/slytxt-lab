@@ -1,6 +1,6 @@
 import rss from "@astrojs/rss";
 import type { APIContext } from "astro";
-import { getAllWriting, getEntryPath } from "@/lib/content";
+import { getAllWriting, getEntryDisplayTitle, getEntryPath } from "@/lib/content";
 import { site } from "@/lib/site";
 
 export async function GET(context: APIContext) {
@@ -11,8 +11,8 @@ export async function GET(context: APIContext) {
     description: site.description,
     site: context.site ?? "https://slytxt.dev",
     items: articles.slice(0, 30).map((entry) => ({
-      title: entry.data.title,
-      description: entry.data.description ?? entry.data.title,
+      title: getEntryDisplayTitle(entry),
+      description: entry.data.description ?? getEntryDisplayTitle(entry),
       pubDate: entry.data.published,
       link: getEntryPath(entry)
     })),
