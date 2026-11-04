@@ -88,6 +88,9 @@
               >
                 …
               </button>
+              <button id="previewOpen" class="button" type="button" aria-pressed="false">
+                プレビュー
+              </button>
               <button id="publishOpen" class="button button--primary" type="button">
                 公開に進む
               </button>
@@ -132,6 +135,26 @@
           <div id="editorRoot" class="editor__wysiwyg" hidden aria-label="本文"></div>
           <textarea id="body" class="editor__body" spellcheck="false" aria-label="本文"></textarea>
         </div>
+
+        <!-- 公開プレビュー。現在の下書き（未保存分を含む）を公開後の
+             記事ページに近い見た目で表示する。開くたびに再描画する。 -->
+        <section id="preview" class="preview" hidden aria-label="プレビュー">
+          <div class="preview__bar">
+            <span class="preview__label">プレビュー</span>
+            <span class="preview__note">公開時の見え方の目安です</span>
+            <button id="previewClose" class="button" type="button">編集に戻る</button>
+          </div>
+          <div id="previewScroll" class="preview__scroll">
+            <article id="previewArticle" class="preview__article">
+              <p id="previewCategory" class="preview__category"></p>
+              <h1 id="previewTitle" class="preview__title"></h1>
+              <p id="previewLead" class="preview__lead" hidden></p>
+              <img id="previewCover" class="preview__cover" alt="" hidden />
+              <div id="previewBody" class="preview__body"></div>
+              <ul id="previewTags" class="preview__tags" hidden></ul>
+            </article>
+          </div>
+        </section>
 
         <div id="empty" class="empty" hidden>
           <p class="empty__cmd" aria-hidden="true">ls drafts/</p>
