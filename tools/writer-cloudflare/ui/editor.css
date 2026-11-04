@@ -40,6 +40,9 @@
    860px 以下は公開側と同じくカラム幅いっぱいに広げる。 */
 .milkdown .ProseMirror {
   max-width: var(--article-width);
+  /* スクロールを編集列に一本化したため、本文が短い・空のときも
+     タップで入力を始められる高さを確保する。 */
+  min-height: 42vh;
   padding: 28px 0 64px;
   font-size: 1.03rem;
   line-height: 1.95;

@@ -131,14 +131,17 @@
           <!-- タイトルは本文と独立した欄（note と同じ「タイトル→本文」の構成）。
                値の保存先は下書きの frontmatter の title。
                notes はタイトル不要なので、カテゴリが notes の間は app.js が隠す。 -->
-          <input
+          <!-- 長いタイトルが折り返せるよう textarea にし、高さは app.js が
+               内容に合わせて伸ばす（単一行 input では横スクロールになって
+               スマホで扱いづらいため）。Enter は従来どおり本文への移動。 -->
+          <textarea
             id="title"
             class="editor__title"
-            type="text"
+            rows="1"
             placeholder="タイトル"
             aria-label="タイトル"
             autocomplete="off"
-          />
+          ></textarea>
 
           <!-- WYSIWYG（editor.js）が有効なときはこちらを使い、textarea は隠れる。
                読み込めない場合は textarea のまま編集できる（フォールバック）。 -->

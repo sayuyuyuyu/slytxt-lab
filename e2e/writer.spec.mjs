@@ -253,3 +253,78 @@ test("writer: 見出し画像の切り取り→反映→外す→付け直しと
   await expect(page.locator("#coverSet")).toBeVisible();
   await expect(page.locator("#title")).toBeVisible();
 });
+
+test("writer: 長いタイトルが折り返し、本文と重ならず、編集列がスクロールできる", async ({
+  page
+}) => {
+  await page.goto(`${WRITER_URL}/`);
+  // 初期化の最終ステップ（テーマ切替の表示）を待ってから操作する。
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+  await page.locator("#new").click();
+  await expect(page.locator("#category")).toHaveValue("notes");
+  await page.locator("#category").selectOption("journal");
+
+  // 長いタイトルは横スクロールにならず、折り返して高さが伸びる。
+  const title = page.locator("#title");
+  await title.fill("短い題");
+  const shortBox = await title.boundingBox();
+  await title.fill(
+    "これは折り返しの確認用の長いタイトルです。幅に収まらず横スクロールになるのではなく、行が増えて高さが伸びることを確認します"
+  );
+  const longGeom = await title.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    height: el.getBoundingClientRect().height
+  }));
+  expect(longGeom.scrollWidth).toBeLessThanOrEqual(longGeom.clientWidth + 1);
+  expect(longGeom.height).toBeGreaterThan(shortBox.height + 10);
+
+  // 本文を書いてもタイトルと本文が重ならない。
+  const editor = page.locator('#editorRoot [contenteditable="true"]');
+  await editor.click();
+  for (let i = 0; i < 24; i++) {
+    await page.keyboard.type(`スクロール確認の段落 ${i + 1}`);
+    await page.keyboard.press("Enter");
+  }
+  const boxes = await page.evaluate(() => {
+    const t = document.querySelector("#title").getBoundingClientRect();
+    const e = document.querySelector("#editorRoot").getBoundingClientRect();
+    return { titleBottom: t.bottom, editorTop: e.top };
+  });
+  expect(boxes.titleBottom).toBeLessThanOrEqual(boxes.editorTop + 1);
+
+  // 編集列（#editor）全体がスクロールし、バーは sticky で上部に残る。
+  const pane = page.locator("#editor");
+  const editorBox = await page.locator("#editorRoot").boundingBox();
+  await page.mouse.move(
+    editorBox.x + editorBox.width / 2,
+    editorBox.y + Math.min(200, editorBox.height / 2)
+  );
+  await page.mouse.wheel(0, 900);
+  await expect
+    .poll(() => pane.evaluate((el) => el.scrollTop), { timeout: 10_000 })
+    .toBeGreaterThan(50);
+  const tops = await page.evaluate(() => ({
+    barTop: document.querySelector(".editor__bar").getBoundingClientRect().top,
+    paneTop: document.querySelector("#editor").getBoundingClientRect().top
+  }));
+  expect(Math.abs(tops.barTop - tops.paneTop)).toBeLessThanOrEqual(1);
+
+  // 開き直してもタイトルが潰れない（モバイルでは一覧表示中に下書きが
+  // 適用され、エディタが display:none の間に高さを測ってしまう経路の
+  // 回帰確認）。リロードして一覧から開き直す。
+  await page.reload();
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+  await page.locator(".drafts__select").first().click();
+  await expect(title).toHaveValue(/折り返しの確認用/);
+  await expect
+    .poll(() => title.evaluate((el) => el.getBoundingClientRect().height), {
+      timeout: 10_000
+    })
+    .toBeGreaterThan(shortBox.height + 10);
+  const reopened = await title.evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth
+  }));
+  expect(reopened.scrollWidth).toBeLessThanOrEqual(reopened.clientWidth + 1);
+});

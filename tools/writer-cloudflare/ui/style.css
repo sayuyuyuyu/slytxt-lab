@@ -355,9 +355,14 @@ textarea {
   /* 列はコンテナ幅を超えない。バーのボタン群など中身の最小幅で
      列が広がり、操作ボタンが画面外へ出るのを防ぐ。 */
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto auto;
   min-height: 0;
   flex: 1;
+  /* スクロールは編集列全体で1本にする（note と同じ考え方）。以前は
+     本文エリアだけが小さい窓の中でスクロールし、カバーやタイトルの
+     上ではドラッグしても動かず、スマホで「スクロールしにくい」状態
+     だった。バーだけ sticky で上部に残す。 */
+  overflow-y: auto;
   /* 公開側のページシェル（.container）と同じ幅・左右余白にして、
      カバーとタイトルの見え方を記事ページにそろえる。本文カラムの
      幅（700px）は editor.css 側の ProseMirror で合わせる。 */
@@ -366,12 +371,16 @@ textarea {
 }
 
 .editor__bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
+  background: var(--bg);
 }
 
 .editor__back {
@@ -544,6 +553,10 @@ textarea {
   background: transparent;
   color: var(--text);
   font: 500 clamp(1.8rem, 4vw, 2.8rem)/1.4 var(--font-heading);
+  /* 高さは app.js が内容に合わせて決める。手動リサイズと内部
+     スクロールバーは出さない。 */
+  overflow: hidden;
+  resize: none;
 }
 
 .editor__title::placeholder {
@@ -562,7 +575,8 @@ textarea {
 .editor__body {
   width: 100%;
   max-width: var(--article-width);
-  min-height: 0;
+  /* フォールバック表示でも編集列のスクロールの中で使える高さを確保する。 */
+  min-height: 45vh;
   padding: 28px 0 64px;
   border: 0;
   background: transparent;
@@ -580,11 +594,10 @@ textarea {
   outline-offset: 2px;
 }
 
-/* WYSIWYG エディタ（Milkdown Crepe）の置き場所。本文エリアの色は editor.css 側で合わせる。 */
+/* WYSIWYG エディタ（Milkdown Crepe）の置き場所。本文エリアの色は editor.css 側で合わせる。
+   スクロールは .editor-pane 側に一本化したため、ここは伸びるだけ。 */
 .editor__wysiwyg {
   min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
   padding: 0;
 }
 
