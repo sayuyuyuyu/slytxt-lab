@@ -25,6 +25,7 @@ const els = {
   themeToggleIcon: $("#themeToggleIcon"),
   emptyNew: $("#emptyNew"),
   category: $("#category"),
+  titleInput: $("#title"),
   body: $("#body"),
   editorRoot: $("#editorRoot"),
   count: $("#count"),
@@ -442,6 +443,7 @@ function focusBody() {
 function applyDraft(draft) {
   state.current = draft;
   els.category.value = draft.category;
+  els.titleInput.value = draft.title && draft.title !== "無題" ? draft.title : "";
   els.body.value = draft.body;
   editorSet(draft.body);
   showEmpty(false);
@@ -458,6 +460,7 @@ function applyDraft(draft) {
 
 function clearEditor() {
   state.current = null;
+  els.titleInput.value = "";
   els.body.value = "";
   editorSet("");
   showEmpty(true);
@@ -512,6 +515,9 @@ function resumePublishCheck(draft) {
 function collect() {
   return {
     category: els.category.value,
+    // 空ならサーバー側で「無題」として保持され、表示・公開時は従来どおり
+    // 本文の書き出しから導出される。
+    title: els.titleInput.value.trim(),
     body: els.body.value
   };
 }
@@ -783,7 +789,11 @@ function openPublishPanel() {
     toast("本文が空です。", "error");
     return;
   }
-  els.publishTitle.textContent = draftName({ ...state.current, body: els.body.value });
+  els.publishTitle.textContent = draftName({
+    ...state.current,
+    title: els.titleInput.value.trim() || "無題",
+    body: els.body.value
+  });
   publishCategorySnapshot = els.category.value;
   updatePublishFile();
   publishReturnFocus = rememberFocus();
@@ -875,7 +885,7 @@ async function newDraft() {
     applyDraft(draft);
     setView("editor");
     await loadDrafts();
-    focusBody();
+    els.titleInput.focus();
   } catch (error) {
     toast(error.message, "error");
   }
@@ -934,6 +944,13 @@ async function boot() {
   if (window.matchMedia("(max-width: 1000px)").matches) setView("list");
 
   els.body.addEventListener("input", onInput);
+  els.titleInput.addEventListener("input", scheduleSave);
+  els.titleInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      focusBody();
+    }
+  });
   els.category.addEventListener("change", () => {
     updatePublishFile();
     scheduleSave();
