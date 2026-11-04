@@ -607,6 +607,10 @@ html.js .terminal__console {
   color: var(--text-muted);
   opacity: 0.55;
 }
+.terminal__input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* Touch-friendly way to run the current line, same as pressing Enter. */
 .terminal__enter {
