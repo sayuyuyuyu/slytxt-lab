@@ -673,6 +673,7 @@ function openMenu(anchor, items) {
 let confirmResolve = null;
 let confirmReturnFocus = null;
 let publishReturnFocus = null;
+let publishCategorySnapshot = null;
 
 // ダイアログ用: 開く前にフォーカスがあった要素へ戻し、開いている間は Tab を内側で循環させる。
 function rememberFocus() {
@@ -757,15 +758,23 @@ function openPublishPanel() {
     return;
   }
   els.publishTitle.textContent = draftName({ ...state.current, body: els.body.value });
+  publishCategorySnapshot = els.category.value;
   updatePublishFile();
   publishReturnFocus = rememberFocus();
   els.publishPanel.hidden = false;
   els.publishConfirm.focus();
 }
 
-function closePublishPanel() {
+function closePublishPanel({ restoreCategory = false } = {}) {
   const wasHidden = els.publishPanel.hidden;
   els.publishPanel.hidden = true;
+  if (restoreCategory && publishCategorySnapshot !== null && els.category.value !== publishCategorySnapshot) {
+    els.category.value = publishCategorySnapshot;
+    updatePublishFile();
+    // 変更時に先行して保存済み／保存予定でも、戻したカテゴリで保存し直す。
+    scheduleSave();
+  }
+  publishCategorySnapshot = null;
   if (!wasHidden) {
     restoreFocus(publishReturnFocus);
     publishReturnFocus = null;
@@ -913,10 +922,10 @@ async function boot() {
     ]);
   });
   els.publishOpen.addEventListener("click", openPublishPanel);
-  els.publishCancel.addEventListener("click", closePublishPanel);
+  els.publishCancel.addEventListener("click", () => closePublishPanel({ restoreCategory: true }));
   els.publishPanel
     .querySelector(".dialog__backdrop")
-    .addEventListener("click", closePublishPanel);
+    .addEventListener("click", () => closePublishPanel({ restoreCategory: true }));
   els.publishConfirm.addEventListener("click", () => {
     closePublishPanel();
     runPublish();
@@ -953,7 +962,7 @@ async function boot() {
     }
     if (event.key === "Escape") {
       if (!els.confirmDialog.hidden) settleConfirm(false);
-      else if (!els.publishPanel.hidden) closePublishPanel();
+      else if (!els.publishPanel.hidden) closePublishPanel({ restoreCategory: true });
       else if (!els.task.hidden) closeTask();
     }
   });
