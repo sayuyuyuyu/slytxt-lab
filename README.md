@@ -105,7 +105,7 @@ src/content/projects/  つくったもの（/projects/）
 
 Tech と Journal は `/articles/` にまとまります。Notes は記事より前の短いメモで、`/articles/` には含めません。
 
-ローカル動作確認用のサンプルは `*.sample.mdx` または `sample-*.mdx` にしてください。`.gitignore` で除外されます。
+ローカル動作確認用のサンプルは `*.sample.md` または `sample-*.md` にしてください。`.gitignore` で除外されます。
 
 ### Tech / Journal / Notes
 
