@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDraftStore, normalizeDraft } from "../tools/writer-cloudflare/src/drafts-kv.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer-cloudflare/src/frontmatter.mjs";
-import { plainText, renderMarkdown, truncateText } from "../tools/writer-cloudflare/src/markdown.mjs";
+import {
+  plainText,
+  renderMarkdown,
+  renderPreviewMarkdown,
+  truncateText
+} from "../tools/writer-cloudflare/src/markdown.mjs";
 import {
   deriveDescription,
   normalizeSlug,
@@ -177,6 +182,62 @@ test("markdown: URL の括弧を切らない", () => {
     renderMarkdown("[w](https://en.wikipedia.org/wiki/Foo_(bar)) です"),
     /<a href="https:\/\/en.wikipedia.org\/wiki\/Foo_\(bar\)">w<\/a> です/
   );
+});
+
+test("preview: YouTube の単独 URL は埋め込みになる", () => {
+  const html = renderPreviewMarkdown("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  assert.match(
+    html,
+    /<div class="embed embed--youtube"><iframe src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ"/
+  );
+  const short = renderPreviewMarkdown("<https://youtu.be/dQw4w9WgXcQ>");
+  assert.match(short, /embed\/dQw4w9WgXcQ/);
+});
+
+test("preview: Spotify はロケール付き URL でも埋め込みになり、高さが種別で変わる", () => {
+  const track = renderPreviewMarkdown(
+    "https://open.spotify.com/intl-ja/track/5oCptG3RbPTbXKFpVjUgmw?si=abc123"
+  );
+  assert.match(
+    track,
+    /<div class="embed embed--spotify"><iframe src="https:\/\/open\.spotify\.com\/embed\/track\/5oCptG3RbPTbXKFpVjUgmw"[^>]*height="152"/
+  );
+  const album = renderPreviewMarkdown("https://open.spotify.com/album/0sNOF9WDwhWunNAHPD3Baj");
+  assert.match(album, /embed\/album\/0sNOF9WDwhWunNAHPD3Baj"[^>]*height="352"/);
+});
+
+test("preview: X のポスト URL は公式ウィジェット用の blockquote になる", () => {
+  const html = renderPreviewMarkdown("https://x.com/slytxt/status/1234567890123456789");
+  assert.match(
+    html,
+    /<div class="embed embed--x"><blockquote class="twitter-tweet" data-dnt="true"><a href="https:\/\/x\.com\/slytxt\/status\/1234567890123456789">/
+  );
+});
+
+test("preview: 一般 URL はタイトル＝URL のリンクカードになる", () => {
+  const html = renderPreviewMarkdown("https://example.com/some/page?a=1&b=2");
+  assert.match(html, /<a class="link-card" href="https:\/\/example\.com\/some\/page\?a=1&amp;b=2"/);
+  assert.match(html, /<span class="link-card__host">example\.com<\/span>/);
+});
+
+test("preview: 文中の URL や別ラベルのリンクは埋め込みにしない", () => {
+  const inText = renderPreviewMarkdown("これ https://www.youtube.com/watch?v=dQw4w9WgXcQ 見て");
+  assert.doesNotMatch(inText, /embed--youtube/);
+  const labeled = renderPreviewMarkdown("[動画](https://www.youtube.com/watch?v=dQw4w9WgXcQ)");
+  assert.doesNotMatch(labeled, /embed--youtube/);
+  assert.match(labeled, /<a href="https:\/\/www\.youtube\.com\/watch\?v=dQw4w9WgXcQ">動画<\/a>/);
+});
+
+test("preview: キャプション付きの単独画像は figure になる", () => {
+  const html = renderPreviewMarkdown('![代替テキスト](https://example.com/a.png "説明文です")');
+  assert.equal(
+    html,
+    '<figure><img src="https://example.com/a.png" alt="代替テキスト" /><figcaption>説明文です</figcaption></figure>'
+  );
+  const noCaption = renderPreviewMarkdown("![代替テキスト](https://example.com/a.png)");
+  assert.match(noCaption, /<p><img src="https:\/\/example\.com\/a\.png" alt="代替テキスト" \/><\/p>/);
+  const inText = renderPreviewMarkdown('前 ![代替テキスト](https://example.com/a.png "説明文です") 後');
+  assert.doesNotMatch(inText, /<figure>/);
 });
 
 test("drafts: 手で足したキーとコメントを消さない", async () => {

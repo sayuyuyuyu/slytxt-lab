@@ -313,6 +313,153 @@ export function renderMarkdown(source) {
   return renderBlocks(text.split("\n")).join("\n");
 }
 
+/*
+ * プレビュー用の埋め込み変換。
+ *
+ * 公開側（src/lib/remark-embed.mjs）と同じく、「URL だけの段落」を
+ * 埋め込みに変え、キャプション付きの単独画像を figure にする。
+ * 判定と出力するクラス名は公開側にそろえる。一般 URL の OGP は
+ * ブラウザから取得できない（CORS）ため、プレビューではタイトルを
+ * URL のままにしたカードに落とす（公開側はビルド時に OGP を付ける）。
+ * X の公式ウィジェット（widgets.js）の読み込みは UI 側（app.js）が担う。
+ */
+
+const VIDEO_ID = /^[A-Za-z0-9_-]{6,}$/;
+
+function youtubeId(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.replace(/^(www\.|m\.)/, "");
+  if (host === "youtu.be") {
+    const id = parsed.pathname.slice(1).split("/")[0];
+    return VIDEO_ID.test(id) ? id : null;
+  }
+  if (host !== "youtube.com") return null;
+  if (parsed.pathname === "/watch") {
+    const id = parsed.searchParams.get("v") ?? "";
+    return VIDEO_ID.test(id) ? id : null;
+  }
+  const match = parsed.pathname.match(/^\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{6,})/);
+  return match ? match[1] : null;
+}
+
+function spotifyItem(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.hostname !== "open.spotify.com") return null;
+  // パスの先頭にロケール（/intl-ja など）が付くことがある。
+  const match = parsed.pathname.match(
+    /^\/(?:intl-[A-Za-z]{2}(?:-[A-Za-z]{2})?\/)?(track|album|playlist|episode|show|artist)\/([A-Za-z0-9]{10,})/
+  );
+  return match ? { kind: match[1], id: match[2] } : null;
+}
+
+function xPost(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.replace(/^www\./, "");
+  if (host !== "x.com" && host !== "twitter.com") return null;
+  const match = parsed.pathname.match(/^\/([A-Za-z0-9_]+)\/status\/(\d+)/);
+  return match ? { user: match[1], id: match[2] } : null;
+}
+
+/** URL を埋め込み種別に分ける。URL でなければ null。 */
+export function classifyEmbedUrl(raw) {
+  const url = String(raw ?? "").trim();
+  if (!/^https?:\/\/\S+$/.test(url)) return null;
+  const video = youtubeId(url);
+  if (video) return { type: "youtube", id: video, url };
+  const item = spotifyItem(url);
+  if (item) return { type: "spotify", ...item, url };
+  const post = xPost(url);
+  if (post) return { type: "x", ...post, url };
+  return { type: "link", url };
+}
+
+export function youtubeEmbedHtml(id) {
+  return `<div class="embed embed--youtube"><iframe src="https://www.youtube-nocookie.com/embed/${escapeHtml(id)}" title="YouTube video player" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>`;
+}
+
+export function spotifyEmbedHtml({ kind, id }) {
+  // 高さは Spotify 公式埋め込みの標準（track / episode は 152、それ以外は 352）。
+  const height = kind === "track" || kind === "episode" ? 152 : 352;
+  return `<div class="embed embed--spotify"><iframe src="https://open.spotify.com/embed/${escapeHtml(kind)}/${escapeHtml(id)}" title="Spotify player" width="100%" height="${height}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+}
+
+export function xEmbedHtml({ url }) {
+  const safe = escapeHtml(url);
+  return `<div class="embed embed--x"><blockquote class="twitter-tweet" data-dnt="true"><a href="${safe}">${safe}</a></blockquote></div>`;
+}
+
+export function linkCardHtml({ url }) {
+  let host = url;
+  try {
+    host = new URL(url).host;
+  } catch {
+    // URL として読めない場合はそのまま出す（到達しないはず）。
+  }
+  return `<a class="link-card" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"><span class="link-card__body"><span class="link-card__title">${escapeHtml(url)}</span><span class="link-card__host">${escapeHtml(host)}</span></span></a>`;
+}
+
+/** URL から埋め込み HTML を作る。埋め込み対象でなければ null。 */
+export function embedHtmlForUrl(url) {
+  const classified = classifyEmbedUrl(url);
+  if (!classified) return null;
+  if (classified.type === "youtube") return youtubeEmbedHtml(classified.id);
+  if (classified.type === "spotify") return spotifyEmbedHtml(classified);
+  if (classified.type === "x") return xEmbedHtml(classified);
+  return linkCardHtml(classified);
+}
+
+// renderMarkdown の出力に対する後処理で、公開側の変換を再現する。
+// 属性値やテキスト中の URL は HTML エスケープ済み（& → &amp;）なので、
+// 判定のときだけ &amp; を戻す。
+function decodeAmp(text) {
+  return String(text).replace(/&amp;/g, "&");
+}
+
+const LONE_IMAGE_PARAGRAPH = /<p><img src="([^"]+)" alt="([^"]*)"(?: title="([^"]*)")? \/><\/p>/g;
+const LONE_URL_BLOCK =
+  /<(p|li)>(?:<a href="([^"]+)"(?: title="[^"]*")?>([^<]+)<\/a>|([^<]+))<\/\1>/g;
+
+/**
+ * プレビュー用の変換。renderMarkdown の結果に、埋め込みと
+ * キャプション付き画像の figure 化を重ねる。
+ */
+export function renderPreviewMarkdown(source) {
+  let html = renderMarkdown(source);
+  html = html.replace(LONE_IMAGE_PARAGRAPH, (match, src, alt, title) => {
+    if (!title) return match;
+    return `<figure><img src="${src}" alt="${alt}" /><figcaption>${title}</figcaption></figure>`;
+  });
+  html = html.replace(LONE_URL_BLOCK, (match, tag, href, label, plain) => {
+    const url =
+      plain !== undefined
+        ? decodeAmp(plain)
+        : decodeAmp(href) === decodeAmp(label)
+          ? decodeAmp(href)
+          : null;
+    if (!url) return match;
+    const embed = embedHtmlForUrl(url);
+    if (!embed) return match;
+    // リスト項目の中では <li> で包んだままにする（公開側も項目内に埋め込む）。
+    return tag === "li" ? `<li>${embed}</li>` : embed;
+  });
+  return html;
+}
+
 /**
  * 文字数表示用の数え方。本文の見た目の文字数を数えるため、
  * plainText で markdown の記号・リンク URL・画像記法を落としてから、

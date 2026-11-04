@@ -1,4 +1,4 @@
-import { plainText, textLength, truncateText } from "/markdown.mjs";
+import { plainText, renderPreviewMarkdown, textLength, truncateText } from "/markdown.mjs";
 
 /*
  * Cloudflare 版の UI 本体。index.html / style.css もこのディレクトリ
@@ -42,6 +42,17 @@ const els = {
   uploadRetry: $("#uploadRetry"),
   back: $("#back"),
   editorMenu: $("#editorMenu"),
+  preview: $("#preview"),
+  previewOpen: $("#previewOpen"),
+  previewClose: $("#previewClose"),
+  previewScroll: $("#previewScroll"),
+  previewArticle: $("#previewArticle"),
+  previewCategory: $("#previewCategory"),
+  previewTitle: $("#previewTitle"),
+  previewLead: $("#previewLead"),
+  previewCover: $("#previewCover"),
+  previewBody: $("#previewBody"),
+  previewTags: $("#previewTags"),
   publishOpen: $("#publishOpen"),
   publishPanel: $("#publishPanel"),
   publishTitle: $("#publishTitle"),
@@ -516,6 +527,7 @@ function focusBody() {
 }
 
 function applyDraft(draft) {
+  hidePreview();
   state.current = draft;
   els.category.value = draft.category;
   els.titleInput.value = draft.title && draft.title !== "無題" ? draft.title : "";
@@ -540,6 +552,7 @@ function applyDraft(draft) {
 }
 
 function clearEditor() {
+  hidePreview();
   state.current = null;
   state.tags = [];
   renderTags();
@@ -615,6 +628,118 @@ function collect() {
 function onInput() {
   updateCount();
   scheduleSave();
+}
+
+/* ---- プレビュー ----
+ *
+ * 公開後の記事ページに近い見た目で、現在の下書き（未保存分を含む）を
+ * 確認する。開くたびに collect() の内容で描き直すので、編集中の本文・
+ * タイトル・タグ・見出し画像・説明文がそのまま反映される。
+ * notes は公開側がプレーンテキスト表示（NoteLayout）なので、そちらに合わせる。
+ * 保存や autosave の挙動には触れない。
+ */
+
+let previewReturnFocus = null;
+let xWidgetsPromise = null;
+
+// X の公式ウィジェットを遅延で読み込み、埋め込みを実表示に変える。
+// 読めなければ blockquote 内のリンク表示のままになる。
+function loadXWidgets(root) {
+  if (!root.querySelector(".embed--x")) return;
+  if (window.twttr?.widgets) {
+    window.twttr.widgets.load(root);
+    return;
+  }
+  xWidgetsPromise ??= new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://platform.twitter.com/widgets.js";
+    script.async = true;
+    script.charset = "utf-8";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.append(script);
+  });
+  void xWidgetsPromise.then((ok) => {
+    if (ok && !els.preview.hidden) window.twttr?.widgets?.load(els.previewBody);
+  });
+}
+
+function openPreview() {
+  if (!state.current || state.busy) return;
+  const data = collect();
+  const isNote = data.category === "notes";
+  previewReturnFocus = rememberFocus();
+
+  els.previewCategory.textContent =
+    state.meta?.categoryLabels?.[data.category] ?? data.category;
+  els.previewTitle.textContent = draftName({
+    ...state.current,
+    title: data.title || "無題",
+    body: data.body
+  });
+  els.previewTitle.hidden = isNote;
+  els.previewLead.textContent = data.description;
+  els.previewLead.hidden = isNote || !data.description;
+
+  const cover = coverDisplayUrl || data.cover;
+  els.previewCover.hidden = !cover;
+  if (cover) els.previewCover.src = cover;
+  else els.previewCover.removeAttribute("src");
+
+  els.previewBody.replaceChildren();
+  if (isNote) {
+    const pre = document.createElement("pre");
+    pre.className = "preview__notetext";
+    pre.textContent = data.body.trim();
+    els.previewBody.append(pre);
+  } else {
+    els.previewBody.innerHTML = renderPreviewMarkdown(data.body);
+    loadXWidgets(els.previewBody);
+  }
+
+  els.previewTags.replaceChildren(
+    ...data.tags.map((tag) => {
+      const item = document.createElement("li");
+      const chip = document.createElement("span");
+      chip.className = "preview__tag";
+      const hash = document.createElement("span");
+      hash.className = "preview__tag-hash";
+      hash.textContent = "#";
+      chip.append(hash, tag);
+      item.append(chip);
+      return item;
+    })
+  );
+  els.previewTags.hidden = data.tags.length === 0;
+  // タグは記事では本文の前、Note では本文の後に出る（公開側の並び）。
+  if (isNote) els.previewArticle.append(els.previewTags);
+  else els.previewArticle.insertBefore(els.previewTags, els.previewBody);
+
+  els.preview.hidden = false;
+  els.previewOpen.setAttribute("aria-pressed", "true");
+  els.previewScroll.scrollTop = 0;
+  els.previewClose.focus();
+}
+
+// フォーカスを戻さずに閉じる（下書きの切り替え時など）。
+// iframe の再生を止めるため、中身は捨てる。
+function hidePreview() {
+  if (els.preview.hidden) return;
+  els.preview.hidden = true;
+  els.previewBody.replaceChildren();
+  els.previewOpen.setAttribute("aria-pressed", "false");
+}
+
+function closePreview() {
+  if (els.preview.hidden) return;
+  hidePreview();
+  restoreFocus(previewReturnFocus ?? els.previewOpen);
+  previewReturnFocus = null;
+}
+
+function togglePreview() {
+  if (els.preview.hidden) openPreview();
+  else closePreview();
 }
 
 /* ---- 実行中のパネル ---- */
@@ -1132,6 +1257,7 @@ function setBusy(busy) {
   state.busy = busy;
   const disabled = busy || !state.current;
   els.publishOpen.disabled = disabled;
+  els.previewOpen.disabled = disabled;
   els.editorMenu.disabled = disabled;
   els.publishConfirm.disabled = busy;
 }
@@ -1328,6 +1454,8 @@ async function boot() {
     ]);
   });
   els.publishOpen.addEventListener("click", openPublishPanel);
+  els.previewOpen.addEventListener("click", togglePreview);
+  els.previewClose.addEventListener("click", closePreview);
   els.publishCancel.addEventListener("click", () => closePublishPanel({ restoreCategory: true }));
   els.publishPanel
     .querySelector(".dialog__backdrop")
@@ -1383,6 +1511,7 @@ async function boot() {
     if (event.key === "Escape") {
       if (!els.confirmDialog.hidden) settleConfirm(false);
       else if (!els.publishPanel.hidden) closePublishPanel({ restoreCategory: true });
+      else if (!els.preview.hidden) closePreview();
       else if (!els.task.hidden) closeTask();
     }
   });

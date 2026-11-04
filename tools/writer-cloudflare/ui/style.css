@@ -530,6 +530,339 @@ textarea {
   font-size: 1.2rem;
 }
 
+/* ---- プレビュー ----
+ * 公開側（src/styles/global.css の .article-* / .link-card / .embed）の
+ * 値をそのまま寄せたもの。変数は theme.css 経由で本体と共通。
+ */
+
+.preview {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.preview__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview__label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.preview__note {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview__bar .button {
+  margin-left: auto;
+  flex: none;
+}
+
+.preview__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.preview__article {
+  max-width: var(--article-width);
+  margin-inline: auto;
+  padding: 40px 20px 64px;
+}
+
+.preview__category {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+
+.preview__category::before {
+  content: "❯ ";
+  color: var(--accent-5);
+}
+
+.preview__title {
+  margin: 0;
+  font: 500 clamp(1.8rem, 4vw, 2.8rem) / 1.4 var(--font-heading);
+  text-wrap: balance;
+}
+
+.preview__lead {
+  max-width: 680px;
+  margin: 16px 0 0;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.preview__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preview__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.preview__tag-hash {
+  color: var(--accent);
+}
+
+.preview__cover {
+  display: block;
+  width: 100%;
+  margin-top: 28px;
+  aspect-ratio: 191 / 100;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* notes は公開側がプレーンテキスト表示（.note__text と同じ値）。 */
+.preview__notetext {
+  margin: 20px 0 28px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 1.03rem/1.95 var(--font-body);
+  color: var(--text);
+}
+
+.preview__body {
+  margin-top: 28px;
+  font-size: 1.03rem;
+  line-height: 1.95;
+}
+
+.preview__body > :first-child {
+  margin-top: 0;
+}
+
+.preview__body > * + * {
+  margin-top: 1.3em;
+}
+
+.preview__body h2,
+.preview__body h3,
+.preview__body h4 {
+  line-height: 1.5;
+  text-wrap: balance;
+  color: var(--text);
+  font-family: var(--font-heading);
+}
+
+.preview__body h2 {
+  position: relative;
+  margin-top: 2.3em;
+  padding-left: 0.7em;
+  font: 500 1.6rem/1.5 var(--font-heading);
+}
+
+.preview__body h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.16em;
+  bottom: 0.16em;
+  width: 3px;
+  background: linear-gradient(var(--accent), var(--accent-3));
+}
+
+.preview__body h3 {
+  margin-top: 1.8em;
+  font-size: 1.2rem;
+}
+
+.preview__body h3::before {
+  content: "// ";
+  color: var(--accent-3);
+}
+
+.preview__body ul,
+.preview__body ol {
+  padding-left: 1.5em;
+}
+
+.preview__body ul {
+  list-style: disc;
+}
+
+.preview__body ol {
+  list-style: decimal;
+}
+
+.preview__body li + li {
+  margin-top: 0.35em;
+}
+
+.preview__body a {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+.preview__body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.preview__body pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  overflow-wrap: normal;
+}
+
+.preview__body code:not(pre code) {
+  padding: 0.1em 0.35em;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  color: var(--accent-strong);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.preview__body blockquote {
+  margin-inline: 0;
+  padding-left: 20px;
+  border-left: 3px solid var(--accent-3);
+  color: var(--text-muted);
+}
+
+.preview__body table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.preview__body th,
+.preview__body td {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.preview__body th {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.preview__body hr {
+  margin-block: 32px;
+  border: 0;
+  border-top: 1px dashed var(--border-strong);
+}
+
+.preview__body figure {
+  margin-inline: 0;
+}
+
+.preview__body figure img {
+  display: block;
+  border-radius: 10px;
+}
+
+.preview__body figcaption {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+.preview__body .embed {
+  margin-block: 28px;
+}
+
+.preview__body .embed--youtube iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.preview__body .embed--spotify iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.preview__body .embed--x {
+  display: flex;
+  justify-content: center;
+}
+
+.preview__body .embed--x .twitter-tweet {
+  margin: 0 !important;
+}
+
+.preview__body .link-card {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  margin-block: 28px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.preview__body .link-card:hover {
+  border-color: var(--border-strong);
+}
+
+.preview__body .link-card__body {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-width: 0;
+}
+
+.preview__body .link-card__title {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.preview__body .link-card__host {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
 /* ---- 実行中のパネル ---- */
 
 .task {
