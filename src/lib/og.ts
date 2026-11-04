@@ -2,7 +2,6 @@ import { Resvg } from "@resvg/resvg-js";
 import { formatDate } from "./format";
 import { escapeXml } from "./xml";
 import { categoryLabels, site } from "./site";
-import type { SiteEntry } from "./content";
 
 const WIDTH = 1200;
 const HEIGHT = 630;
@@ -17,12 +16,6 @@ function wrapText(value: string, maxLength = 17): string[] {
 
   if (lines.length > 3) lines[2] = Array.from(lines[2]).slice(0, maxLength - 1).join("") + "…";
   return lines.slice(0, 3);
-}
-
-export function getOgDate(entry: SiteEntry): Date {
-  return entry.collection === "projects"
-    ? entry.data.updated ?? entry.data.started
-    : entry.data.updated ?? entry.data.published;
 }
 
 export function renderOgPng(options: {
