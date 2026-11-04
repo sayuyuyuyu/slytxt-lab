@@ -1,8 +1,12 @@
 /*
- * Crepe の見た目を writer のトーン（theme.css / style.css の変数）に
- * 合わせるための上書き。editor.js が Crepe の CSS の後に読み込むので、
- * ここに書いた指定が優先される。色は変数経由なのでライトテーマ
- * （html.light）にもそのまま追従する。
+ * Crepe の見た目を公開側の記事ページ（src/styles/global.css の
+ * .article-body）にそろえるための上書き。editor.js が Crepe の CSS の
+ * 後に読み込むので、ここに書いた指定が優先される。色とフォントは
+ * theme.css の変数経由なのでライトテーマ（html.light）にも追従する。
+ *
+ * 本文の値（サイズ・行間・見出し・引用・コード・表・埋め込み）は
+ * プレビュー（style.css の .preview__body）と同じ値を、ProseMirror の
+ * DOM に合わせて書いたもの。公開側の値を変えたらこちらも合わせる。
  */
 
 .milkdown {
@@ -26,14 +30,18 @@
   --crepe-font-title: var(--font-body);
   --crepe-font-default: var(--font-body);
   --crepe-font-code: var(--font-mono);
+  /* Crepe 側の相対サイズ（コードブロック等）の基準も本文に合わせる。 */
+  --crepe-base-font-size: 1.03rem;
   --crepe-shadow-1: 0 4px 16px rgb(0 0 0 / 18%);
   --crepe-shadow-2: 0 12px 32px rgb(0 0 0 / 24%);
 }
 
-/* Crepe 既定の大きな余白（60px 120px）を、本文の読み幅に合わせて詰める。 */
+/* 本文カラムは公開側の .article-main と同じ幅・左寄せ。
+   860px 以下は公開側と同じくカラム幅いっぱいに広げる。 */
 .milkdown .ProseMirror {
-  padding: 10px 2px 56px;
-  font-size: 1rem;
+  max-width: var(--article-width);
+  padding: 28px 0 64px;
+  font-size: 1.03rem;
   line-height: 1.95;
   caret-color: var(--accent);
   /* ProseMirror は grid レイアウトで、列幅は最も広いブロックの
@@ -42,6 +50,12 @@
      コードブロック、表まで一列に広がってはみ出すのを防ぐ。 */
   grid-template-columns: minmax(0, 1fr);
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 860px) {
+  .milkdown .ProseMirror {
+    max-width: none;
+  }
 }
 
 .milkdown .ProseMirror:focus {
@@ -53,38 +67,309 @@
   outline-offset: 2px;
 }
 
-/* 埋め込みプレビュー（editor.js の decoration。公開時の見え方の目安） */
-.milkdown .embed-preview {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin: 4px 0 16px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  user-select: none;
+/* ---- 本文のタイポグラフィ（公開側 .article-body と同じ値） ---- */
+
+.milkdown .ProseMirror > :first-child {
+  margin-top: 0;
 }
-.milkdown .embed-preview__thumb {
-  flex: none;
-  width: 96px;
-  height: 54px;
-  object-fit: cover;
-  border-radius: 6px;
+
+.milkdown .ProseMirror > * + * {
+  margin-top: 1.3em;
 }
-.milkdown .embed-preview__meta {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+
+/* grid レイアウトでは上下の margin が相殺されないため、下側は持たない。 */
+.milkdown .ProseMirror > * {
+  margin-bottom: 0;
 }
-.milkdown .embed-preview__kind {
-  font-size: 0.8rem;
-  font-weight: 400;
+
+/* 公開側の本文に h1 の指定は無い（本文の見出しは h2 から使う前提）。
+   エディタでも同じにし、# を付けても本文と同じ大きさで出す。
+   Crepe の reset が見出しに付ける余白と行間も本文側へ戻す。 */
+.milkdown .ProseMirror h1 {
+  margin-top: 1.3em;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.milkdown .ProseMirror h2,
+.milkdown .ProseMirror h3,
+.milkdown .ProseMirror h4 {
+  padding-block: 0;
+  line-height: 1.5;
+  text-wrap: balance;
+  color: var(--text);
+  font-family: var(--font-heading);
+}
+
+.milkdown .ProseMirror h2 {
+  position: relative;
+  margin-top: 2.3em;
+  padding-left: 0.7em;
+  font: 500 1.6rem/1.5 var(--font-heading);
+}
+
+.milkdown .ProseMirror h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.16em;
+  bottom: 0.16em;
+  width: 3px;
+  background: linear-gradient(var(--accent), var(--accent-3));
+}
+
+.milkdown .ProseMirror h3 {
+  margin-top: 1.8em;
+  font-size: 1.2rem;
+}
+
+.milkdown .ProseMirror h3::before {
+  content: "// ";
+  color: var(--accent-3);
+}
+
+/* Crepe の reset が段落に line-height: 1.5 と上下 padding を付けるので、
+   公開側の本文（1.95・余白なし）へ戻す。 */
+.milkdown .ProseMirror p {
+  padding: 0;
+  line-height: 1.95;
+}
+
+.milkdown .ProseMirror p,
+.milkdown .ProseMirror li {
   color: var(--text);
 }
-.milkdown .embed-preview__url {
+
+/* リストの字下げは Crepe のマーカー列（24px + gap）が担う。
+   公開側の 1.5em とほぼ同じ位置から本文が始まるよう gap を詰める。 */
+.milkdown .ProseMirror ul,
+.milkdown .ProseMirror ol {
+  padding-left: 0;
+}
+
+.milkdown .milkdown-list-item-block li {
+  gap: 2px;
+}
+
+.milkdown .milkdown-list-item-block + .milkdown-list-item-block {
+  margin-top: 0.35em;
+}
+
+.milkdown .ProseMirror a {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+.milkdown .ProseMirror code:not(pre code) {
+  padding: 0.1em 0.35em;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  color: var(--accent-strong);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.milkdown .ProseMirror blockquote {
+  margin-inline: 0;
+  padding-left: 20px;
+  border-left: 3px solid var(--accent-3);
+  color: var(--text-muted);
+}
+
+.milkdown .ProseMirror blockquote > p {
+  margin-block: 0;
+  color: var(--text-muted);
+}
+
+.milkdown .ProseMirror hr {
+  margin-block: 32px 0;
+  border: 0;
+  border-top: 1px dashed var(--border-strong);
+}
+
+/* コードブロック（Crepe の CodeMirror）を公開側の pre に寄せる。
+   シンタックスハイライトの色は CodeMirror 側のテーマのまま。 */
+.milkdown .milkdown-code-block {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+.milkdown .milkdown-code-block .cm-editor {
+  background: transparent;
+  font: inherit;
+}
+
+.milkdown .milkdown-code-block .cm-editor .cm-scroller {
+  font: inherit;
+}
+
+.milkdown .milkdown-code-block .cm-editor .cm-gutters {
+  background: transparent;
+}
+
+.milkdown .milkdown-code-block .milkdown-code-block-placeholder {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+/* 画像ブロック。公開側の figure と同じ角丸にし、キャプション欄は
+   figcaption（muted・0.88rem）の見た目にする。 */
+.milkdown .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+}
+
+.milkdown .milkdown-image-block .image-wrapper img {
+  display: block;
+  border-radius: 10px;
+}
+
+.milkdown .milkdown-image-block .caption-input {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  text-align: left;
+}
+
+/* 表。公開側の table と同じ罫線と余白にする（ドラッグハンドルは編集用）。 */
+.milkdown .milkdown-table-block table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.milkdown .milkdown-table-block th,
+.milkdown .milkdown-table-block td {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.milkdown .milkdown-table-block th {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+/* ---- 埋め込みの実物表示（editor.js の decoration） ----
+ * 単独行 URL の段落本文は隠し（.embed-source）、代わりに公開側と
+ * 同じプレイヤーを出す。余白は公開側 .embed（margin-block: 28px）に
+ * 合わせ、上側だけ持つ（下側は次のブロックの margin-top が担う）。 */
+
+.milkdown .ProseMirror .embed-source {
+  height: 0;
+  margin: 0 !important;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.milkdown .embed-embed {
+  position: relative;
+  margin: 28px 0 0;
+  user-select: none;
+}
+
+.milkdown .embed-embed--youtube iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.milkdown .embed-embed--spotify iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.milkdown .embed-embed--x {
+  display: flex;
+  justify-content: center;
+}
+
+.milkdown .embed-embed--x .twitter-tweet {
+  margin: 0 !important;
+}
+
+.milkdown .embed-link-card {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.milkdown .embed-link-card__body {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-width: 0;
+}
+
+.milkdown .embed-link-card__title {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.milkdown .embed-link-card__host {
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 0.76rem;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
+}
+
+/* 埋め込みの操作（前後への段落追加と削除）。
+   普段は隠し、ホバー・フォーカス・選択中だけ右上に出す。 */
+.milkdown .embed-embed__actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.milkdown .embed-embed:hover .embed-embed__actions,
+.milkdown .embed-embed:focus-within .embed-embed__actions,
+.milkdown .embed-embed.is-active .embed-embed__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.milkdown .embed-embed__action {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  color: var(--text);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.milkdown .embed-embed__action:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
