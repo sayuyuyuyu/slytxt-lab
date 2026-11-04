@@ -1,4 +1,5 @@
 ---
+import AdultGate from "@/components/AdultGate.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TagList from "@/components/TagList.astro";
 import { getEntryDate, getEntryDisplayTitle, getEntryPath, getEntrySlug, type ArticleEntry } from "@/lib/content";
@@ -38,9 +39,11 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
         <span>{categoryLabels.notes}</span>
         <span aria-hidden="true"> / </span>
         <time datetime={date.toISOString()}>{formatDate(date)}</time>
+        {entry.data.adult && <span role="img" aria-label="Includes an adult content review"> / 🔞</span>}
       </p>
       {entry.data.cover && <img class="note-cover" src={entry.data.cover} alt="" />}
-      <pre class="note__text">{text}</pre>
+      {entry.data.adult && <AdultGate storageKey="adult-content-consent" />}
+      <pre class="note__text" data-adult-content data-locked={entry.data.adult ? "true" : "false"}>{text}</pre>
       <TagList tags={entry.data.tags} />
       <nav class="article-nav" aria-label="Note navigation" data-pagefind-ignore data-motion>
         {previous ? (

@@ -19,6 +19,7 @@ const preview = getEntryPreview(entry);
     <span>{categoryLabels.notes}</span>
     <span aria-hidden="true"> / </span>
     <time datetime={date.toISOString()}>{formatDate(date)}</time>
+    {entry.data.adult && <span role="img" aria-label="Includes an adult content review"> / 🔞</span>}
   </div>
   <Heading class="note-card__title">
     <a class="note-card__text" href={getEntryPath(entry)}>{preview}</a>
