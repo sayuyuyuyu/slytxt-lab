@@ -21,6 +21,8 @@ const els = {
   drafts: $("#drafts"),
   draftCount: $("#draftCount"),
   newButton: $("#new"),
+  themeToggle: $("#themeToggle"),
+  themeToggleIcon: $("#themeToggleIcon"),
   emptyNew: $("#emptyNew"),
   category: $("#category"),
   body: $("#body"),
@@ -68,6 +70,30 @@ const SAVE_LABEL = {
   saving: "保存中…",
   error: "保存できません・再試行"
 };
+
+/* ---- テーマ（本体サイトと同じ localStorage の theme を使う） ---- */
+
+function syncThemeToggle() {
+  const light = document.documentElement.classList.contains("light");
+  const label = light ? "ダークテーマに切り替える" : "ライトテーマに切り替える";
+  els.themeToggleIcon.textContent = light ? "☼" : "☾";
+  els.themeToggle.setAttribute("aria-label", label);
+  els.themeToggle.setAttribute("title", label);
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", light ? "#eef3fb" : "#05070f");
+}
+
+function toggleTheme() {
+  const nextTheme = document.documentElement.classList.contains("light") ? "dark" : "light";
+  document.documentElement.classList.toggle("light", nextTheme === "light");
+  try {
+    localStorage.setItem("theme", nextTheme);
+  } catch {
+    // 保存できなくても、この画面での切り替えは有効にする。
+  }
+  syncThemeToggle();
+}
 
 /* ---- 小さな道具 ---- */
 
@@ -911,6 +937,14 @@ async function boot() {
   els.category.addEventListener("change", () => {
     updatePublishFile();
     scheduleSave();
+  });
+  syncThemeToggle();
+  els.themeToggle.hidden = false;
+  els.themeToggle.addEventListener("click", toggleTheme);
+  window.addEventListener("storage", (event) => {
+    if (event.key !== "theme" && event.key !== null) return;
+    document.documentElement.classList.toggle("light", event.newValue === "light");
+    syncThemeToggle();
   });
   els.newButton.addEventListener("click", newDraft);
   els.emptyNew.addEventListener("click", newDraft);

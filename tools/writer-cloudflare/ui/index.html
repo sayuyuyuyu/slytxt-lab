@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#05070f" />
     <title>執筆 - slytxt.lab</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -21,10 +22,11 @@
         document.documentElement.classList.add("js");
         try {
           // サイトと同じく、青黒のダークを既定にする。
-          document.documentElement.classList.toggle(
-            "light",
-            localStorage.getItem("theme") === "light"
-          );
+          const isLight = localStorage.getItem("theme") === "light";
+          document.documentElement.classList.toggle("light", isLight);
+          document
+            .querySelector('meta[name="theme-color"]')
+            ?.setAttribute("content", isLight ? "#eef3fb" : "#05070f");
         } catch {}
       })();
     </script>
@@ -38,6 +40,16 @@
       </div>
 
       <div class="bar__actions">
+        <button
+          id="themeToggle"
+          class="button button--icon"
+          type="button"
+          aria-label="ライトテーマに切り替える"
+          title="ライトテーマに切り替える"
+          hidden
+        >
+          <span id="themeToggleIcon" aria-hidden="true">☾</span>
+        </button>
         <button id="new" class="button button--primary">＋ 新規</button>
       </div>
     </header>
