@@ -73,10 +73,11 @@
                 </button>
               </span>
               <span id="count" class="editor__count"></span>
-              <button id="save" class="save" type="button" data-state="idle">
+              <span id="save" class="save" role="status" aria-live="polite" data-state="idle">
                 <span class="save__dot" aria-hidden="true"></span>
                 <span class="save__text" id="saveText">保存済み</span>
-              </button>
+                <button id="saveRetry" class="save__retry" type="button" hidden>再試行</button>
+              </span>
               <button
                 id="editorMenu"
                 class="button button--icon"

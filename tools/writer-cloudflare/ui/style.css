@@ -128,6 +128,15 @@ textarea {
 .save[data-state="error"] {
   border-color: var(--accent);
   color: var(--accent-strong);
+}
+
+.save__retry {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
   cursor: pointer;
 }
 
