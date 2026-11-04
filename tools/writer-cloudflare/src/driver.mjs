@@ -70,7 +70,13 @@ export async function listPublishResults(env) {
 export async function drivePendingPublishes(env) {
   const store = createDraftStore(env.DRAFTS);
 
-  const drafts = await store.listDrafts().catch(() => []);
+  const drafts = await store.listDrafts().catch((error) => {
+    console.error(`driver: listDrafts failed: ${error?.message ?? error}`);
+    return [];
+  });
+  console.log(
+    `driver: tick drafts=${drafts.length} withPr=${drafts.filter((d) => d.pr).length}`
+  );
   let driven = 0;
   for (const draft of drafts) {
     if (driven >= MAX_PER_TICK) break;
@@ -94,7 +100,13 @@ export async function drivePendingPublishes(env) {
   // （public/media/<ファイル名>）から復元する。
   if (!env.GITHUB_TOKEN) return;
   const gh = createGitHubClient(env);
-  const pulls = await gh.listOpenPulls().catch(() => []);
+  const pulls = await gh.listOpenPulls().catch((error) => {
+    console.error(`driver: listOpenPulls failed: ${error?.message ?? error}`);
+    return [];
+  });
+  console.log(
+    `driver: tick openPulls=${pulls.length} media=${pulls.filter((p) => p.head?.ref?.startsWith("media/")).length}`
+  );
   let media = 0;
   for (const pr of pulls) {
     if (media >= MAX_PER_TICK) break;
