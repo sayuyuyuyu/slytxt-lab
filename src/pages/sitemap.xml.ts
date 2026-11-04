@@ -6,7 +6,8 @@ import {
   getArticles,
   getEntryDate,
   getEntryPath,
-  getNotes
+  getNotes,
+  getProjects
 } from "@/lib/content";
 import { collectTags, tagPath } from "@/lib/tags";
 
@@ -26,22 +27,23 @@ function urlNode(site: URL, path: string, lastmod?: Date): string {
 
 export async function GET(context: APIContext) {
   const site = context.site ?? new URL("https://slytxt.dev");
-  const [entries, articles, tech, journal, notes] = await Promise.all([
+  const [entries, articles, tech, journal, notes, projects] = await Promise.all([
     getAllEntries(),
     getAllArticles(),
     getArticles("tech"),
     getArticles("journal"),
-    getNotes()
+    getNotes(),
+    getProjects()
   ]);
   const tags = collectTags(entries);
   const staticPaths = [
     "/",
-    "/articles/",
-    "/articles/tech/",
-    "/articles/journal/",
-    "/notes/",
-    "/projects/",
-    "/tags/",
+    ...(articles.length > 0 ? ["/articles/"] : []),
+    ...(tech.length > 0 ? ["/articles/tech/"] : []),
+    ...(journal.length > 0 ? ["/articles/journal/"] : []),
+    ...(notes.length > 0 ? ["/notes/"] : []),
+    ...(projects.length > 0 ? ["/projects/"] : []),
+    ...(tags.size > 0 ? ["/tags/"] : []),
     "/about/"
   ];
 
