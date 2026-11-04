@@ -43,6 +43,14 @@ export function paginateEntries<T>(
   };
 }
 
+/** Static paths for pages 2 and up of a paginated listing; page 1 is the index itself. */
+export function pagedStaticPaths<T>(entries: T[], basePath: string) {
+  return Array.from({ length: pageCount(entries.length) - 1 }, (_, index) => ({
+    params: { page: String(index + 2) },
+    props: { page: paginateEntries(entries, basePath, index + 2) },
+  }));
+}
+
 /** First, last, and neighboring pages stay reachable without overflowing small screens. */
 export function visiblePages(
   currentPage: number,
