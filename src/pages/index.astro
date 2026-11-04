@@ -2,11 +2,11 @@
 import ArticleCard from "@/components/ArticleCard.astro";
 import NoteCard from "@/components/NoteCard.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
-import { getAllArticles, getAllEntries, getNotes, getProjects } from "@/lib/content";
+import { getAllArticles, getAllEntries, getArticles, getNotes, getProjects } from "@/lib/content";
 import { site } from "@/lib/site";
 import { collectTags } from "@/lib/tags";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-const [articles, notes, projects, allEntries] = await Promise.all([getAllArticles(), getNotes(), getProjects(), getAllEntries()]);
+const [articles, notes, projects, allEntries, tech, journal] = await Promise.all([getAllArticles(), getNotes(), getProjects(), getAllEntries(), getArticles("tech"), getArticles("journal")]);
 const hasTags = collectTags(allEntries).size > 0;
 const recent = articles.slice(0, 6);
 const recentNotes = notes.slice(0, 4);
@@ -14,7 +14,7 @@ const recentNotes = notes.slice(0, 4);
 // have a page worth opening right now.
 const terminalConfig = {
   description: site.description,
-  counts: { articles: articles.length, notes: notes.length, projects: projects.length },
+  counts: { articles: articles.length, tech: tech.length, journal: journal.length, notes: notes.length, projects: projects.length },
   hasTags
 };
 ---
@@ -113,8 +113,14 @@ const terminalConfig = {
           path: terminalConfig.counts.articles > 0 ? "/articles/" : null,
           description: "技術系の記事と、それ以外の記事の一覧。"
         },
-        tech: { path: "/articles/tech/", description: "AI、MCP、クラウド、プログラミングを試した記録。" },
-        journal: { path: "/articles/journal/", description: "旅行、ゲーム、音楽、ガジェットの話。" },
+        tech: {
+          path: terminalConfig.counts.tech > 0 ? "/articles/tech/" : null,
+          description: "AI、MCP、クラウド、プログラミングを試した記録。"
+        },
+        journal: {
+          path: terminalConfig.counts.journal > 0 ? "/articles/journal/" : null,
+          description: "旅行、ゲーム、音楽、ガジェットの話。"
+        },
         notes: {
           path: terminalConfig.counts.notes > 0 ? "/notes/" : null,
           description: "あとで記事にする前の、短いメモ。"
