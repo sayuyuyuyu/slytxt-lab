@@ -7,7 +7,7 @@ import { collectTags } from "@/lib/tags";
 
 const hasTags = collectTags(await getAllEntries()).size > 0;
 ---
-<BaseLayout title={`Search - ${site.name}`} description="記事とつくったものを、書いてある言葉から探せます。" noindex>
+<BaseLayout title={`Search - ${site.name}`} description="記事とメモ、つくったものを、書いてある言葉から探せます。" noindex>
   <PageHeader title="Search" eyebrow="search" />
   <section class="listing" aria-label="Search"><div class="container">
     <div class="search-box">
