@@ -7,7 +7,8 @@ import { articleSections, articlesIndex, pageDescriptions, site } from "@/lib/si
 import { collectTags } from "@/lib/tags";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 const [articles, notes, projects, allEntries, tech, journal] = await Promise.all([getAllArticles(), getNotes(), getProjects(), getAllEntries(), getArticles("tech"), getArticles("journal")]);
-const hasTags = collectTags(allEntries).size > 0;
+const tagCount = collectTags(allEntries).size;
+const hasTags = tagCount > 0;
 const recent = articles.slice(0, 6);
 const recentNotes = notes.slice(0, 4);
 // Config for the playable terminal in the hero: which collections actually
@@ -48,7 +49,7 @@ const terminalConfig = {
             {articles.length > 0 && <a href="/articles/">Articles <span>{articles.length}</span></a>}
             {notes.length > 0 && <a href="/notes/">Notes <span>{notes.length}</span></a>}
             {projects.length > 0 && <a href="/projects/">Projects <span>{projects.length}</span></a>}
-            {hasTags && <a href="/tags/">Tags</a>}
+            {hasTags && <a href="/tags/">Tags <span>{tagCount}</span></a>}
           </nav>
         </div>
         <div class="terminal__console" data-play-terminal>
