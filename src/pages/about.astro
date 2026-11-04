@@ -1,14 +1,14 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
-import { pageDescriptions, site } from "@/lib/site";
+import { categoryLabels, pageDescriptions, site } from "@/lib/site";
 ---
 
 <BaseLayout searchable title={`About - ${site.name}`} description={pageDescriptions.about}>
   <PageHeader eyebrow="about" title="About" />
   <section class="section" data-motion>
     <div class="container">
-      <article class="article-main article-body">
+      <article class="article-main article-body" data-pagefind-filter={`category:${categoryLabels.about}`}>
         <p>しらゆ（slytxt）とは、都内某所でSEとして働いている一介のプロ社畜。2003年に爆誕し、地方都市にて私腹を肥やす。</p>
         <p>酒とつまみを好み、爆音のクラブで暴れることを生きがいとする。</p>
         <p>刹那的な快楽を常に求めているらしい。</p>

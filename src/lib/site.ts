@@ -15,7 +15,8 @@ export const categoryLabels = {
   tech: "Tech",
   journal: "Journal",
   notes: "Notes",
-  projects: "Projects"
+  projects: "Projects",
+  about: "About"
 } as const;
 
 /** Where each collection lives in the URL space. */
@@ -80,7 +81,7 @@ export const pageDescriptions = {
   about: "しらゆ（slytxt）のプロフィール。",
   projects: "しらゆがつくっているものと、いまの進み具合。",
   tags: "Tech、Journal、Notes、Projects をタグから辿れます。",
-  search: "記事とメモ、つくったものを、書いてある言葉から探せます。"
+  search: "記事とメモ、つくったもの、プロフィールを、書いてある言葉から探せます。"
 } as const;
 
 export const projectStatusLabels = {
