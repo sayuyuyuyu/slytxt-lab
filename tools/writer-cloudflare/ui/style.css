@@ -602,6 +602,22 @@ textarea {
   padding: 40px 20px 64px;
 }
 
+/* 記事は公開側のヒーロー（.container = --content-width 幅）に合わせ、
+   本文だけを --article-width に絞る。notes は全体を --article-width にしたまま。 */
+.preview__article--article {
+  width: min(100% - 48px, var(--content-width));
+  max-width: none;
+  padding-inline: 0;
+}
+
+.preview__article--article .preview__title {
+  max-width: 860px;
+}
+
+.preview__article--article .preview__body {
+  max-width: var(--article-width);
+}
+
 .preview__category {
   margin: 0 0 12px;
   color: var(--accent);

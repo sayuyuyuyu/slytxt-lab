@@ -708,6 +708,7 @@ function openPreview() {
   if (!state.current || state.busy) return;
   const data = collect();
   const isNote = data.category === "notes";
+  els.previewArticle.classList.toggle("preview__article--article", !isNote);
   previewReturnFocus = rememberFocus();
 
   els.previewCategory.textContent =
@@ -757,9 +758,9 @@ function openPreview() {
     })
   );
   els.previewTags.hidden = data.tags.length === 0;
-  // タグは記事では本文の前、Note では本文の後に出る（公開側の並び）。
+  // タグは記事では cover の前、Note では本文の後に出る（公開側の並び）。
   if (isNote) els.previewArticle.append(els.previewTags);
-  else els.previewArticle.insertBefore(els.previewTags, els.previewBody);
+  else els.previewArticle.insertBefore(els.previewTags, els.previewCover);
 
   els.preview.hidden = false;
   els.previewOpen.setAttribute("aria-pressed", "true");
