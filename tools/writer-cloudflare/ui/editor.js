@@ -223,6 +223,12 @@ function classifyUrlForPreview(url) {
     const match = parsed.pathname.match(/^\/([A-Za-z0-9_]+)\/status\/(\d+)/);
     if (match) return { type: "x", user: match[1], id: match[2], url };
   }
+  if (parsed.hostname === "open.spotify.com") {
+    const match = parsed.pathname.match(
+      /^\/(?:intl-[A-Za-z]{2}(?:-[A-Za-z]{2})?\/)?(track|album|playlist|episode|show|artist)\/([A-Za-z0-9]{10,})/
+    );
+    if (match) return { type: "spotify", kind: match[1], id: match[2], url };
+  }
   return { type: "link", url };
 }
 
@@ -258,9 +264,11 @@ function embedPreviewDom(embed) {
   kind.textContent =
     embed.type === "youtube"
       ? "YouTube 埋め込み"
-      : embed.type === "x"
-        ? "X のポスト"
-        : "リンクカード";
+      : embed.type === "spotify"
+        ? "Spotify 埋め込み"
+        : embed.type === "x"
+          ? "X のポスト"
+          : "リンクカード";
   const url = document.createElement("span");
   url.className = "embed-preview__url";
   url.textContent = embed.url;

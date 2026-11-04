@@ -9,6 +9,7 @@
  * リンク文字が URL と違うリンクは触らない。
  *
  * - YouTube: youtube-nocookie の iframe
+ * - Spotify: 公式埋め込みの iframe
  * - X (Twitter): 公式埋め込み（blockquote + widgets.js）
  * - それ以外の URL: ビルド時に OGP を取得してリンクカードにする。
  *   取得できない場合はホスト名だけのカードに落とす（ビルドは止めない）。
@@ -52,12 +53,29 @@ function xPost(url) {
   return match ? { user: match[1], id: match[2] } : null;
 }
 
+function spotifyItem(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.hostname !== "open.spotify.com") return null;
+  // パスの先頭にロケール（/intl-ja など）が付くことがある。
+  const match = parsed.pathname.match(
+    /^\/(?:intl-[A-Za-z]{2}(?:-[A-Za-z]{2})?\/)?(track|album|playlist|episode|show|artist)\/([A-Za-z0-9]{10,})/
+  );
+  return match ? { kind: match[1], id: match[2] } : null;
+}
+
 /** URL を埋め込み種別に分ける。埋め込み対象でない（URL でない）場合は null。 */
 export function classifyEmbedUrl(raw) {
   const url = String(raw ?? "").trim();
   if (!/^https?:\/\/\S+$/.test(url)) return null;
   const video = youtubeId(url);
   if (video) return { type: "youtube", id: video, url };
+  const item = spotifyItem(url);
+  if (item) return { type: "spotify", ...item, url };
   const post = xPost(url);
   if (post) return { type: "x", ...post, url };
   return { type: "link", url };
@@ -65,6 +83,12 @@ export function classifyEmbedUrl(raw) {
 
 export function youtubeEmbedHtml(id) {
   return `<div class="embed embed--youtube"><iframe src="https://www.youtube-nocookie.com/embed/${escapeHtml(id)}" title="YouTube video player" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>`;
+}
+
+export function spotifyEmbedHtml({ kind, id }) {
+  // 高さは Spotify 公式埋め込みの標準（track / episode は 152、それ以外は 352）。
+  const height = kind === "track" || kind === "episode" ? 152 : 352;
+  return `<div class="embed embed--spotify"><iframe src="https://open.spotify.com/embed/${escapeHtml(kind)}/${escapeHtml(id)}" title="Spotify player" width="100%" height="${height}" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
 }
 
 export function xEmbedHtml({ url }) {
@@ -188,6 +212,7 @@ export async function embedHtmlForUrl(url, fetchOgpFn = fetchOgp) {
   const classified = classifyEmbedUrl(url);
   if (!classified) return null;
   if (classified.type === "youtube") return youtubeEmbedHtml(classified.id);
+  if (classified.type === "spotify") return spotifyEmbedHtml(classified);
   if (classified.type === "x") return xEmbedHtml(classified);
   return linkCardHtml({ url: classified.url, ogp: await fetchOgpFn(classified.url) });
 }

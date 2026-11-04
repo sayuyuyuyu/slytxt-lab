@@ -1245,6 +1245,13 @@ html.js .terminal__console {
   border-radius: 10px;
   background: var(--surface);
 }
+.article-body .embed--spotify iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+}
 .article-body .embed--x {
   display: flex;
   justify-content: center;
