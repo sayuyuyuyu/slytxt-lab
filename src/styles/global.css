@@ -818,10 +818,6 @@ html.js .terminal__console {
 .project-card__title a {
   text-decoration: none;
 }
-.entry-card__title a::after,
-.project-card__title a::after {
-  content: "";
-}
 .entry-card__title a:hover,
 .project-card__title a:hover {
   text-decoration: underline;
