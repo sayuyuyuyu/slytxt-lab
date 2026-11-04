@@ -51,10 +51,10 @@ const date = getEntryDate(entry);
       <div class="article-body">
         <Content />
       </div>
-      <div class="article-nav" data-pagefind-ignore>
+      <nav class="article-nav" aria-label="Project links" data-pagefind-ignore>
         {entry.data.repo && <a href={entry.data.repo} rel="noreferrer"><span>Repository</span>{entry.data.repo}</a>}
         {entry.data.demo && <a href={entry.data.demo} rel="noreferrer"><span>Demo</span>{entry.data.demo}</a>}
-      </div>
+      </nav>
     </article>
   </div>
 </BaseLayout>
