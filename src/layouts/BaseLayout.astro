@@ -64,8 +64,10 @@ const imageUrl = new URL(image, Astro.site);
     </script>
     <script is:inline>
       // Motion が読み込めない・動かない場合でも内容が消えないように。
+      // Motion が正常に初期化できた場合は、画面外要素の出現を inView に任せる。
       window.addEventListener("load", () => {
         window.setTimeout(() => {
+          if (document.documentElement.dataset.motionReady === "true") return;
           document.querySelectorAll("[data-motion]").forEach((el) => {
             if (Number(getComputedStyle(el).opacity) < 0.05) {
               el.style.opacity = "1";
@@ -111,6 +113,7 @@ const imageUrl = new URL(image, Astro.site);
     <script>
       import { animate, inView } from "motion";
 
+      document.documentElement.dataset.motionReady = "true";
       const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
       const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-motion]"));
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
