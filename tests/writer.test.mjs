@@ -991,3 +991,45 @@ test("publish: AI 要約が失敗したら抜粋で公開が完結する", async
     globalThis.fetch = original;
   }
 });
+
+test("publish: notes はタイトルが無ければ title を空で書き、本文の書き出しで代用しない", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ category: "notes" });
+    await store.writeDraft(draft.id, { body: "最初の行がこれです。\n続きの文。" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.state, "waiting");
+    assert.equal(posted.title, "");
+    const content = Buffer.from([...gh.state.branchFiles.values()][0], "base64").toString("utf8");
+    // サイト側スキーマが title キーを必須とするため、空でも明示して書く。
+    assert.match(content, /^title: ""$/m);
+    assert.doesNotMatch(content, /^title: 最初の行がこれです。/m);
+  });
+});
+
+test("publish: notes でもタイトルが付いていればそのまま書く", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "メモの題", category: "notes" });
+    await store.writeDraft(draft.id, { body: "本文です。" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.title, "メモの題");
+    const content = Buffer.from([...gh.state.branchFiles.values()][0], "base64").toString("utf8");
+    assert.match(content, /^title: メモの題$/m);
+  });
+});
+
+test("publish: 記事はタイトルが無ければ本文の書き出しをタイトルにする（従来どおり）", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ category: "journal" });
+    await store.writeDraft(draft.id, { body: "書き出しが題になる。\n続きの文。" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.title, "書き出しが題になる。");
+    const content = Buffer.from([...gh.state.branchFiles.values()][0], "base64").toString("utf8");
+    assert.match(content, /^title: 書き出しが題になる。$/m);
+  });
+});

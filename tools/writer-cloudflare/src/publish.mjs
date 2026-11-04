@@ -70,9 +70,15 @@ export function normalizeSlug(raw, fallbackDate = today()) {
   return cleaned || `post-${fallbackDate.replace(/-/g, "")}`;
 }
 
-/** タイトルが無いドラフトは、本文の書き出しをタイトルにする。 */
+/**
+ * 公開時のタイトル。記事はタイトルが無ければ本文の書き出しで補う。
+ * notes はタイトル不要なので、付いていなければ空のままにする
+ * （本文の書き出しで代用しない。公開側の表示名は frontmatter の
+ * title そのものを使う前提）。
+ */
 function deriveTitle(draft, body) {
   if (draft.title && draft.title !== "無題") return draft.title;
+  if (draft.category === "notes") return "";
   const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
   const text = plainText(firstLine).replace(/\s+/g, " ").trim();
   return truncateText(text || "無題", 40);
@@ -145,11 +151,15 @@ async function publishPostInner({ env, store, id, onLog }) {
   const note = draft.category === "notes";
   const file = `src/content/${draft.category}/${slug}.md`;
   const branch = `${note ? "note" : "write"}/${slug}`;
+  // タイトル無しの notes は title: "" を明示して書く。stringifyFrontmatter は
+  // 空文字列のキーを落とすが、サイト側のスキーマは title キーが必須なので、
+  // extras で行そのものを足す。
   const content = stringifyFrontmatter(
     { title, description, published, tags, cover: draft.cover || undefined },
-    body
+    body,
+    title === "" ? ['title: ""'] : []
   );
-  const commitMessage = `${note ? "note" : "post"}: ${title}`;
+  const commitMessage = `${note ? "note" : "post"}: ${title || slug}`;
 
   const gh = createGitHubClient(env);
 
@@ -223,7 +233,8 @@ async function publishPostInner({ env, store, id, onLog }) {
   onLog(`書き出しました: ${file}`);
 
   const pr = await gh.createPull({
-    title,
+    // タイトル無しの notes は PR タイトルが空になるので、コミットメッセージで代用する。
+    title: title || commitMessage,
     head: branch,
     base: "main",
     body: "執筆ツール（write.slytxt.dev）から投稿。"
