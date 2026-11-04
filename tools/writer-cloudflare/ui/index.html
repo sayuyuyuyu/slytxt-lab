@@ -155,7 +155,7 @@
 
     <div id="publishPanel" class="dialog" hidden>
       <div class="dialog__backdrop"></div>
-      <div class="dialog__panel" role="dialog" aria-modal="true" aria-labelledby="publishPanelTitle" aria-describedby="publishFile publishNote">
+      <div class="dialog__panel" role="dialog" aria-modal="true" aria-labelledby="publishPanelTitle" aria-describedby="publishFile publishNote publishDescriptionNote">
         <h2 id="publishPanelTitle" class="dialog__title">公開の確認</h2>
         <div class="dialog__row">
           <span class="dialog__label">タイトル</span>
@@ -178,6 +178,19 @@
             autocomplete="off"
           />
           <datalist id="tagCandidates"></datalist>
+        </div>
+        <div class="dialog__row">
+          <label class="dialog__label" for="publishDescription">説明文</label>
+          <textarea
+            id="publishDescription"
+            class="field"
+            rows="3"
+            maxlength="300"
+            placeholder="記事の説明文（空欄なら AI 要約か本文の抜粋で自動生成）"
+          ></textarea>
+          <p class="dialog__note" id="publishDescriptionNote">
+            公開ページのタイトル下と、検索結果やリンク共有の説明に出る文章です。
+          </p>
         </div>
         <p class="dialog__note" id="publishFile"></p>
         <p class="dialog__note" id="publishNote">PR を作成し、CI が通ると自動でマージされます。</p>

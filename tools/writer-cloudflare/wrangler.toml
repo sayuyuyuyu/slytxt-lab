@@ -25,6 +25,10 @@ preview_id = "52a4dd63c0164774ab9ca6d0c5f3855c"
 [vars]
 GITHUB_OWNER = "sayuyuyuyu"
 GITHUB_REPO = "slytxt-lab"
+# AI 要約（OpenCode Go）の設定。エンドポイントとモデルはここで差し替えられる。
+OPENCODE_GO_API_URL = "https://opencode.ai/inference/go/openai/v1/chat/completions"
+OPENCODE_GO_MODEL = "glm-5.3-flash"
 
 # secrets はここに書かない。デプロイ時に wrangler secret put で登録する:
 #   GITHUB_TOKEN      GitHub fine-grained PAT（必須）
+#   OPENCODE_GO_API_KEY OpenCode Go の API キー（任意。未設定なら AI 要約を使わず、抜粋で公開する）

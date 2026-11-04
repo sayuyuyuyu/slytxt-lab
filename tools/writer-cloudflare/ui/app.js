@@ -45,6 +45,8 @@ const els = {
   publishOpen: $("#publishOpen"),
   publishPanel: $("#publishPanel"),
   publishTitle: $("#publishTitle"),
+  publishDescription: $("#publishDescription"),
+  publishDescriptionNote: $("#publishDescriptionNote"),
   tags: $("#tags"),
   tagInput: $("#tagInput"),
   tagCandidates: $("#tagCandidates"),
@@ -518,6 +520,7 @@ function applyDraft(draft) {
   els.category.value = draft.category;
   els.titleInput.value = draft.title && draft.title !== "無題" ? draft.title : "";
   els.body.value = draft.body;
+  els.publishDescription.value = draft.description ?? "";
   state.tags = [...(draft.tags ?? [])];
   renderTags();
   state.cover = draft.cover ?? "";
@@ -545,6 +548,7 @@ function clearEditor() {
   renderCover();
   els.titleInput.value = "";
   els.body.value = "";
+  els.publishDescription.value = "";
   editorSet("");
   showEmpty(true);
   renderList();
@@ -603,6 +607,7 @@ function collect() {
     title: els.titleInput.value.trim(),
     tags: [...state.tags],
     cover: state.cover,
+    description: els.publishDescription.value.trim(),
     body: els.body.value
   };
 }
@@ -827,6 +832,7 @@ let confirmReturnFocus = null;
 let publishReturnFocus = null;
 let publishCategorySnapshot = null;
 let publishTagsSnapshot = null;
+let publishDescriptionSnapshot = null;
 
 // ダイアログ用: 開く前にフォーカスがあった要素へ戻し、開いている間は Tab を内側で循環させる。
 function rememberFocus() {
@@ -1068,11 +1074,13 @@ function openPublishPanel() {
   });
   publishCategorySnapshot = els.category.value;
   publishTagsSnapshot = [...state.tags];
+  publishDescriptionSnapshot = els.publishDescription.value;
   renderTags();
   updatePublishFile();
   publishReturnFocus = rememberFocus();
   els.publishPanel.hidden = false;
   els.publishConfirm.focus();
+  if (!els.publishDescription.value.trim()) void fillDescriptionSuggestion();
 }
 
 function closePublishPanel({ restoreCategory = false } = {}) {
@@ -1093,11 +1101,19 @@ function closePublishPanel({ restoreCategory = false } = {}) {
       renderTags();
       changed = true;
     }
+    if (
+      publishDescriptionSnapshot !== null &&
+      els.publishDescription.value !== publishDescriptionSnapshot
+    ) {
+      els.publishDescription.value = publishDescriptionSnapshot;
+      changed = true;
+    }
     // 変更時に先行して保存済み／保存予定でも、戻した内容で保存し直す。
     if (changed) scheduleSave();
   }
   publishCategorySnapshot = null;
   publishTagsSnapshot = null;
+  publishDescriptionSnapshot = null;
   if (!wasHidden) {
     restoreFocus(publishReturnFocus);
     publishReturnFocus = null;
@@ -1112,6 +1128,30 @@ function setBusy(busy) {
   els.publishOpen.disabled = disabled;
   els.editorMenu.disabled = disabled;
   els.publishConfirm.disabled = busy;
+}
+
+/** 説明文が空のとき、AI 要約（無ければ抜粋）の候補を入れる。本人が直せる前提の下書き。 */
+async function fillDescriptionSuggestion() {
+  const id = state.current?.id;
+  if (!id) return;
+  els.publishDescriptionNote.textContent = "説明文の候補を作っています…";
+  try {
+    const data = await api(`/api/drafts/${encodeURIComponent(id)}/summary`, {
+      method: "POST",
+      body: JSON.stringify({ title: els.titleInput.value.trim(), body: els.body.value })
+    });
+    if (state.current?.id !== id) return;
+    if (data.summary && !els.publishDescription.value.trim()) {
+      els.publishDescription.value = data.summary;
+    }
+    els.publishDescriptionNote.textContent =
+      data.source === "ai"
+        ? "AI 要約の候補です。そのまま使っても、直しても大丈夫です。"
+        : "本文の抜粋です。そのまま使っても、直しても大丈夫です。";
+  } catch {
+    els.publishDescriptionNote.textContent =
+      "候補を作れませんでした。空欄のままなら、公開時に自動で作られます。";
+  }
 }
 
 async function runPublish() {

@@ -14,7 +14,8 @@ import {
   DraftNotFound,
   createDraftStore
 } from "./drafts-kv.mjs";
-import { PublishError, publishPost, publishStatus } from "./publish.mjs";
+import { PublishError, deriveDescription, publishPost, publishStatus } from "./publish.mjs";
+import { generateSummary } from "./summary.mjs";
 import { MediaError, mediaStatus, uploadMedia } from "./media.mjs";
 
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -138,6 +139,19 @@ async function handleApi(request, env, url) {
 
   if (resource === "media" && id && action === "status" && method === "GET") {
     return json(await mediaStatus(env, id));
+  }
+
+  // 公開パネル用の説明文候補。AI 要約が作れればそれを、無ければ抜粋を返す。
+  // 候補はここでは保存しない（確定は通常の保存＝公開パネルの値で行う）。
+  if (resource === "drafts" && id && action === "summary" && method === "POST") {
+    const input = await readJsonBody(request).catch(() => ({}));
+    const draft = await store.readDraft(id);
+    const draftTitle =
+      typeof input.title === "string" && input.title.trim() ? input.title : draft.title;
+    const draftBody = typeof input.body === "string" && input.body.trim() ? input.body : draft.body;
+    const summary = await generateSummary(env, { title: draftTitle, body: draftBody });
+    if (summary) return json({ summary, source: "ai" });
+    return json({ summary: deriveDescription(draftBody), source: "excerpt" });
   }
 
   if (resource === "publish" && id && action === "status" && method === "GET") {

@@ -11,6 +11,7 @@ import {
   publishStatus
 } from "../tools/writer-cloudflare/src/publish.mjs";
 import { mediaStatus, uploadMedia } from "../tools/writer-cloudflare/src/media.mjs";
+import { generateSummary, summaryConfig } from "../tools/writer-cloudflare/src/summary.mjs";
 
 /**
  * drafts-kv のテスト用に、Cloudflare KV の最小インターフェースを
@@ -711,4 +712,140 @@ test("media冪等: 移行前の UUID キーでも状態を確認できる", asyn
     assert.equal(status.state, "merged");
     await assert.rejects(() => mediaStatus(testEnv, "not-a-key.png"));
   });
+});
+
+test("drafts: 説明文（description）が往復し、空にすると消える", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  const draft = await store.createDraft({ title: "説明文確認" });
+
+  await store.writeDraft(draft.id, { description: "手で決めた説明文。" });
+  const loaded = await store.readDraft(draft.id);
+  assert.equal(loaded.description, "手で決めた説明文。");
+  assert.match(kv.map.get(`draft:${draft.id}`), /description:/);
+
+  await store.writeDraft(draft.id, { description: "" });
+  assert.equal((await store.readDraft(draft.id)).description, "");
+  assert.doesNotMatch(kv.map.get(`draft:${draft.id}`), /description:/);
+});
+
+test("summary: キーが無ければ生成しない", async () => {
+  assert.equal(summaryConfig({}), null);
+  const summary = await generateSummary({}, { title: "t", body: "本文です。" }, async () => {
+    throw new Error("呼ばれないはず");
+  });
+  assert.equal(summary, "");
+});
+
+test("summary: 応答を整えて返し、既定のエンドポイントとモデルで送る", async () => {
+  const seen = [];
+  const stub = async (url, options) => {
+    seen.push({ url, options });
+    return new Response(
+      JSON.stringify({ choices: [{ message: { content: "「要約の文です。」" } }] }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  };
+  const summary = await generateSummary(
+    { OPENCODE_GO_API_KEY: "key" },
+    { title: "タイトル", body: "本文の内容です。" },
+    stub
+  );
+  assert.equal(summary, "要約の文です。");
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].url, "https://opencode.ai/inference/go/openai/v1/chat/completions");
+  assert.equal(seen[0].options.headers.authorization, "Bearer key");
+  const payload = JSON.parse(seen[0].options.body);
+  assert.equal(payload.model, "glm-5.3-flash");
+});
+
+test("summary: 失敗したら空文字（フォールバック前提）", async () => {
+  const ng = async () => new Response("err", { status: 500 });
+  assert.equal(
+    await generateSummary({ OPENCODE_GO_API_KEY: "key" }, { title: "t", body: "本文。" }, ng),
+    ""
+  );
+  const boom = async () => {
+    throw new Error("network");
+  };
+  assert.equal(
+    await generateSummary({ OPENCODE_GO_API_KEY: "key" }, { title: "t", body: "本文。" }, boom),
+    ""
+  );
+});
+
+test("publish: 下書きの説明文があればそのまま使う（AI は呼ばない）", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "説明文テスト", category: "notes" });
+    await store.writeDraft(draft.id, {
+      body: "本文です。",
+      description: "本人が決めた説明文。"
+    });
+    const posted = await publishPost({
+      env: { GITHUB_TOKEN: "test-token", OPENCODE_GO_API_KEY: "go-key" },
+      store,
+      id: draft.id
+    });
+    assert.equal(posted.state, "waiting");
+    const content = Buffer.from([...gh.state.branchFiles.values()][0], "base64").toString("utf8");
+    assert.ok(content.includes("本人が決めた説明文。"), content);
+  });
+});
+
+test("publish: 説明文が無ければ AI 要約を使い、下書きに書き戻す", async () => {
+  const gh = fakeGitHub();
+  const fetchImpl = async (url, options) => {
+    if (String(url).includes("opencode.ai")) {
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: "AI の要約文です。" } }] }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      );
+    }
+    return gh.fetchStub(url, options);
+  };
+  const original = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  try {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "AI 要約テスト", category: "notes" });
+    await store.writeDraft(draft.id, { body: "本文です。AI に要約してもらいます。" });
+    const posted = await publishPost({
+      env: { GITHUB_TOKEN: "test-token", OPENCODE_GO_API_KEY: "go-key" },
+      store,
+      id: draft.id
+    });
+    assert.equal(posted.state, "waiting");
+    const content = Buffer.from([...gh.state.branchFiles.values()][0], "base64").toString("utf8");
+    assert.ok(content.includes("AI の要約文です。"), content);
+    assert.equal((await store.readDraft(draft.id)).description, "AI の要約文です。");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("publish: AI 要約が失敗したら抜粋で公開が完結する", async () => {
+  const gh = fakeGitHub();
+  const fetchImpl = async (url, options) => {
+    if (String(url).includes("opencode.ai")) return new Response("err", { status: 500 });
+    return gh.fetchStub(url, options);
+  };
+  const original = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  try {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "フォールバック", category: "notes" });
+    await store.writeDraft(draft.id, { body: "抜粋になる本文です。よろしくお願いします。" });
+    const posted = await publishPost({
+      env: { GITHUB_TOKEN: "test-token", OPENCODE_GO_API_KEY: "go-key" },
+      store,
+      id: draft.id
+    });
+    assert.equal(posted.state, "waiting");
+    const content = Buffer.from([...gh.state.branchFiles.values()][0], "base64").toString("utf8");
+    assert.ok(content.includes("抜粋になる本文です。"), content);
+  } finally {
+    globalThis.fetch = original;
+  }
 });
