@@ -159,13 +159,32 @@ if (rssXml !== null) {
     else issues.push(`rss.xml: missing ${value}`);
   }
 }
-for (const asset of ["pagefind/pagefind-ui.js"]) {
+for (const asset of [
+  "pagefind/pagefind-ui.js",
+  "pagefind/pagefind-ui.css",
+  "pagefind/pagefind.js",
+  "pagefind/pagefind-entry.json",
+  "pagefind/wasm.unknown.pagefind",
+]) {
   try {
     if (!(await stat(path.join(root, asset))).isFile()) throw new Error("not a file");
     checkedPagefindAssets++;
   } catch {
     issues.push(asset + ": missing file");
   }
+}
+for (const [directory, suffix] of [
+  ["pagefind/index", ".pf_index"],
+  ["pagefind/fragment", ".pf_fragment"],
+]) {
+  let names = [];
+  try {
+    names = await readdir(path.join(root, directory));
+  } catch {
+    names = [];
+  }
+  if (names.some((name) => name.endsWith(suffix))) checkedPagefindAssets++;
+  else issues.push(`${directory}: missing ${suffix} file`);
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
