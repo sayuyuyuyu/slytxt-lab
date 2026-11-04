@@ -70,7 +70,13 @@ export async function listPublishResults(env) {
 export async function drivePendingPublishes(env) {
   const store = createDraftStore(env.DRAFTS);
 
-  const drafts = await store.listDrafts().catch(() => []);
+  const drafts = await store.listDrafts().catch((error) => {
+    console.error(`driver: listDrafts failed: ${error?.message ?? error}`);
+    return [];
+  });
+  console.log(
+    `driver: tick drafts=${drafts.length} withPr=${drafts.filter((d) => d.pr).length}`
+  );
   let driven = 0;
   for (const draft of drafts) {
     if (driven >= MAX_PER_TICK) break;
@@ -78,10 +84,14 @@ export async function drivePendingPublishes(env) {
     driven += 1;
     try {
       const result = await publishStatus({ env, store, id: draft.id });
+      // 見届けの成否は Workers のログで追えるようにする（以前は例外を
+      // 握り潰すだけで、本番で何が起きているか分からなかった）。
+      console.log(`driver: publish ${draft.id} -> ${result.state}`);
       if (result.state === "merged" || result.state === "failed") {
         await recordResult(env, draft, result);
       }
-    } catch {
+    } catch (error) {
+      console.error(`driver: publish ${draft.id} failed: ${error?.message ?? error}`);
       // 次の tick で再試行する。
     }
   }
@@ -90,7 +100,13 @@ export async function drivePendingPublishes(env) {
   // （public/media/<ファイル名>）から復元する。
   if (!env.GITHUB_TOKEN) return;
   const gh = createGitHubClient(env);
-  const pulls = await gh.listOpenPulls().catch(() => []);
+  const pulls = await gh.listOpenPulls().catch((error) => {
+    console.error(`driver: listOpenPulls failed: ${error?.message ?? error}`);
+    return [];
+  });
+  console.log(
+    `driver: tick openPulls=${pulls.length} media=${pulls.filter((p) => p.head?.ref?.startsWith("media/")).length}`
+  );
   let media = 0;
   for (const pr of pulls) {
     if (media >= MAX_PER_TICK) break;
@@ -99,8 +115,12 @@ export async function drivePendingPublishes(env) {
     try {
       const files = await gh.getPullFiles(pr.number);
       const file = files.find((entry) => entry.filename?.startsWith("public/media/"));
-      if (file) await mediaStatus(env, file.filename.split("/").pop());
-    } catch {
+      if (file) {
+        const result = await mediaStatus(env, file.filename.split("/").pop());
+        console.log(`driver: media ${pr.head.ref} -> ${result.state}`);
+      }
+    } catch (error) {
+      console.error(`driver: media ${pr.head.ref} failed: ${error?.message ?? error}`);
       // 次の tick で再試行する。
     }
   }

@@ -9,6 +9,6 @@ const { title, description } = Astro.props;
 
 <div class="empty-state">
   <p class="empty-state__cmd" aria-hidden="true">ls</p>
-  <p class="empty-state__title">{title}</p>
+  <h2 class="empty-state__title">{title}</h2>
   {description && <p>{description}</p>}
 </div>
