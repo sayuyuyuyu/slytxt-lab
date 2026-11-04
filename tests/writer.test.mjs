@@ -3,6 +3,7 @@ import test from "node:test";
 import { createDraftStore, normalizeDraft } from "../tools/writer-cloudflare/src/drafts-kv.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer-cloudflare/src/frontmatter.mjs";
 import {
+  loneEmbedUrls,
   plainText,
   renderMarkdown,
   renderPreviewMarkdown,
@@ -238,6 +239,61 @@ test("preview: キャプション付きの単独画像は figure になる", () 
   assert.match(noCaption, /<p><img src="https:\/\/example\.com\/a\.png" alt="代替テキスト" \/><\/p>/);
   const inText = renderPreviewMarkdown('前 ![代替テキスト](https://example.com/a.png "説明文です") 後');
   assert.doesNotMatch(inText, /<figure>/);
+});
+
+test("preview: <br /> だけの行は文字列ではなく改行になる", () => {
+  const html = renderPreviewMarkdown("前\n\n<br />\n\n後");
+  assert.match(html, /<p>前<\/p>\n<br \/>\n<p>後<\/p>/);
+  assert.doesNotMatch(html, /&lt;br/);
+});
+
+test("preview: 行末のバックスラッシュは強制改行になる", () => {
+  const html = renderPreviewMarkdown("1行目\\\n2行目");
+  assert.match(html, /<p>1行目<br \/>\n2行目<\/p>/);
+  // エスケープされた \\ は改行にしない。
+  const escaped = renderPreviewMarkdown("末尾\\\\\n次");
+  assert.doesNotMatch(escaped, /<br \/>/);
+});
+
+test("preview: 実例の組み合わせ（見出し・<br />・Spotify の autolink）", () => {
+  const body = [
+    "## Challenger",
+    "",
+    "<br />",
+    "",
+    "<https://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw?si=abc&utm_source=copy-link>",
+    "",
+    "感想。\\",
+    "続き"
+  ].join("\n");
+  const html = renderPreviewMarkdown(body);
+  assert.match(html, /<h2>Challenger<\/h2>/);
+  assert.match(
+    html,
+    /<div class="embed embed--spotify"><iframe src="https:\/\/open\.spotify\.com\/embed\/track\/5oCptG3RbPTbXKFpVjUgmw"/
+  );
+  assert.match(html, /感想。<br \/>\n続き/);
+});
+
+test("markdown: loneEmbedUrls は単独段落の埋め込み対象だけを拾う", () => {
+  const found = loneEmbedUrls(
+    [
+      "## 見出し",
+      "",
+      "<https://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw?si=x>",
+      "",
+      "https://example.com/page",
+      "",
+      "文中の https://www.youtube.com/watch?v=dQw4w9WgXcQ は対象外",
+      "",
+      "https://x.com/slytxt/status/1234567890123456789"
+    ].join("\n")
+  );
+  assert.deepEqual(
+    found.map((item) => item.type),
+    ["spotify", "x"]
+  );
+  assert.deepEqual(loneEmbedUrls("ただの文章\n\nhttps://example.com/page"), []);
 });
 
 test("drafts: 手で足したキーとコメントを消さない", async () => {
