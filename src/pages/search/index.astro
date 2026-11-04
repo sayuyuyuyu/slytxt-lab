@@ -21,7 +21,17 @@ const hasTags = collectTags(await getAllEntries()).size > 0;
   <script is:inline define:vars={{ hasTags }}>
     (() => {
       const status = document.getElementById("search-status");
-      const fail = () => { status.textContent = hasTags ? "検索を読み込めませんでした。ページを再読み込みするか、Tags を見てください。" : "検索を読み込めませんでした。ページを再読み込みしてください。"; };
+      const fail = () => {
+        status.textContent = "検索を読み込めませんでした。";
+        if (hasTags) {
+          const link = document.createElement("a");
+          link.href = "/tags/";
+          link.textContent = "Tags";
+          status.append("ページを再読み込みするか、", link, " を見てください。");
+        } else {
+          status.append("ページを再読み込みしてください。");
+        }
+      };
       const script = document.createElement("script");
       script.src = "/pagefind/pagefind-ui.js";
       script.onload = () => {
