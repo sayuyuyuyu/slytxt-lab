@@ -373,6 +373,33 @@ textarea {
   white-space: nowrap;
 }
 
+/* 画像の非同期アップロードの進捗表示（エディタバー）。 */
+.upload-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.upload-status[data-state="error"] {
+  border-color: var(--accent);
+}
+
+.upload-status__retry {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* タイトル欄。本文とは独立した入力で、大きめの文字で出す。 */
 .editor__title {
   width: 100%;

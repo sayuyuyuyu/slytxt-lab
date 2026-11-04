@@ -195,12 +195,109 @@ const hrCaretPlugin = $prose(
  * onChange はユーザー編集で markdown が変わるたびに呼ばれる。
  * onUpload は画像ファイルを受け取り、公開 URL を返す関数（app.js 側）。
  */
-export async function createCrepe(root, { value = "", onChange, onUpload, features } = {}) {
+export async function createCrepe(
+  root,
+  { value = "", onChange, onUpload, onUploadState, features } = {}
+) {
   const upload =
     onUpload ??
     (async () => {
       throw new Error("画像のアップロード先が設定されていません。");
     });
+
+  /*
+   * 画像アップロードの非同期化。
+   *
+   * Crepe 標準では、アップロード（この writer では GitHub PR → CI →
+   * マージまで待つ処理）が終わるまで画像が本文に入らない。代わりに
+   * blob URL を即座に返してローカルプレビューを出し、本来の
+   * アップロードは裏で進める。完了したら文書内の画像ノードの src を
+   * 最終 URL へ差し替える。状態は onUploadState で app.js へ通知し、
+   * エディタバーの表示と保存時の URL 解決（handle 参照）に使う。
+   */
+  const uploads = new Map();
+  let donePulse = 0;
+  const notifyUploads = () => {
+    if (!onUploadState) return;
+    let active = 0;
+    const failures = [];
+    for (const record of uploads.values()) {
+      if (record.state === "posting" || record.state === "reflecting") active += 1;
+      if (record.state === "failed") failures.push(record.error);
+    }
+    onUploadState({ active, failures, donePulse });
+  };
+  const swapImageSrc = (blobUrl, finalUrl) => {
+    crepe.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx);
+      const positions = [];
+      view.state.doc.descendants((node, pos) => {
+        if (
+          (node.type.name === "image-block" || node.type.name === "image") &&
+          node.attrs.src === blobUrl
+        ) {
+          positions.push(pos);
+        }
+      });
+      if (!positions.length) return;
+      let tr = view.state.tr;
+      for (const pos of positions) {
+        const node = tr.doc.nodeAt(pos);
+        if (node) tr = tr.setNodeMarkup(pos, undefined, { ...node.attrs, src: finalUrl });
+      }
+      view.dispatch(tr);
+    });
+  };
+  const startUpload = (record) => {
+    record.state = "posting";
+    record.error = "";
+    notifyUploads();
+    (async () => {
+      try {
+        const finalUrl = await upload(record.file, {
+          onPosted: (url) => {
+            // POST が通った時点で最終 URL は確定する。ここからは
+            // PR の反映待ち（保存はこの URL で行ってよい）。
+            if (url) record.finalUrl = url;
+            record.state = "reflecting";
+            record.resolvePosted(url ?? "");
+            notifyUploads();
+          }
+        });
+        record.finalUrl = finalUrl;
+        record.state = "done";
+        record.resolvePosted(finalUrl);
+        swapImageSrc(record.blobUrl, finalUrl);
+        URL.revokeObjectURL(record.blobUrl);
+        donePulse += 1;
+        notifyUploads();
+      } catch (error) {
+        record.state = "failed";
+        record.error = error?.message ?? String(error);
+        record.resolvePosted("");
+        notifyUploads();
+      }
+    })();
+  };
+  const uploadForCrepe = async (file) => {
+    const blobUrl = URL.createObjectURL(file);
+    let resolvePosted;
+    const posted = new Promise((resolve) => {
+      resolvePosted = resolve;
+    });
+    const record = {
+      blobUrl,
+      file,
+      state: "posting",
+      finalUrl: "",
+      error: "",
+      posted,
+      resolvePosted
+    };
+    uploads.set(blobUrl, record);
+    startUpload(record);
+    return blobUrl;
+  };
   const crepe = new Crepe({
     root,
     defaultValue: value,
@@ -217,9 +314,9 @@ export async function createCrepe(root, { value = "", onChange, onUpload, featur
         buildToolbar: buildBlockToolbar
       },
       [Crepe.Feature.ImageBlock]: {
-        onUpload: upload,
-        inlineOnUpload: upload,
-        blockOnUpload: upload
+        onUpload: uploadForCrepe,
+        inlineOnUpload: uploadForCrepe,
+        blockOnUpload: uploadForCrepe
       }
     }
   });
@@ -240,7 +337,47 @@ export async function createCrepe(root, { value = "", onChange, onUpload, featur
   return {
     getMarkdown: () => crepe.getMarkdown(),
     setMarkdown: (markdown) => crepe.editor.action(replaceAll(markdown)),
-    destroy: () => crepe.destroy(),
+    destroy: () => {
+      for (const record of uploads.values()) URL.revokeObjectURL(record.blobUrl);
+      return crepe.destroy();
+    },
+    // 画像の POST（最終 URL の確定）までを待つ。保存前に呼ぶことで、
+    // URL 未確定の画像が下書きから落ちるのを防ぐ。PR のマージ完了は待たない。
+    whenPosted: () =>
+      Promise.all(
+        [...uploads.values()]
+          .filter((record) => record.state === "posting")
+          .map((record) => record.posted)
+      ),
+    // 失敗した画像のアップロードをやり直す（エディタバーの再試行ボタン用）。
+    retryFailedUploads: () => {
+      for (const record of uploads.values()) {
+        if (record.state === "failed") startUpload(record);
+      }
+    },
+    /*
+     * 保存用 markdown の中の blob URL を、確定した最終 URL へ置き換える。
+     * 未確定・失敗のものは空文字にする（blob URL を下書きに残さないため。
+     * 未確定の画像は完了時の差し替えで保存し直される）。
+     */
+    resolveImageUrls: (markdown) => {
+      let text = String(markdown);
+      for (const record of uploads.values()) {
+        if (!text.includes(record.blobUrl)) continue;
+        if (record.finalUrl) {
+          text = text.split(record.blobUrl).join(record.finalUrl);
+        } else {
+          // URL が未確定・失敗の間は、画像記法ごと下書きから落とす
+          // （空の URL の画像を残さないため。完了すれば差し替え時に保存し直される）。
+          const escaped = record.blobUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          text = text.replace(
+            new RegExp(`!\\[[^\\]]*\\]\\(\\s*${escaped}(?:\\s+["'][^"']*["'])?\\s*\\)`, "g"),
+            ""
+          );
+        }
+      }
+      return text;
+    },
     // 検証スクリプト（scripts/check-editor.mjs）から編集を再現するための生インスタンス。
     crepe
   };
