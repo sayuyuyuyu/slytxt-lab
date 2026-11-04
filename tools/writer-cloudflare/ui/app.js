@@ -1408,7 +1408,9 @@ async function newDraft() {
     applyDraft(draft);
     setView("editor");
     await loadDrafts();
-    els.titleInput.focus();
+    // notes はタイトル欄が無いので本文へ、それ以外はタイトル欄へフォーカスする。
+    if (draft.category === "notes") focusBody();
+    else els.titleInput.focus();
   } catch (error) {
     toast(error.message, "error");
   }
