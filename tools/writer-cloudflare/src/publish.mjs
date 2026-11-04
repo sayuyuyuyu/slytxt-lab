@@ -8,6 +8,10 @@
  *   merge と後片付けを完了させる（設計書 2.4）。
  * - CI 失敗後に本文を直して再投稿すると、既存ブランチのファイルを
  *   更新して同じ PR で CI を回し直す。
+ * - 冪等性: 投稿 PR の同一性は「下書き ID から決まるブランチ名」で担保する。
+ *   再実行・再試行はまずブランチから PR の実状態を引き、既存があれば
+ *   続きから進める（新規作成は既存が無い場合だけ）。公開済みだった場合は
+ *   成功として収束させる。詳細は publishStatus 側のコメントを参照。
  */
 import { stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText } from "./markdown.mjs";
@@ -113,9 +117,36 @@ async function publishPostInner({ env, store, id, onLog }) {
 
   const gh = createGitHubClient(env);
 
+  // この下書きの PR はブランチ名で一意に引ける。再実行時はまず実状態を
+  // 確認し、既に公開まで終わっていたら成功として収束させる（前回の実行が
+  // 後片付けの前に落ちていた場合）。
+  const history = await gh.findPulls(branch);
+  const latest = history[0] ?? null;
+  if (latest && latest.state === "closed") {
+    const detail = await gh.getPull(latest.number).catch(() => null);
+    if (detail?.merged && (await gh.getContent(file, "main"))) {
+      onLog("この下書きは既に公開されています。後片付けだけ行います。");
+      await gh.deleteBranch(branch).catch(() => false);
+      await store.deleteDraft(id);
+      return {
+        branch,
+        file,
+        prUrl: latest.html_url,
+        url: publicUrl(draft.category, slug),
+        slug,
+        title,
+        state: "merged",
+        merged: true
+      };
+    }
+    // merge 済みなのにファイルが main に無い（手で消された等）、または
+    // merge されず閉じられた場合は、通常フローで作り直す（残ったブランチは
+    // 下の処理で消してから作り直す）。
+  }
+
   // 再投稿: 同じブランチの open PR が残っていたら、ファイルを更新して
   // 同じ PR で CI を回し直す。
-  const existingPr = await gh.findOpenPull(branch);
+  const existingPr = history.find((entry) => entry.state === "open") ?? null;
   if (existingPr) {
     onLog(`既存の PR を更新します: ${existingPr.html_url}`);
     const current = await gh.getContent(file, branch);
@@ -177,13 +208,21 @@ async function publishPostInner({ env, store, id, onLog }) {
 }
 
 /**
- * PR の状態を見て、済んでいれば片付ける。
- * - merged: ブランチと下書きを消して state "merged"
- * - ci が成功: その場で squash merge して片付け、state "merged"
+ * 公開の現在フェーズを GitHub 側の実状態から判定し、次に必要な操作だけを行う。
+ * 冪等化の中心: 下書きの PR はブランチ名で一意に引けるため、この確認が
+ * どの状態から呼ばれても同じ結果に収束する（Worker のリクエストが落ちても、
+ * 画面を再読み込みしても、公開を再実行してもよい）。
+ * - PR が特定できない: state "idle"
+ * - merged: ブランチと下書きを消して state "merged"（再マージは試みない）
+ * - closed（未 merge）: state "failed"（再実行で新しい PR を作り直す）
+ * - conflict（dirty）: state "failed"
+ * - ci 失敗: state "failed"（再実行で同じ PR の CI を回し直す）
+ * - ci 待ち: state "waiting"
+ * - ci 成功で BEHIND: update-branch で main を取り込んで state "waiting"。
+ *   取り込みは1回の確認につき1回だけ行い、新しい head での判定は次の
+ *   ポーリングに委ねる（この関数の中でループはしない）
+ * - ci 成功でマージ可能: その場で squash merge して片付け、state "merged"
  *   （Cloudflare Pages の結果は待たない。2026-11-04 本人決定）
- * - ci 失敗 / conflict / PR が閉じられた: state "failed"
- * - それ以外: state "waiting"
- * 下書きに pr が無ければ state "idle"。
  */
 export async function publishStatus({ env, store, id }) {
   try {
@@ -196,17 +235,28 @@ export async function publishStatus({ env, store, id }) {
 async function publishStatusInner({ env, store, id }) {
   const draft = await store.readDraft(id);
   const { slug, file, url } = publishTarget(draft);
+  const branch = `${draft.category === "notes" ? "note" : "write"}/${slug}`;
   const base = { prUrl: draft.pr || "", file, slug, url, title: draft.title };
 
-  if (!draft.pr) return { ...base, state: "idle" };
-
-  const number = Number(draft.pr.match(/\/pull\/(\d+)/)?.[1]);
-  if (!number) {
-    return { ...base, state: "failed", message: "下書きに残っている PR の URL を読めませんでした" };
-  }
-
   const gh = createGitHubClient(env);
-  const pr = await gh.getPull(number);
+
+  // PR の特定: 下書きに残る URL が第一情報。無い・読めない場合はブランチから
+  // 探して引き継ぐ（PR 作成直後に Worker が落ちて URL を保存できなかった
+  // 場合でも、次回の確認で同じ PR に収束する）。
+  let pr = null;
+  const recorded = Number(draft.pr.match(/\/pull\/(\d+)/)?.[1]);
+  if (draft.pr && recorded) {
+    pr = await gh.getPull(recorded);
+  } else {
+    const history = await gh.findPulls(branch);
+    const candidate = history[0] ?? null;
+    if (candidate) {
+      pr = await gh.getPull(candidate.number);
+      await store.writeDraft(id, { pr: pr.html_url });
+    }
+  }
+  if (!pr) return { ...base, state: "idle" };
+
   const prUrl = pr.html_url ?? draft.pr;
   const withPr = { ...base, prUrl, title: pr.title ?? base.title };
 
@@ -215,15 +265,26 @@ async function publishStatusInner({ env, store, id }) {
     await store.deleteDraft(id);
   };
 
+  const conflicted = {
+    ...withPr,
+    state: "failed",
+    message: `PR が main と conflict しています。PR で解消してから、再度「公開」を押してください: ${prUrl}`
+  };
+
   if (pr.merged) {
     await cleanup();
     return { ...withPr, state: "merged", merged: true };
   }
   if (pr.state === "closed") {
-    return { ...withPr, state: "failed", message: "PR が merge されずに閉じられました" };
+    return {
+      ...withPr,
+      state: "failed",
+      message:
+        "PR が merge されずに閉じられました。再度「公開」を押すと、新しい PR を作って投稿し直します。"
+    };
   }
   if (pr.mergeable === false && pr.mergeable_state === "dirty") {
-    return { ...withPr, state: "failed", message: `PR が conflict しています: ${prUrl}` };
+    return conflicted;
   }
 
   const checks = await gh.getChecks(pr.head.sha);
@@ -231,14 +292,63 @@ async function publishStatusInner({ env, store, id }) {
     return {
       ...withPr,
       state: "failed",
-      message: `${checks.message ?? "CI が失敗しました"}: ${prUrl}`
+      message: `${checks.message ?? "CI が失敗しました"}。本文を直して再度「公開」を押すと、同じ PR で CI を回し直します: ${prUrl}`
     };
   }
   if (checks.state === "pending") {
     return { ...withPr, state: "waiting" };
   }
 
-  await gh.mergePull(number, pr.title ?? base.title);
+  // ci 成功。残っている作業はマージだけ。
+  if (pr.mergeable_state === "behind") {
+    return takeInMain(gh, pr, withPr);
+  }
+  try {
+    await gh.mergePull(pr.number, pr.title ?? base.title);
+  } catch (error) {
+    // マージを試みた時点で状態が変わっていることがある（main が進んで
+    // BEHIND になった等）。実状態を取り直してから判断し直す。
+    const after = await gh.getPull(pr.number).catch(() => null);
+    if (after?.merged) {
+      await cleanup();
+      return { ...withPr, state: "merged", merged: true };
+    }
+    if (after && after.mergeable_state === "behind") {
+      return takeInMain(gh, after, withPr);
+    }
+    if (after && after.mergeable === false && after.mergeable_state === "dirty") {
+      return conflicted;
+    }
+    throw error;
+  }
   await cleanup();
   return { ...withPr, state: "merged", merged: true };
+}
+
+/**
+ * BEHIND の回復: main をブランチへ取り込み、CI の再実行待ちとして返す。
+ * 取り込み自体が conflict した場合は、理由と次の手が分かる形で failed を返す。
+ */
+async function takeInMain(gh, pr, withPr) {
+  const result = await gh.updateBranch(pr.number);
+  if (result.ok) {
+    return {
+      ...withPr,
+      state: "waiting",
+      note: "main の更新を取り込みました。CI の再実行を待っています…"
+    };
+  }
+  const after = await gh.getPull(pr.number).catch(() => null);
+  if (after && after.mergeable === false && after.mergeable_state === "dirty") {
+    return {
+      ...withPr,
+      state: "failed",
+      message: `main の取り込みで conflict しました。PR で解消してから、再度「公開」を押してください: ${withPr.prUrl}`
+    };
+  }
+  return {
+    ...withPr,
+    state: "failed",
+    message: `main の取り込みに失敗しました${result.message ? `: ${result.message}` : ""}。再度「公開」を押すと続きから進みます: ${withPr.prUrl}`
+  };
 }

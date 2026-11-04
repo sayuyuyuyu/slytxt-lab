@@ -156,6 +156,24 @@ export function createGitHubClient(env) {
       return Array.isArray(data) && data.length > 0 ? data[0] : null;
     },
 
+    /**
+     * ブランチに紐づく PR を新しい順にすべて返す（open / closed / merged 込み）。
+     * 公開フローの冪等化の要: 同じ下書き・同じ画像の PR はブランチ名で一意に
+     * 引けるので、再実行時はまずこの一覧から実状態を特定する。
+     * 一覧の各要素には merged の真偽が無いため、要れば getPull で取り直す。
+     */
+    async findPulls(branch) {
+      const query = new URLSearchParams({
+        state: "all",
+        head: `${owner}:${branch}`,
+        sort: "created",
+        direction: "desc",
+        per_page: "30"
+      });
+      const data = await must(`/pulls?${query}`, {}, "PR の検索");
+      return Array.isArray(data) ? data : [];
+    },
+
     async getPull(number) {
       return must(`/pulls/${number}`, {}, `PR #${number} の取得`);
     },
@@ -191,10 +209,18 @@ export function createGitHubClient(env) {
       return { state: "success", pages };
     },
 
-    /** main の最新をブランチへ取り込む（update-branch API）。成功は 202。 */
+    /**
+     * main の最新をブランチへ取り込む（update-branch API）。成功は 202。
+     * 呼び出し側が「取り込めた／失敗した（理由）」を判断できるよう、
+     * 真偽ではなく結果オブジェクトで返す。conflict 時は 422 が返る。
+     */
     async updateBranch(number) {
       const result = await api(`/pulls/${number}/update-branch`, { method: "PUT" });
-      return result.ok || result.status === 202;
+      return {
+        ok: result.ok || result.status === 202,
+        status: result.status,
+        message: result.data?.message ?? ""
+      };
     },
 
     async mergePull(number, title) {

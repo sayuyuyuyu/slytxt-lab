@@ -6,8 +6,11 @@ import { plainText, renderMarkdown } from "../tools/writer-cloudflare/src/markdo
 import {
   deriveDescription,
   normalizeSlug,
-  publicUrl
+  publicUrl,
+  publishPost,
+  publishStatus
 } from "../tools/writer-cloudflare/src/publish.mjs";
+import { mediaStatus, uploadMedia } from "../tools/writer-cloudflare/src/media.mjs";
 
 /**
  * drafts-kv のテスト用に、Cloudflare KV の最小インターフェースを
@@ -265,4 +268,419 @@ test("drafts: 見出し画像（cover）が往復し、空にすると消える"
   await store.writeDraft(draft.id, { cover: "" });
   assert.equal((await store.readDraft(draft.id)).cover, "");
   assert.doesNotMatch(kv.map.get(`draft:${draft.id}`), /cover:/);
+});
+
+/**
+ * GitHub REST API の最小フェイク（冪等フローの検証用）。
+ * global fetch を差し替えて使い、PR の実状態（open / ci / BEHIND / merged /
+ * closed）をテスト側で操作できるようにする。マージは mergeable_state が
+ * "behind" の間は 405 で失敗させ、ruleset（最新化必須）の挙動を再現する。
+ */
+function fakeGitHub() {
+  const state = {
+    mainSha: "main-sha-0",
+    mainFiles: new Map(),
+    branches: new Map(),
+    branchFiles: new Map(),
+    pulls: [],
+    checks: new Map(),
+    calls: [],
+    nextPr: 1,
+    updateCount: 0,
+    updateBranchFails: false,
+    mergeSabotageBehindOnce: false
+  };
+  const respond = (status, body) =>
+    status === 204
+      ? new Response(null, { status })
+      : new Response(JSON.stringify(body ?? {}), {
+          status,
+          headers: { "content-type": "application/json" }
+        });
+  const prView = (pr) => ({
+    number: pr.number,
+    title: pr.title,
+    state: pr.state,
+    merged: pr.merged,
+    mergeable: pr.mergeable_state === "dirty" ? false : true,
+    mergeable_state: pr.mergeable_state,
+    html_url: `https://github.com/sayuyuyuyu/slytxt-lab/pull/${pr.number}`,
+    head: { ref: pr.headRef, sha: pr.headSha }
+  });
+
+  async function fetchStub(url, options = {}) {
+    const method = options.method ?? "GET";
+    const target = new URL(url);
+    const path = target.pathname.replace("/repos/sayuyuyuyu/slytxt-lab", "");
+    state.calls.push(`${method} ${path}`);
+    const body = options.body ? JSON.parse(options.body) : {};
+
+    if (path === "/git/ref/heads/main" && method === "GET") {
+      return respond(200, { object: { sha: state.mainSha } });
+    }
+    if (path.startsWith("/git/ref/heads/") && method === "GET") {
+      const branch = path.slice("/git/ref/heads/".length);
+      return state.branches.has(branch)
+        ? respond(200, { object: { sha: state.branches.get(branch) } })
+        : respond(404, { message: "Not Found" });
+    }
+    if (path === "/git/refs" && method === "POST") {
+      const branch = body.ref.replace("refs/heads/", "");
+      state.branches.set(branch, body.sha);
+      return respond(201, { ref: body.ref });
+    }
+    if (path.startsWith("/git/refs/heads/") && method === "DELETE") {
+      const branch = path.slice("/git/refs/heads/".length);
+      state.branches.delete(branch);
+      return respond(204, null);
+    }
+    if (path.startsWith("/contents/") && method === "GET") {
+      const file = decodeURIComponent(path.slice("/contents/".length));
+      const ref = target.searchParams.get("ref");
+      const found =
+        ref === "main"
+          ? state.mainFiles.has(file)
+          : state.branchFiles.has(`${ref}:${file}`);
+      return found
+        ? respond(200, { sha: `blob-${file}`, path: file })
+        : respond(404, { message: "Not Found" });
+    }
+    if (path.startsWith("/contents/") && method === "PUT") {
+      const file = decodeURIComponent(path.slice("/contents/".length));
+      state.branchFiles.set(`${body.branch}:${file}`, body.content);
+      return respond(201, { content: { sha: `blob-${file}` } });
+    }
+    if (path === "/pulls" && method === "POST") {
+      const pr = {
+        number: state.nextPr,
+        title: body.title,
+        headRef: body.head,
+        headSha: state.branches.get(body.head) ?? "branch-sha",
+        state: "open",
+        merged: false,
+        mergeable_state: "clean"
+      };
+      state.nextPr += 1;
+      state.pulls.push(pr);
+      return respond(201, prView(pr));
+    }
+    if (path === "/pulls" && method === "GET") {
+      const head = target.searchParams.get("head")?.split(":")[1];
+      const wanted = target.searchParams.get("state") ?? "open";
+      const list = state.pulls
+        .filter((pr) => pr.headRef === head)
+        .filter((pr) => wanted === "all" || pr.state === wanted)
+        .sort((a, b) => b.number - a.number)
+        .map(prView);
+      return respond(200, list);
+    }
+    const pullMatch = path.match(/^\/pulls\/(\d+)$/);
+    if (pullMatch && method === "GET") {
+      const pr = state.pulls.find((entry) => entry.number === Number(pullMatch[1]));
+      return pr ? respond(200, prView(pr)) : respond(404, { message: "Not Found" });
+    }
+    const updateMatch = path.match(/^\/pulls\/(\d+)\/update-branch$/);
+    if (updateMatch && method === "PUT") {
+      if (state.updateBranchFails) {
+        return respond(422, { message: "Cannot update branch" });
+      }
+      const pr = state.pulls.find((entry) => entry.number === Number(updateMatch[1]));
+      state.updateCount += 1;
+      pr.headSha = `updated-sha-${pr.number}-${state.updateCount}`;
+      pr.mergeable_state = "clean";
+      return respond(202, { message: "Updating branch" });
+    }
+    const mergeMatch = path.match(/^\/pulls\/(\d+)\/merge$/);
+    if (mergeMatch && method === "PUT") {
+      const pr = state.pulls.find((entry) => entry.number === Number(mergeMatch[1]));
+      if (state.mergeSabotageBehindOnce) {
+        state.mergeSabotageBehindOnce = false;
+        pr.mergeable_state = "behind";
+        return respond(405, { message: "Pull Request is not mergeable" });
+      }
+      if (pr.mergeable_state === "behind" || pr.mergeable_state === "dirty") {
+        return respond(405, { message: "Pull Request is not mergeable" });
+      }
+      pr.merged = true;
+      pr.state = "closed";
+      state.mainSha = `main-after-${pr.number}`;
+      for (const key of [...state.branchFiles.keys()]) {
+        if (key.startsWith(`${pr.headRef}:`)) {
+          state.mainFiles.set(key.slice(pr.headRef.length + 1), state.branchFiles.get(key));
+          state.branchFiles.delete(key);
+        }
+      }
+      return respond(200, { merged: true, sha: state.mainSha });
+    }
+    const runsMatch = path.match(/^\/commits\/([^/]+)\/check-runs$/);
+    if (runsMatch && method === "GET") {
+      const verdict = state.checks.get(runsMatch[1]);
+      const runs = verdict
+        ? [
+            {
+              name: "ci",
+              status: verdict === "pending" ? "in_progress" : "completed",
+              conclusion: verdict === "pending" ? null : verdict,
+              started_at: "2026-11-04T00:00:00Z"
+            }
+          ]
+        : [];
+      return respond(200, { check_runs: runs });
+    }
+    const statusMatch = path.match(/^\/commits\/([^/]+)\/status$/);
+    if (statusMatch && method === "GET") {
+      return respond(200, { statuses: [] });
+    }
+    throw new Error(`fakeGitHub: 未対応の呼び出し ${method} ${path}`);
+  }
+
+  return { state, fetchStub };
+}
+
+/** fetch を差し替えて fn を実行し、終わったら元に戻す。 */
+async function withGitHub(gh, fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = gh.fetchStub;
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+const testEnv = { GITHUB_TOKEN: "test-token" };
+
+test("publish冪等: BEHIND はブランチ更新で回復し、次の確認でマージまで収束する", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "冪等テスト", category: "notes" });
+    await store.writeDraft(draft.id, { body: "本文です。" });
+
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+    const pr = gh.state.pulls[0];
+
+    // media PR のマージで main が先行した状況（ci 成功済み・BEHIND）。
+    gh.state.checks.set(pr.headSha, "success");
+    pr.mergeable_state = "behind";
+    const step1 = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step1.state, "waiting");
+    assert.match(step1.note ?? "", /取り込み/);
+    assert.equal(gh.state.updateCount, 1);
+    assert.equal(gh.state.calls.filter((call) => call.includes("/merge")).length, 0);
+
+    // 取り込み後の新しい head で ci が成功し直したらマージまで進む。
+    gh.state.checks.set(pr.headSha, "success");
+    const step2 = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step2.state, "merged");
+    assert.equal(pr.merged, true);
+    // 後片付けで下書きが消えている。
+    await assert.rejects(() => store.readDraft(draft.id));
+  });
+});
+
+test("publish冪等: マージ競合の瞬間だけ BEHIND になっても取り込みに切り替える", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "競合テスト", category: "notes" });
+    await store.writeDraft(draft.id, { body: "本文です。" });
+    await publishPost({ env: testEnv, store, id: draft.id });
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    // 見た目は clean だが、マージを試みた時点で BEHIND が判明するケース。
+    gh.state.mergeSabotageBehindOnce = true;
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "waiting");
+    assert.equal(gh.state.updateCount, 1);
+    assert.equal(pr.merged, false);
+  });
+});
+
+test("publish冪等: ブランチ更新が conflict したら理由つきで失敗にする", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "更新失敗", category: "notes" });
+    await store.writeDraft(draft.id, { body: "本文です。" });
+    await publishPost({ env: testEnv, store, id: draft.id });
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    pr.mergeable_state = "behind";
+    gh.state.updateBranchFails = true;
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "failed");
+    assert.match(step.message, /取り込みに失敗しました/);
+    assert.match(step.message, /続きから進みます/);
+  });
+});
+
+test("publish冪等: 既にマージ済みなら再マージせず成功として片付ける", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "マージ済み", category: "notes" });
+    await store.writeDraft(draft.id, { body: "本文です。" });
+    await publishPost({ env: testEnv, store, id: draft.id });
+    const pr = gh.state.pulls[0];
+    // 外部でマージまで終わっていた（後片付け前に落ちた）状態を再現。
+    pr.merged = true;
+    pr.state = "closed";
+    const mergesBefore = gh.state.calls.filter((call) => call.includes("/merge")).length;
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "merged");
+    assert.equal(
+      gh.state.calls.filter((call) => call.includes("/merge")).length,
+      mergesBefore
+    );
+    await assert.rejects(() => store.readDraft(draft.id));
+
+    // 公開の再実行でも、新しい PR を作らず成功に収束する。
+    const draft2 = await store.createDraft({ title: "マージ済み2", category: "notes" });
+    await store.writeDraft(draft2.id, { body: "本文です。" });
+    const posted2 = await publishPost({ env: testEnv, store, id: draft2.id });
+    const pr2 = gh.state.pulls[1];
+    pr2.merged = true;
+    pr2.state = "closed";
+    const file2 = `src/content/notes/${draft2.id}.md`;
+    gh.state.mainFiles.set(file2, "x");
+    await store.writeDraft(draft2.id, { pr: "" });
+    const again = await publishPost({ env: testEnv, store, id: draft2.id });
+    assert.equal(again.state, "merged");
+    assert.equal(gh.state.pulls.length, 2);
+    await assert.rejects(() => store.readDraft(draft2.id));
+  });
+});
+
+test("publish冪等: 下書きに PR が残っていなくてもブランチから引き継ぐ", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "引き継ぎ", category: "notes" });
+    await store.writeDraft(draft.id, { body: "本文です。" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    // PR 作成直後に Worker が落ちて URL を保存できなかった状態を再現。
+    await store.writeDraft(draft.id, { pr: "" });
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "waiting");
+    assert.equal(step.prUrl, posted.prUrl);
+    assert.equal((await store.readDraft(draft.id)).pr, posted.prUrl);
+  });
+});
+
+test("publish冪等: 閉じられた PR は再実行で作り直し、ci 失敗は同じ PR で回し直す", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "再実行", category: "notes" });
+    await store.writeDraft(draft.id, { body: "下書き v1" });
+    await publishPost({ env: testEnv, store, id: draft.id });
+    const pr1 = gh.state.pulls[0];
+    pr1.state = "closed";
+    const closed = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(closed.state, "failed");
+    assert.match(closed.message, /投稿し直します/);
+
+    // 再実行すると新しい PR が1つだけ増える。
+    const reposted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(reposted.state, "waiting");
+    assert.equal(gh.state.pulls.length, 2);
+    const pr2 = gh.state.pulls[1];
+
+    // ci 失敗 → failed。再投稿は同じ PR のファイルを更新するだけ。
+    gh.state.checks.set(pr2.headSha, "failure");
+    const failed = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(failed.state, "failed");
+    assert.match(failed.message, /同じ PR で CI を回し直します/);
+    await store.writeDraft(draft.id, { body: "下書き v2" });
+    const fixed = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(fixed.state, "waiting");
+    assert.equal(fixed.prUrl, reposted.prUrl);
+    assert.equal(gh.state.pulls.length, 2);
+  });
+});
+
+const PNG_BYTES = new Uint8Array(
+  Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+    "base64"
+  )
+);
+
+function mediaRequest(bytes) {
+  return {
+    async formData() {
+      const form = new FormData();
+      form.append("file", new File([bytes], "test.png", { type: "image/png" }));
+      return form;
+    }
+  };
+}
+
+test("media冪等: 同じ画像の再試行・重複アップロードで PR が増えない", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const first = await uploadMedia(mediaRequest(PNG_BYTES), testEnv);
+    assert.equal(first.state, "waiting");
+    assert.match(first.key, /^[0-9a-f]{32}\.png$/);
+    assert.equal(gh.state.pulls.length, 1);
+
+    // 再試行（同じバイト列）は同じキー・同じ PR を返す。
+    const retry = await uploadMedia(mediaRequest(PNG_BYTES), testEnv);
+    assert.equal(retry.key, first.key);
+    assert.equal(retry.prUrl, first.prUrl);
+    assert.equal(retry.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+
+    // ci 成功でマージまで進む。
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    const status = await mediaStatus(testEnv, first.key);
+    assert.equal(status.state, "merged");
+
+    // マージ後の再アップロードも成功として即座に収束する。
+    const again = await uploadMedia(mediaRequest(PNG_BYTES), testEnv);
+    assert.equal(again.state, "merged");
+    assert.equal(again.key, first.key);
+    assert.equal(gh.state.pulls.length, 1);
+
+    // 違う画像は違うキー・別の PR になる。
+    const otherBytes = new Uint8Array(PNG_BYTES);
+    otherBytes[20] ^= 0xff;
+    const other = await uploadMedia(mediaRequest(otherBytes), testEnv);
+    assert.notEqual(other.key, first.key);
+    assert.equal(other.state, "waiting");
+    assert.equal(gh.state.pulls.length, 2);
+  });
+});
+
+test("media冪等: BEHIND の media PR もブランチ更新で回復する", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const posted = await uploadMedia(mediaRequest(PNG_BYTES), testEnv);
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    pr.mergeable_state = "behind";
+    const step1 = await mediaStatus(testEnv, posted.key);
+    assert.equal(step1.state, "waiting");
+    assert.equal(gh.state.updateCount, 1);
+    gh.state.checks.set(pr.headSha, "success");
+    const step2 = await mediaStatus(testEnv, posted.key);
+    assert.equal(step2.state, "merged");
+    assert.equal(pr.merged, true);
+  });
+});
+
+test("media冪等: 移行前の UUID キーでも状態を確認できる", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const uuid = "12345678-1234-1234-1234-123456789012";
+    gh.state.mainFiles.set(`public/media/${uuid}.png`, "x");
+    // PR は無いが main にファイルがあるので merged として収束する。
+    const status = await mediaStatus(testEnv, `${uuid}.png`);
+    assert.equal(status.state, "merged");
+    await assert.rejects(() => mediaStatus(testEnv, "not-a-key.png"));
+  });
 });
