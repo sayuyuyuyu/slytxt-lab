@@ -613,6 +613,30 @@ html.js .terminal__console {
     font-size: 16px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Not found: the 404 page as a terminal log
+   --------------------------------------------------------------------------- */
+.not-found__terminal {
+  max-width: 720px;
+}
+.not-found__body {
+  padding: clamp(24px, 4vw, 40px);
+}
+.not-found__log {
+  margin: 20px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+.not-found__message {
+  margin: 0 0 22px;
+  color: var(--text-muted);
+}
 .section {
   padding-block: 48px;
 }
@@ -1445,6 +1469,13 @@ html.js [data-adult-content][data-locked="true"] {
     transform: scale(0.82);
   }
 }
+.site-footer__quote {
+  color: var(--text-muted);
+}
+.site-footer__quote::before {
+  content: "// ";
+  color: var(--accent-5);
+}
 .footer-links a {
   display: inline-flex;
   align-items: center;
@@ -1647,6 +1678,67 @@ html.theme-switching *::after {
     align-items: start;
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Easter egg: the Konami cat. Runs once across the bottom of the screen
+   while the page glitches for a moment, then everything is back to normal.
+   --------------------------------------------------------------------------- */
+.konami-cat {
+  position: fixed;
+  left: 0;
+  bottom: 18px;
+  z-index: 80;
+  color: var(--accent-5);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-30vw);
+}
+.konami-cat pre {
+  margin: 0;
+  font: inherit;
+}
+.konami-cat--run {
+  animation: konami-walk 2.6s linear forwards;
+}
+@keyframes konami-walk {
+  0% {
+    opacity: 0;
+    transform: translateX(-30vw);
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(104vw);
+  }
+}
+html.konami-on .site-main {
+  animation: konami-glitch 0.16s steps(2) 3;
+}
+@keyframes konami-glitch {
+  0% {
+    transform: translate(0);
+  }
+  25% {
+    transform: translate(-3px, 1px);
+  }
+  50% {
+    transform: translate(3px, -1px);
+  }
+  75% {
+    transform: translate(-1px, 2px);
+  }
+  100% {
+    transform: translate(0);
   }
 }
 

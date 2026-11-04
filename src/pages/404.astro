@@ -1,16 +1,38 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import PageHeader from "@/components/PageHeader.astro";
 import { site } from "@/lib/site";
 ---
+
 <BaseLayout title={`Not found - ${site.name}`} noindex noCanonical>
-  <PageHeader
-    title="Not found"
-    eyebrow="404 / not found"
-    description="ページが見つかりませんでした。トップに戻るか、検索から探してみてください。"
-  />
-  <section class="listing"><div class="container section-links">
-    <a class="button button--primary" href="/">Back home</a>
-    <a class="button" href="/search/">Search</a>
-  </div></section>
+  <section class="section not-found" data-motion>
+    <div class="container">
+      <div class="terminal not-found__terminal">
+        <div class="terminal__bar" aria-hidden="true">
+          <span class="terminal__dot terminal__dot--red"></span>
+          <span class="terminal__dot terminal__dot--yellow"></span>
+          <span class="terminal__dot terminal__dot--green"></span>
+          <span class="terminal__title">{site.name} — zsh</span>
+        </div>
+        <div class="not-found__body">
+          <p class="eyebrow">error / 404</p>
+          <h1 class="page-title">Not found</h1>
+          <pre class="not-found__log" aria-hidden="true"><code><span class="prompt">$</span> open <span data-notfound-path>…</span>
+open: そのページはありません
+HTTP/1.1 404 Not Found</code></pre>
+          <p class="not-found__message">
+            指定された URL のページは、このサイトにありません。アドレスが変わったか、削除された可能性があります。トップに戻るか、検索から探してみてください。
+          </p>
+          <div class="section-links">
+            <a class="button button--primary" href="/">Back home</a>
+            <a class="button" href="/search/">Search</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script is:inline>
+    // Fill the requested path into the fake log line.
+    const pathEl = document.querySelector("[data-notfound-path]");
+    if (pathEl) pathEl.textContent = window.location.pathname;
+  </script>
 </BaseLayout>

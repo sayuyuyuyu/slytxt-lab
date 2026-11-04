@@ -1,0 +1,67 @@
+---
+/* Site-wide easter eggs: a console greeting for whoever opens devtools,
+   and the Konami command (↑↑↓↓←→←→BA). Both stay out of the way of
+   normal browsing and typing. */
+---
+
+<div class="konami-cat" data-konami-cat aria-hidden="true">
+  <pre>{` /\\_/\\
+( o.o )
+ > ^ <`}</pre>
+</div>
+<script is:inline>
+  (() => {
+    console.log(
+      "%cslytxt.lab%c コンソールを開く人ですね。トップページのターミナルでも遊べます（help と打ってみてください）。",
+      "font-family: monospace; font-weight: bold;",
+      "font-family: monospace;"
+    );
+
+    const SEQUENCE = [
+      "ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown",
+      "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight",
+      "b", "a"
+    ];
+    let position = 0;
+    let timer = 0;
+
+    const trigger = () => {
+      const cat = document.querySelector("[data-konami-cat]");
+      document.documentElement.classList.add("konami-on");
+      if (cat) {
+        cat.classList.remove("konami-cat--run");
+        // Restart the walk even if it was triggered a moment ago.
+        void cat.offsetWidth;
+        cat.classList.add("konami-cat--run");
+      }
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        document.documentElement.classList.remove("konami-on");
+        if (cat) cat.classList.remove("konami-cat--run");
+      }, 2600);
+    };
+
+    document.addEventListener("keydown", (event) => {
+      // Never reinterpret typing: form fields and editable regions are
+      // out of bounds for the sequence.
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
+        position = 0;
+        return;
+      }
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+      if (key === SEQUENCE[position]) {
+        position += 1;
+      } else {
+        position = key === SEQUENCE[0] ? 1 : 0;
+      }
+      if (position === SEQUENCE.length) {
+        position = 0;
+        trigger();
+      }
+    });
+  })();
+</script>
