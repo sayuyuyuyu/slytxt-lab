@@ -1,5 +1,5 @@
 ---
-import { getEntryPath, type ProjectEntry } from "@/lib/content";
+import { getEntryDate, getEntryPath, type ProjectEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { projectStatusLabels } from "@/lib/site";
 import TagList from "./TagList.astro";
@@ -10,7 +10,7 @@ type Props = {
 };
 
 const { entry, headingLevel: Heading = "h3" } = Astro.props;
-const date = entry.data.updated ?? entry.data.started;
+const date = getEntryDate(entry);
 ---
 
 <article class="project-card" data-motion>
