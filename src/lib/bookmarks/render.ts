@@ -29,7 +29,8 @@ function renderText(text: string): string {
 function firstLine(text: string, limit = 80): string {
   const line = text.split("\n").find((value) => value.trim() !== "") ?? text;
   const trimmed = line.trim();
-  return trimmed.length > limit ? `${trimmed.slice(0, limit)}…` : trimmed;
+  const chars = Array.from(trimmed);
+  return chars.length > limit ? `${chars.slice(0, limit).join("")}…` : trimmed;
 }
 
 function authorLabel(item: BookmarkItem): string {

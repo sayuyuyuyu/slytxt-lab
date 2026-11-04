@@ -242,6 +242,27 @@ test("rendering escapes markup, linkifies bare URLs, and hides the page", () => 
   assert.equal(json.error, null);
 });
 
+test("RSS title truncation counts code points and does not split an emoji", () => {
+  const emoji = "\u{1F600}";
+  const text = "a".repeat(79) + emoji + "bcdef";
+  const snapshot = {
+    updatedAt: "2026-09-25T00:00:00Z",
+    attemptedAt: "2026-09-25T00:00:00Z",
+    items: [
+      {
+        id: "1",
+        text,
+        createdAt: "2026-09-24T23:00:00Z",
+        url: "https://x.com/alice/status/1",
+        author: { id: "u1", username: "alice", name: "Alice" },
+      },
+    ],
+  };
+  const rss = renderRss(snapshot, RENDER_OPTIONS);
+  const expectedTitle = "a".repeat(79) + emoji + "\u2026";
+  assert.ok(rss.includes(`<title>${expectedTitle}</title>`));
+});
+
 test("an author without an avatar falls back to an initial", () => {
   const snapshot = {
     updatedAt: "2026-09-25T00:00:00Z",
