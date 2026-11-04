@@ -123,9 +123,9 @@ h1{margin:8px 0 0;font:400 1.9rem/1.4 var(--font)}
 .card{margin:0;border:1px solid var(--border);border-radius:14px;background:var(--card);padding:16px 16px 12px}
 .card__head{display:flex;align-items:center;gap:10px}
 .card__avatar{width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover}
-.card__avatar--fallback{display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--text);font-weight:600;font-size:.95rem}
+.card__avatar--fallback{display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--text);font-weight:700;font-size:.95rem}
 .card__who{min-width:0}
-.card__name{margin:0;font-weight:600;font-size:.92rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card__name{margin:0;font-weight:700;font-size:.92rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card__handle{margin:0;color:var(--text-muted);font-size:.78rem;line-height:1.35}
 .card__time{margin-left:auto;color:var(--text-muted);font-size:.74rem;white-space:nowrap;align-self:flex-start}
 .card__text{margin:12px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem;line-height:1.85}
