@@ -308,6 +308,13 @@ test("embed avatar initial is taken by code point, not code unit", () => {
   assert.equal([..."😀Alice".trim()][0], "😀");
 });
 
+test("bookmark list page carries the same favicon links as the site", () => {
+  const html = renderHtml(null, RENDER_OPTIONS);
+  assert.ok(html.includes('<link rel="icon" type="image/svg+xml" href="/favicon.svg">'));
+  assert.ok(html.includes('<link rel="icon" href="/favicon.ico" sizes="any">'));
+  assert.ok(html.includes('<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">'));
+});
+
 test("rendering an unconnected feed says so instead of failing", () => {
   const html = renderHtml(null, RENDER_OPTIONS);
   assert.ok(html.includes("まだXと接続していません"));
