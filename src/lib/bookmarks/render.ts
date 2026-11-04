@@ -273,7 +273,7 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
       img.height = 40;
       return img;
     }
-    var fallback = el("span", "card__avatar card__avatar--fallback", item.name ? item.name.charAt(0) : "?");
+    var fallback = el("span", "card__avatar card__avatar--fallback", item.name ? ([...item.name.trim()][0] || "?") : "?");
     fallback.setAttribute("aria-hidden", "true");
     return fallback;
   }

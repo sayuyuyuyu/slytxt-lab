@@ -286,6 +286,28 @@ test("an author without an avatar falls back to an initial", () => {
   assert.ok(code.includes("card__avatar--fallback"));
 });
 
+test("embed avatar initial is taken by code point, not code unit", () => {
+  const snapshot = {
+    updatedAt: "2026-09-25T00:00:00Z",
+    attemptedAt: "2026-09-25T00:00:00Z",
+    items: [
+      {
+        id: "1",
+        text: "hello",
+        createdAt: "2026-09-24T23:00:00Z",
+        url: "https://x.com/alice/status/1",
+        author: { id: "u1", username: "alice", name: "😀Alice" },
+      },
+    ],
+  };
+  const code = renderEmbed(snapshot, RENDER_OPTIONS);
+  assert.doesNotThrow(() => new Function(code));
+  assert.ok(!code.includes("charAt(0)"));
+  assert.ok(code.includes("[...item.name.trim()][0]"));
+  // 先頭がサロゲートペアの絵文字でも、頭文字は丸ごと1文字になる。
+  assert.equal([..."😀Alice".trim()][0], "😀");
+});
+
 test("rendering an unconnected feed says so instead of failing", () => {
   const html = renderHtml(null, RENDER_OPTIONS);
   assert.ok(html.includes("まだXと接続していません"));
