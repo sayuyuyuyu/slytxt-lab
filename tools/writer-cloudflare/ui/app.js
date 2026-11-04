@@ -885,10 +885,22 @@ function renderCover() {
   els.coverRemove.disabled = coverUploading;
 }
 
+/** 見出し画像の反映状態を、本文画像（uploadStatus）と同じ形で読み上げ対象にする。 */
+function setCoverStatus(message, state = "busy") {
+  els.coverStatus.textContent = message;
+  if (state === "error") {
+    els.coverStatus.setAttribute("role", "alert");
+    els.coverStatus.setAttribute("aria-live", "assertive");
+  } else {
+    els.coverStatus.setAttribute("role", "status");
+    els.coverStatus.setAttribute("aria-live", "polite");
+  }
+}
+
 function resetCoverDisplay() {
   if (coverDisplayUrl) URL.revokeObjectURL(coverDisplayUrl);
   coverDisplayUrl = "";
-  els.coverStatus.textContent = "";
+  setCoverStatus("");
 }
 
 async function setCoverFromFile(file) {
@@ -896,7 +908,7 @@ async function setCoverFromFile(file) {
   coverUploading = true;
   resetCoverDisplay();
   coverDisplayUrl = URL.createObjectURL(file);
-  els.coverStatus.textContent = "画像を反映中…";
+  setCoverStatus("画像を反映中…");
   renderCover();
   try {
     const url = await uploadMedia(file, {
@@ -913,7 +925,12 @@ async function setCoverFromFile(file) {
     scheduleSave();
     toast("見出し画像を設定しました");
   } catch (error) {
-    els.coverStatus.textContent = "反映に失敗しました";
+    setCoverStatus(
+      error.message
+        ? "見出し画像の反映に失敗しました: " + error.message
+        : "見出し画像の反映に失敗しました",
+      "error"
+    );
     toast(error.message, "error");
   } finally {
     coverUploading = false;
