@@ -908,12 +908,6 @@ html.js .terminal__console {
   flex-direction: column;
   gap: 12px;
 }
-.project-card__footer {
-  margin-top: auto;
-}
-.project-card__footer .link-button {
-  padding-left: 0;
-}
 .status {
   display: inline-flex;
   padding: 2px 8px;
