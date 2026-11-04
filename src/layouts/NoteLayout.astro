@@ -34,7 +34,7 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
   <article class="note" data-pagefind-filter={`category:${categoryLabels.notes}`}>
     <div class="container note__inner">
       <Breadcrumbs items={[{ label: "Notes", href: categoryPaths.notes }, { label }]} />
-      <h1 class="sr-only">{label}</h1>
+      <h1 class="sr-only" data-pagefind-meta="title">{label}</h1>
       <p class="note__meta">
         <span>{categoryLabels.notes}</span>
         <span aria-hidden="true"> / </span>
