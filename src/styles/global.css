@@ -607,6 +607,26 @@ html.js .terminal__console {
   color: var(--text-muted);
   opacity: 0.55;
 }
+
+/* Touch-friendly way to run the current line, same as pressing Enter. */
+.terminal__enter {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.terminal__enter:hover {
+  color: var(--text);
+}
+.terminal__enter:active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 @media (pointer: coarse) {
   /* Keep iOS Safari from zooming in on the focused input. */
   .terminal__input {

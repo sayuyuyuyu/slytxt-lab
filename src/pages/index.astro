@@ -56,6 +56,7 @@ const terminalConfig = {
               aria-label="コマンドを入力"
               placeholder="help"
             />
+            <button type="submit" class="terminal__enter" aria-label="コマンドを実行">⏎</button>
           </form>
         </div>
       </div>
@@ -327,6 +328,7 @@ const terminalConfig = {
         historyIndex = -1;
         draft = "";
         input.value = "";
+        input.focus({ preventScroll: true });
       });
 
       const completionsFor = (value) => {
@@ -394,7 +396,6 @@ const terminalConfig = {
         input.focus({ preventScroll: true });
       });
 
-      print("slytxt.lab へようこそ。このターミナルは入力できます。help と打つと、使えるコマンドの一覧が出ます。");
     })();
   </script>
 </BaseLayout>
