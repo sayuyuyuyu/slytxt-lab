@@ -2,7 +2,7 @@
 import AdultGate from "@/components/AdultGate.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TagList from "@/components/TagList.astro";
-import { getEntryDate, getEntryDisplayTitle, getEntryPath, getEntrySlug, type ArticleEntry } from "@/lib/content";
+import { getEntryDisplayTitle, getEntryPath, getEntrySlug, type ArticleEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels, categoryPaths, site } from "@/lib/site";
 import BaseLayout from "./BaseLayout.astro";
@@ -14,7 +14,6 @@ type Props = {
 };
 
 const { entry, previous, next } = Astro.props;
-const date = getEntryDate(entry);
 const text = (entry.body ?? "").trim();
 const label = getEntryDisplayTitle(entry);
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
@@ -37,8 +36,8 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
       <h1 class="sr-only" data-pagefind-meta="title">{label}</h1>
       <p class="note__meta">
         <span>{categoryLabels.notes}</span>
-        <span aria-hidden="true"> / </span>
-        <time datetime={date.toISOString()}>{formatDate(date)}</time>
+        <span>Published <time datetime={entry.data.published.toISOString()}>{formatDate(entry.data.published)}</time></span>
+        {entry.data.updated && <span>Updated <time datetime={entry.data.updated.toISOString()}>{formatDate(entry.data.updated)}</time></span>}
         {entry.data.adult && <span role="img" aria-label="Includes an adult content review"> / 🔞</span>}
       </p>
       {entry.data.cover && <img class="note-cover" src={entry.data.cover} alt="" />}
