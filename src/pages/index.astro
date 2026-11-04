@@ -352,7 +352,12 @@ const terminalConfig = {
         return [];
       };
 
+      // The value the candidate list was last shown for. A second Tab on the
+      // same value is left alone so keyboard users can move focus onward.
+      let tabListedFor = null;
+
       input.addEventListener("keydown", (event) => {
+        if (event.key !== "Tab") tabListedFor = null;
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
           if (history.length === 0) return;
           event.preventDefault();
@@ -372,11 +377,13 @@ const terminalConfig = {
           input.setSelectionRange(input.value.length, input.value.length);
           return;
         }
-        if (event.key === "Tab") {
+        if (event.key === "Tab" && !event.shiftKey) {
           const candidates = completionsFor(input.value);
           if (candidates.length === 0) return;
-          event.preventDefault();
           if (candidates.length === 1) {
+            // Already fully completed: let Tab move focus instead.
+            if (candidates[0] === input.value) return;
+            event.preventDefault();
             input.value = candidates[0];
             return;
           }
@@ -387,8 +394,11 @@ const terminalConfig = {
             prefix = prefix.slice(0, i);
           }
           if (prefix.length > input.value.length) {
+            event.preventDefault();
             input.value = prefix;
-          } else {
+          } else if (tabListedFor !== input.value) {
+            event.preventDefault();
+            tabListedFor = input.value;
             echoCommand(input.value);
             print(candidates.join("  "));
           }
