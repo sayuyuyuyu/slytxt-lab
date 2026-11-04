@@ -219,7 +219,7 @@ export default {
    * 画像の見届けをサーバー側で進める。投稿後にタブを閉じても、CI 成功
    * 後の merge と後片付けがここで完了する（driver.mjs）。
    */
-  async scheduled(event, env, ctx) {
+  async scheduled(_event, env, ctx) {
     ctx.waitUntil(drivePendingPublishes(env));
   }
 };
