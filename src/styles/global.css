@@ -671,6 +671,9 @@ html.js .terminal__console {
   gap: 24px;
   margin-bottom: 22px;
 }
+.section-head--following {
+  margin-top: 48px;
+}
 .section-head h2 {
   font-size: clamp(1.4rem, 3vw, 1.9rem);
 }
