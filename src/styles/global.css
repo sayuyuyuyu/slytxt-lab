@@ -991,11 +991,14 @@ html.js .terminal__console {
 .empty-state p {
   margin: 0;
 }
-.empty-state p + p {
+.empty-state p + p,
+.empty-state__title + p {
   margin-top: 6px;
   font-size: 0.9rem;
 }
 .empty-state__title {
+  margin-top: 6px;
+  font-size: 0.9rem;
   color: var(--text);
   font-family: var(--font-mono);
   font-weight: 600;
