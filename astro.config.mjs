@@ -7,7 +7,7 @@ import { figureHastPlugin } from "./src/lib/rehype-figure.mjs";
 export default defineConfig({
   site: process.env.SITE_URL ?? "https://slytxt.dev",
   markdown: {
-    // URL だけの段落を埋め込み（YouTube / X / OGP カード）に変える。
+    // URL だけの段落を埋め込み（YouTube / Spotify / X / リンクカード）に変える。
     processor: satteri({
       mdastPlugins: [embedMdastPlugin],
       // 画像の title（キャプション）を figure / figcaption で表示する。
