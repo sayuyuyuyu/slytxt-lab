@@ -4,6 +4,7 @@ import {
   classifyEmbedUrl,
   embedHtmlForUrl,
   linkCardHtml,
+  spotifyEmbedHtml,
   xEmbedHtml,
   youtubeEmbedHtml
 } from "../src/lib/remark-embed.mjs";
@@ -72,4 +73,51 @@ test("embeds: URL から種別ごとの HTML を作る", async () => {
   const bare = await embedHtmlForUrl("https://example.com/none", async () => null);
   assert.match(bare, /link-card/);
   assert.equal(await embedHtmlForUrl("URL ではない"), null);
+});
+
+test("embeds: Spotify の URL 形式を判定する", () => {
+  const track = classifyEmbedUrl("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC");
+  assert.equal(track?.type, "spotify");
+  assert.equal(track?.kind, "track");
+  assert.equal(track?.id, "4uLU6hMCjMI75M1A2tKUQC");
+  assert.equal(
+    classifyEmbedUrl("https://open.spotify.com/intl-ja/track/4uLU6hMCjMI75M1A2tKUQC?si=abc123")?.type,
+    "spotify"
+  );
+  assert.equal(
+    classifyEmbedUrl("https://open.spotify.com/album/1DFixLWuPkv3KT3TnV35m3")?.kind,
+    "album"
+  );
+  assert.equal(
+    classifyEmbedUrl("https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M")?.kind,
+    "playlist"
+  );
+  assert.equal(
+    classifyEmbedUrl("https://open.spotify.com/episode/512ojhOuo1ktJprKbVcKyQ")?.kind,
+    "episode"
+  );
+  assert.equal(
+    classifyEmbedUrl("https://open.spotify.com/show/4rOoJ6Egrf8K2IrywzwOMk")?.kind,
+    "show"
+  );
+  assert.equal(
+    classifyEmbedUrl("https://open.spotify.com/artist/0TnOyISbd1XYRBk9myaseg")?.kind,
+    "artist"
+  );
+  assert.equal(classifyEmbedUrl("https://open.spotify.com/genre/pop")?.type, "link");
+  assert.equal(
+    classifyEmbedUrl("https://spotify.com/track/4uLU6hMCjMI75M1A2tKUQC")?.type,
+    "link"
+  );
+});
+
+test("embeds: Spotify の埋め込み HTML を作る", async () => {
+  assert.match(
+    spotifyEmbedHtml({ kind: "track", id: "4uLU6hMCjMI75M1A2tKUQC" }),
+    /open\.spotify\.com\/embed\/track\/4uLU6hMCjMI75M1A2tKUQC/
+  );
+  assert.match(spotifyEmbedHtml({ kind: "track", id: "4uLU6hMCjMI75M1A2tKUQC" }), /height="152"/);
+  assert.match(spotifyEmbedHtml({ kind: "album", id: "1DFixLWuPkv3KT3TnV35m3" }), /height="352"/);
+  const html = await embedHtmlForUrl("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC");
+  assert.match(html, /embed--spotify/);
 });
