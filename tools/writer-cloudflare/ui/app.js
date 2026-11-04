@@ -706,7 +706,7 @@ async function pollPublishStatus(id, initial) {
 let menuCleanup = null;
 let menuAnchor = null;
 
-function closeMenu() {
+function closeMenu({ returnFocus = true } = {}) {
   const anchor = menuAnchor;
   menuAnchor = null;
   els.menu.hidden = true;
@@ -717,7 +717,7 @@ function closeMenu() {
   }
   if (anchor) {
     anchor.setAttribute("aria-expanded", "false");
-    if (document.contains(anchor)) anchor.focus();
+    if (returnFocus && document.contains(anchor)) anchor.focus();
   }
 }
 
@@ -752,13 +752,39 @@ function openMenu(anchor, items) {
     if (!els.menu.contains(event.target) && event.target !== anchor) closeMenu();
   };
   const onKey = (event) => {
-    if (event.key === "Escape") closeMenu();
+    if (event.key === "Escape") {
+      closeMenu();
+      return;
+    }
+    if (event.key === "Tab") {
+      // 閉じて呼び出し元へフォーカスを戻し、Tab の移動はそこから続けさせる。
+      closeMenu();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const buttons = [...els.menu.querySelectorAll("button")];
+    if (!buttons.length) return;
+    event.preventDefault();
+    const index = buttons.indexOf(document.activeElement);
+    if (event.key === "Home") buttons[0].focus();
+    else if (event.key === "End") buttons[buttons.length - 1].focus();
+    else if (event.key === "ArrowDown")
+      buttons[index < 0 ? 0 : (index + 1) % buttons.length].focus();
+    else buttons[index < 0 ? buttons.length - 1 : (index - 1 + buttons.length) % buttons.length].focus();
+  };
+  const onFocusOut = (event) => {
+    if (els.menu.hidden) return;
+    const next = event.relatedTarget;
+    if (next && (els.menu.contains(next) || next === anchor)) return;
+    closeMenu({ returnFocus: false });
   };
   document.addEventListener("pointerdown", onPointerDown);
   document.addEventListener("keydown", onKey);
+  els.menu.addEventListener("focusout", onFocusOut);
   menuCleanup = () => {
     document.removeEventListener("pointerdown", onPointerDown);
     document.removeEventListener("keydown", onKey);
+    els.menu.removeEventListener("focusout", onFocusOut);
   };
 }
 
