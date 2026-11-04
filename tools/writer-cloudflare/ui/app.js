@@ -107,14 +107,25 @@ const state = {
   cover: ""
 };
 
-const save = { status: "idle", pending: null, timer: null, retryTimer: null, attempt: 0 };
+const save = {
+  status: "idle",
+  pending: null,
+  timer: null,
+  timerAt: 0,
+  retryTimer: null,
+  attempt: 0,
+  // 最後にサーバーへ送った内容（{ id, payload }）と、その時刻。
+  // 同じ内容の再送を避け、同期の間引きにも使う。
+  lastSent: null,
+  lastSyncAt: 0
+};
 
 let toastTimer = null;
 let clock = null;
 
 const SAVE_LABEL = {
   idle: "保存済み",
-  dirty: "未保存",
+  local: "端末に保存済み",
   saving: "保存中…",
   error: "保存できません"
 };
@@ -223,45 +234,173 @@ function setSaveStatus(status) {
   if (els.saveRetry) els.saveRetry.hidden = status !== "error";
 }
 
-function scheduleSave() {
-  clearTimeout(save.timer);
-  setSaveStatus("dirty");
-  save.timer = setTimeout(() => {
-    flushSave().catch(() => {});
-  }, 900);
+/*
+ * 保存は2段構えにする。
+ * - 編集は即座に localStorage へ書く（端末内コピー。タブが落ちても消えない）。
+ * - サーバー（KV）への同期は裏で行い、間引く。入力が止まれば早めに送るが、
+ *   前回の同期から SYNC_INTERVAL_MS 経たない間は次を急がない。
+ * サーバーへ送った内容（save.lastSent）と同じ payload は再送しない。
+ */
+const LOCAL_KEY_PREFIX = "slytxt.draft:";
+const LOCAL_BACKUP_PREFIX = "slytxt.draft-backup:";
+const SYNC_IDLE_MS = 900;
+const SYNC_INTERVAL_MS = 5000;
+
+function localKey(id) {
+  return `${LOCAL_KEY_PREFIX}${id}`;
 }
 
-async function flushSave({ keepalive = false } = {}) {
+function readLocal(id) {
+  try {
+    const raw = localStorage.getItem(localKey(id));
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (!entry || typeof entry !== "object" || !entry.payload) return null;
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocal(id, payload, base, savedAt = new Date().toISOString()) {
+  try {
+    localStorage.setItem(localKey(id), JSON.stringify({ payload, base, savedAt }));
+  } catch {
+    // 容量不足など。端末に残せなくても、サーバー同期は続ける。
+  }
+}
+
+function removeLocal(id) {
+  try {
+    localStorage.removeItem(localKey(id));
+  } catch {
+    // 消せなくても致命的ではない（開くときにサーバー側と突き合わせる）。
+  }
+}
+
+function samePayload(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** サーバーから読んだ下書きを、collect() と同じ形の payload にする。 */
+function payloadOf(draft) {
+  return {
+    category: draft.category,
+    title: draft.title && draft.title !== "無題" ? draft.title.trim() : "",
+    tags: [...(draft.tags ?? [])],
+    cover: draft.cover ?? "",
+    description: String(draft.description ?? "").trim(),
+    body: draft.body ?? ""
+  };
+}
+
+/** 現在の下書きについて、保存状態の表示を実態に合わせ直す。 */
+function refreshSaveStatus() {
+  if (!state.current) {
+    setSaveStatus("idle");
+    return;
+  }
+  if (save.pending && save.pending.id === state.current.id) {
+    // 送信に失敗して再送待ちの間は、エラー表示を維持する。
+    if (save.status !== "error") setSaveStatus("saving");
+    return;
+  }
+  const local = readLocal(state.current.id);
+  const synced =
+    save.lastSent &&
+    save.lastSent.id === state.current.id &&
+    local &&
+    samePayload(save.lastSent.payload, local.payload);
+  setSaveStatus(local && !synced ? "local" : "idle");
+}
+
+function scheduleSave() {
+  if (!state.current) return;
+  const id = state.current.id;
+  // 端末へは即座に書く。サーバー同期はタイマーに任せる。
+  writeLocal(id, collect(), state.current.updated ?? "");
+  setSaveStatus("local");
+
+  // 同期の締め切り: 入力が止まってから SYNC_IDLE_MS 後。ただし前回の
+  // 同期が近い間は SYNC_INTERVAL_MS 経つまで急がない（間引き）。
+  // 既に張ってあるタイマーの方が早ければ、そのまま使う。
+  const now = Date.now();
+  let target = now + SYNC_IDLE_MS;
+  if (save.lastSyncAt && now - save.lastSyncAt < SYNC_INTERVAL_MS) {
+    target = Math.max(target, save.lastSyncAt + SYNC_INTERVAL_MS);
+  }
+  if (save.timer && save.timerAt && save.timerAt <= target) return;
+  clearTimeout(save.timer);
+  save.timerAt = target;
+  save.timer = setTimeout(() => {
+    save.timer = null;
+    save.timerAt = 0;
+    flushSave().catch(() => {});
+  }, Math.max(0, target - now));
+}
+
+async function flushSave({ keepalive = false, awaitPosted = true } = {}) {
   if (!state.current) return;
   clearTimeout(save.timer);
   save.timer = null;
+  save.timerAt = 0;
 
   // 画像の POST（最終 URL の確定）より先に保存すると、URL 未確定の画像が
   // 下書きから落ちてしまう。POST 自体は速いのでここだけ待つ。
   // PR のマージ完了までは待たない（保存は最終 URL で行い、反映は裏で進む）。
-  if (editorBridge.handle?.whenPosted) {
+  // awaitPosted=false はメディア追加の直前用: 呼び出し元自身の POST 完了を
+  // 待つ形になると止まってしまうため、画像待ちを挟まずに同期する。
+  if (awaitPosted && editorBridge.handle?.whenPosted) {
     await editorBridge.handle.whenPosted().catch(() => {});
   }
 
   const id = state.current.id;
   const payload = collect();
-  save.pending = { id, payload };
-  setSaveStatus("saving");
 
+  // 前回サーバーへ送った内容と同じなら送らない。
+  // ローカルコピーも同じ内容なら片付けて、同期済みの表示に戻す。
+  if (save.lastSent && save.lastSent.id === id && samePayload(save.lastSent.payload, payload)) {
+    const local = readLocal(id);
+    if (local && samePayload(local.payload, payload)) removeLocal(id);
+    if (!save.pending || save.pending.id !== id) refreshSaveStatus();
+    return;
+  }
+
+  save.pending = { id, payload };
+  if (state.current?.id === id) setSaveStatus("saving");
+  await sendSave(id, payload, { keepalive });
+}
+
+/** サーバーへ1回送る。成功時の後片付けと、失敗時の再送予約まで面倒を見る。 */
+async function sendSave(id, payload, { keepalive = false } = {}) {
   try {
     const { draft } = await api(`/api/drafts/${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(payload),
       keepalive
     });
-    save.pending = null;
+    if (save.pending && save.pending.id === id && samePayload(save.pending.payload, payload)) {
+      save.pending = null;
+    }
     save.attempt = 0;
     clearTimeout(save.retryTimer);
-    setSaveStatus("idle");
+    save.lastSent = { id, payload };
+    save.lastSyncAt = Date.now();
+    // 同期中にさらに編集されていたら、その分はローカルコピーが新しい。
+    // ローカル側の分岐元（base）を今のサーバー版へ進めておく。
+    // 送った内容と一致していれば、ローカルコピーは片付ける。
+    const local = readLocal(id);
+    if (local) {
+      if (samePayload(local.payload, payload)) removeLocal(id);
+      else writeLocal(id, local.payload, draft.updated, local.savedAt);
+    }
     if (state.current?.id === id) state.current = draft;
     patchListItem(id, draft);
+    if (state.current?.id === id) refreshSaveStatus();
+    return draft;
   } catch (error) {
-    setSaveStatus("error");
+    if (!save.pending || save.pending.id !== id) save.pending = { id, payload };
+    if (state.current?.id === id) setSaveStatus("error");
     scheduleRetry();
     throw error;
   }
@@ -275,17 +414,7 @@ function scheduleRetry() {
     if (!save.pending) return;
     const { id, payload } = save.pending;
     // 別のメモに移っていても、失敗したほうへ書き戻す。
-    api(`/api/drafts/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      body: JSON.stringify(payload)
-    })
-      .then(({ draft }) => {
-        save.pending = null;
-        save.attempt = 0;
-        setSaveStatus("idle");
-        patchListItem(id, draft);
-      })
-      .catch(() => scheduleRetry());
+    sendSave(id, payload).catch(() => {});
   }, wait);
 }
 
@@ -433,6 +562,10 @@ function editorSet(markdown) {
 }
 
 async function uploadMedia(file, hooks = {}) {
+  // メディア追加の前に、今の下書きをサーバーへ同期しておく。
+  // 画像待ち（whenPosted）を挟むと、このアップロード自身の完了待ちに
+  // なって止まるため、awaitPosted=false で同期する。
+  await flushSave({ awaitPosted: false });
   const form = new FormData();
   form.append("file", file);
   const response = await fetch("/api/media", {
@@ -565,7 +698,7 @@ function applyDraft(draft) {
   // 別のメモの保存が失敗したまま残っているときは、その状態を消さない。
   if (!save.pending || save.pending.id === draft.id) {
     save.pending = null;
-    setSaveStatus("idle");
+    refreshSaveStatus();
   }
   updateCount();
   applyCategoryUi();
@@ -593,11 +726,57 @@ function clearEditor() {
   setBusy(state.busy);
 }
 
+/**
+ * 下書きを開くとき、端末に未同期のローカルコピーがあれば突き合わせる。
+ * - ローカルコピーの base（分岐元のサーバー版 updated）が現在のサーバー版と
+ *   一致する: その端末での続きの編集なので、ローカルを復元して同期を予約。
+ * - base が食い違う（他端末でサーバー側が進んだ）: 保存時刻の新しい方を採用。
+ *   ローカルが勝てば復元して同期を予約。サーバーが勝てばサーバーを表示し、
+ *   負けたローカルコピーは退避キーへ残す（黙って消さない）。
+ * サーバーと同内容のローカルコピーは、片付けてサーバー版をそのまま返す。
+ */
+function restoreLocalDraft(serverDraft) {
+  const local = readLocal(serverDraft.id);
+  if (!local) return serverDraft;
+  if (samePayload(local.payload, payloadOf(serverDraft))) {
+    removeLocal(serverDraft.id);
+    return serverDraft;
+  }
+  const localIsNewer =
+    local.base === serverDraft.updated ||
+    String(local.savedAt ?? "") > String(serverDraft.updated ?? "");
+  if (!localIsNewer) {
+    try {
+      localStorage.setItem(
+        `${LOCAL_BACKUP_PREFIX}${serverDraft.id}`,
+        JSON.stringify(local)
+      );
+    } catch {
+      // 退避できなくても、サーバー側の表示は進める。
+    }
+    removeLocal(serverDraft.id);
+    toast("サーバー側に新しい内容があるため、そちらを表示しました。");
+    return serverDraft;
+  }
+  return {
+    ...serverDraft,
+    category: local.payload.category,
+    title: local.payload.title,
+    tags: [...(local.payload.tags ?? [])],
+    cover: local.payload.cover ?? "",
+    description: local.payload.description ?? "",
+    body: local.payload.body ?? ""
+  };
+}
+
 async function selectDraft(id) {
   if (state.current?.id !== id) await flushSave().catch(() => {});
   try {
     const { draft } = await api(`/api/drafts/${encodeURIComponent(id)}`);
-    applyDraft(draft);
+    const restored = restoreLocalDraft(draft);
+    applyDraft(restored);
+    // ローカルコピーを復元した場合は、サーバーへ同期を予約する。
+    if (restored !== draft) scheduleSave();
     setView("editor");
     // 前回の投稿が CI 待ちのまま残っていたら、結果を見届ける。
     if (draft.pr) resumePublishCheck(draft);
@@ -1819,7 +1998,14 @@ async function runPublish() {
     return;
   }
 
-  await flushSave().catch(() => {});
+  // 公開はサーバー（KV）側の内容を読むため、同期できていない状態では
+  // 進めない。失敗したら公開を中止する。
+  try {
+    await flushSave();
+  } catch {
+    toast("保存できていないため、公開を中止しました。", "error");
+    return;
+  }
   setBusy(true);
   const id = encodeURIComponent(state.current.id);
   try {
@@ -1841,6 +2027,7 @@ async function runPublish() {
     ]);
     toast("公開しました。");
     // 公開したドラフトはサーバー側で消えている。
+    removeLocal(state.current.id);
     state.current = null;
     await loadDrafts();
     if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
@@ -1891,6 +2078,18 @@ async function removeDraft(id) {
   if (!ok) return;
   try {
     await api(`/api/drafts/${encodeURIComponent(id)}`, { method: "DELETE" });
+    // 端末内のコピーと、失敗した保存の再送予約も一緒に片付ける。
+    removeLocal(id);
+    try {
+      localStorage.removeItem(`${LOCAL_BACKUP_PREFIX}${id}`);
+    } catch {
+      // 退避分が消せなくても、削除自体は完了している。
+    }
+    if (save.pending?.id === id) {
+      save.pending = null;
+      clearTimeout(save.retryTimer);
+    }
+    if (save.lastSent?.id === id) save.lastSent = null;
     const wasCurrent = state.current?.id === id;
     state.drafts = state.drafts.filter((draft) => draft.id !== id);
     if (wasCurrent) {
