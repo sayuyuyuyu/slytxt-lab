@@ -27,7 +27,7 @@ const projects = page.entries.filter((entry) => entry.collection === "projects")
 <BaseLayout title={`#${label}${suffix} - Tags - ${site.name}`} description={`#${label} が付いた記事とメモ、つくったもの。`}>
   <PageHeader
     eyebrow="tag"
-    title={`#${label}`}
+    title={`#${label}${suffix}`}
     count={page.totalEntries}
     countLabel="entries"
     countLabelOne="entry"
