@@ -4,6 +4,7 @@ import {
   getAllArticles,
   getAllEntries,
   getArticles,
+  getEntriesByTag,
   getEntryDate,
   getEntryPath,
   getNotes,
@@ -45,12 +46,17 @@ export async function GET(context: APIContext) {
       (_, index) => `${base}/page/${index + 2}/`
     );
 
+  const tagPagePaths = Array.from(tags.keys()).flatMap((slug) =>
+    paged(getEntriesByTag(entries, slug).length, `/tags/${slug}`)
+  );
+
   const pagePaths = [
     ...paged(articles.length, "/articles"),
     ...paged(tech.length, "/articles/tech"),
     ...paged(journal.length, "/articles/journal"),
     ...paged(notes.length, "/notes"),
-    ...paged(projects.length, "/projects")
+    ...paged(projects.length, "/projects"),
+    ...tagPagePaths
   ];
 
   const urls = [
