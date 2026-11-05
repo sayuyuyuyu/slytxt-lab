@@ -49,7 +49,8 @@ export async function GET(context: APIContext) {
     ...paged(articles.length, "/articles"),
     ...paged(tech.length, "/articles/tech"),
     ...paged(journal.length, "/articles/journal"),
-    ...paged(notes.length, "/notes")
+    ...paged(notes.length, "/notes"),
+    ...paged(projects.length, "/projects")
   ];
 
   const urls = [

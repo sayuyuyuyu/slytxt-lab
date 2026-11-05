@@ -1,0 +1,11 @@
+---
+import { getProjects } from "@/lib/content";
+import { pagedStaticPaths } from "@/lib/pagination";
+import ProjectListing from "@/layouts/ProjectListing.astro";
+export async function getStaticPaths() {
+  const entries = await getProjects();
+  return pagedStaticPaths(entries, "/projects");
+}
+const { page } = Astro.props;
+---
+<ProjectListing page={page} />
