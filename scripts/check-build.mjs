@@ -88,6 +88,8 @@ for (const file of htmlFiles) {
     ["property", "og:description", description],
     ["name", "twitter:title", title],
     ["name", "twitter:description", description],
+    ["property", "og:image:alt", title],
+    ["name", "twitter:image:alt", title],
   ]) {
     const value = metaContent(attr, name);
     if (!value) issues.push(`${relative}: missing or empty ${name}`);
