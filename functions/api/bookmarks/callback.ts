@@ -18,9 +18,10 @@ function page(title: string, body: string, status = 200): Response {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <style>body{margin:0;background:#05070f;color:#d9e6f7;font:16px/1.9 "Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","YuGothic",sans-serif}
-@media (prefers-color-scheme:light){body{background:#eef3fb;color:#0b1220}a{color:#0b63c4}}
 main{max-width:640px;margin:0 auto;padding:64px 20px}h1{font-size:1.4rem;font-weight:400;margin:0 0 16px}a{color:#4cc9f0}
-p{margin:0 0 12px}@media print{body{background:#ffffff;color:#0b1220}a{color:#0b63c4}}</style></head>
+p{margin:0 0 12px}
+@media (prefers-color-scheme:light){body{background:#eef3fb;color:#0b1220}a{color:#0b63c4}}
+@media print{body{background:#ffffff;color:#0b1220}a{color:#0b63c4}}</style></head>
 <body><main><h1>${escapeHtml(title)}</h1>${body}</main></body></html>`,
     { status, headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex" } }
   );
