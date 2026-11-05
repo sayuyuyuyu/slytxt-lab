@@ -133,6 +133,13 @@ for (const file of htmlFiles) {
       else checkedStructured++;
     }
   }
+  if (relative === "about/index.html") {
+    const profileLd = jsonLdItems.find((item) => item?.["@type"] === "ProfilePage");
+    if (!profileLd) issues.push(`${relative}: missing ProfilePage JSON-LD`);
+    else if (profileLd.mainEntity?.["@type"] !== "Person" || !profileLd.mainEntity?.name)
+      issues.push(`${relative}: ProfilePage JSON-LD missing Person mainEntity`);
+    else checkedStructured++;
+  }
   if (metaContent("property", "og:type") === "article") {
     const postingLd = jsonLdItems.find((item) => item?.["@type"] === "BlogPosting");
     if (!postingLd) issues.push(`${relative}: missing BlogPosting JSON-LD`);

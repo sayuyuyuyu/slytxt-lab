@@ -19,6 +19,7 @@ type Props = {
   searchable?: boolean;
   loadXWidgets?: boolean;
   creativeWork?: boolean;
+  profilePage?: boolean;
 };
 
 const {
@@ -33,7 +34,8 @@ const {
   noCanonical = false,
   searchable = false,
   loadXWidgets = false,
-  creativeWork = false
+  creativeWork = false,
+  profilePage = false
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -79,6 +81,20 @@ const workJsonLd =
         inLanguage: site.lang
       }
     : undefined;
+const profileJsonLd = profilePage
+  ? {
+      "@context": "https://schema.org",
+      "@type": "ProfilePage",
+      url: canonical.href,
+      inLanguage: site.lang,
+      mainEntity: {
+        "@type": "Person",
+        name: "しらゆ（slytxt）",
+        alternateName: "slytxt",
+        url: canonical.href
+      }
+    }
+  : undefined;
 // A literal "<" inside the JSON could close the script element early.
 const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003c");
 ---
@@ -155,6 +171,7 @@ const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003
     <script type="application/ld+json" set:html={toJsonLd(websiteJsonLd)} />
     {postingJsonLd && <script type="application/ld+json" set:html={toJsonLd(postingJsonLd)} />}
     {workJsonLd && <script type="application/ld+json" set:html={toJsonLd(workJsonLd)} />}
+    {profileJsonLd && <script type="application/ld+json" set:html={toJsonLd(profileJsonLd)} />}
     <slot name="head" />
   </head>
   <body data-pagefind-ignore={searchable ? undefined : "all"}>
