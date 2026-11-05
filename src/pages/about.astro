@@ -107,11 +107,40 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
             const at = data.resting_heart_rate_at ? formatAt(data.resting_heart_rate_at) : "";
             setText("resting", `${data.resting_heart_rate_bpm} bpm` + (at ? `（${at}）` : ""));
           }
+          const parseDate = (value: string): Date | null => {
+            const d = /^\d{4}-\d{2}-\d{2}$/.test(value)
+              ? new Date(`${value}T00:00:00`)
+              : new Date(value);
+            return Number.isNaN(d.getTime()) ? null : d;
+          };
+          const isToday = (d: Date): boolean => {
+            const now = new Date();
+            return (
+              d.getFullYear() === now.getFullYear() &&
+              d.getMonth() === now.getMonth() &&
+              d.getDate() === now.getDate()
+            );
+          };
           if (data.sleep_hours != null) {
-            setText("sleep", `昨夜 ${data.sleep_hours} 時間`);
+            // sleep_date はその睡眠が終わった日。当日なら「昨夜」、違う日なら日付を併記し、
+            // 解釈できない・無い場合は日付も「昨夜」も付けない（心拍の日時併記と同じ方針）。
+            let label = `${data.sleep_hours} 時間`;
+            if (data.sleep_date) {
+              const at = formatAt(data.sleep_date);
+              const d = parseDate(data.sleep_date);
+              if (at && d) label = isToday(d) ? `昨夜 ${label}` : `${label}（${at}）`;
+            }
+            setText("sleep", label);
           }
           if (data.steps_today != null) {
-            setText("steps", `今日 ${numFmt.format(data.steps_today)} 歩`);
+            // 歩数には日付項目が無いため、updated_at が今日のときだけ「今日」と言う。
+            let label = `${numFmt.format(data.steps_today)} 歩`;
+            if (data.updated_at) {
+              const at = formatAt(data.updated_at);
+              const d = parseDate(data.updated_at);
+              if (at && d) label = isToday(d) ? `今日 ${label}` : `${label}（${at}）`;
+            }
+            setText("steps", label);
           }
           if (data.updated_at) {
             const at = formatAt(data.updated_at);
