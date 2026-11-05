@@ -1898,6 +1898,13 @@ html.konami-on .site-main {
     --text-muted: #444444;
     --border: #cccccc;
     --border-strong: #999999;
+    --accent: #0b63c4;
+    --on-accent: #ffffff;
+    --accent-strong: #084a96;
+    --accent-3: #7a3fd1;
+    --accent-5: #0a6b4a;
+    --accent-warn: #9a6a00;
+    --accent-red: #c02b3f;
     --shadow: transparent;
   }
   html {
