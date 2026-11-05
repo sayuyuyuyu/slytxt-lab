@@ -597,3 +597,230 @@ test("list page has keyword and author filters plus a site-like frame", () => {
   // テーマはサイト本体と同じ localStorage キーで初期化する。
   assert.ok(html.includes('localStorage.getItem("theme")'));
 });
+
+test("X client maps media expansions onto posts", async () => {
+  const store = memoryStore();
+  await store.put(
+    TOKEN_KEY,
+    JSON.stringify({
+      refreshToken: "r",
+      accessToken: "a",
+      expiresAt: Date.now() + 3600_000,
+      userId: "me",
+    }),
+  );
+  const payload = {
+    data: [
+      {
+        id: "1",
+        text: "写真つき",
+        created_at: "2026-09-24T00:00:00Z",
+        author_id: "u1",
+        attachments: { media_keys: ["k-photo", "k-video", "k-gif", "k-missing"] },
+      },
+    ],
+    includes: {
+      media: [
+        {
+          media_key: "k-photo",
+          type: "photo",
+          url: "https://pbs.twimg.com/media/photo.jpg",
+          width: 1200,
+          height: 800,
+          alt_text: "写真の説明",
+        },
+        {
+          media_key: "k-video",
+          type: "video",
+          preview_image_url: "https://pbs.twimg.com/media/poster.jpg",
+          width: 1280,
+          height: 720,
+          variants: [
+            { content_type: "application/x-mpegURL", url: "https://video.twimg.com/pl.m3u8" },
+            { content_type: "video/mp4", bit_rate: 832000, url: "https://video.twimg.com/low.mp4" },
+            { content_type: "video/mp4", bit_rate: 2176000, url: "https://video.twimg.com/high.mp4" },
+          ],
+        },
+        {
+          media_key: "k-gif",
+          type: "animated_gif",
+          preview_image_url: "https://pbs.twimg.com/media/gif.jpg",
+          variants: [
+            { content_type: "video/mp4", bit_rate: 0, url: "https://video.twimg.com/gif.mp4" },
+          ],
+        },
+      ],
+    },
+    meta: {},
+  };
+  const seen = [];
+  const fetchImpl = async (url) => {
+    seen.push(String(url));
+    return { ok: true, json: async () => payload, text: async () => "" };
+  };
+  const client = createXClient(store, {
+    clientId: "client",
+    fetch: fetchImpl,
+    now: () => Date.now(),
+  });
+
+  const posts = await client.bookmarks(10);
+  assert.equal(posts.length, 1);
+  assert.ok(seen[0].includes("expansions=attachments.media_keys"));
+  assert.deepEqual(posts[0].media, [
+    {
+      kind: "photo",
+      image: "https://pbs.twimg.com/media/photo.jpg",
+      width: 1200,
+      height: 800,
+      alt: "写真の説明",
+    },
+    {
+      kind: "video",
+      image: "https://pbs.twimg.com/media/poster.jpg",
+      videoUrl: "https://video.twimg.com/high.mp4",
+      width: 1280,
+      height: 720,
+      alt: undefined,
+    },
+    {
+      kind: "gif",
+      image: "https://pbs.twimg.com/media/gif.jpg",
+      videoUrl: "https://video.twimg.com/gif.mp4",
+      width: undefined,
+      height: undefined,
+      alt: undefined,
+    },
+  ]);
+});
+
+test("feed keeps media on snapshot items and omits it when empty", async () => {
+  const store = memoryStore();
+  const x = fakeX({
+    posts: [
+      {
+        id: "1",
+        text: "写真つき",
+        createdAt: "2026-09-24T23:00:00Z",
+        authorId: "u1",
+        media: [{ kind: "photo", image: "https://pbs.twimg.com/media/photo.jpg" }],
+      },
+      {
+        id: "2",
+        text: "メディアなし",
+        createdAt: "2026-09-24T22:00:00Z",
+        authorId: "u1",
+        media: [],
+      },
+    ],
+    authors: [{ id: "u1", username: "alice", name: "Alice" }],
+  });
+  const { snapshot } = await readFeed({
+    store,
+    x,
+    now: new Date("2026-09-25T01:00:00Z"),
+    boundary: new Date("2026-09-25T00:00:00Z"),
+    count: 15,
+    policy: { retryMinutes: 10 },
+  });
+  assert.deepEqual(snapshot.items[0].media, [
+    { kind: "photo", image: "https://pbs.twimg.com/media/photo.jpg" },
+  ]);
+  assert.equal("media" in snapshot.items[1], false);
+});
+
+function mediaSnapshot() {
+  return {
+    updatedAt: "2026-09-25T00:00:00Z",
+    attemptedAt: "2026-09-25T00:00:00Z",
+    items: [
+      {
+        id: "1",
+        text: "写真の投稿です",
+        createdAt: "2026-09-24T23:00:00Z",
+        url: "https://x.com/alice/status/1",
+        author: { id: "u1", username: "alice", name: "Alice" },
+        media: [
+          {
+            kind: "photo",
+            image: "https://pbs.twimg.com/media/photo.jpg",
+            width: 1200,
+            height: 800,
+          },
+        ],
+      },
+      {
+        id: "2",
+        text: "動画の投稿です",
+        createdAt: "2026-09-24T22:00:00Z",
+        url: "https://x.com/alice/status/2",
+        author: { id: "u1", username: "alice", name: "Alice" },
+        media: [
+          {
+            kind: "video",
+            image: "https://pbs.twimg.com/media/poster.jpg",
+            videoUrl: "https://video.twimg.com/movie.mp4",
+            width: 1280,
+            height: 720,
+          },
+          {
+            kind: "gif",
+            image: "https://pbs.twimg.com/media/gif.jpg",
+            videoUrl: "https://video.twimg.com/gif.mp4",
+          },
+        ],
+      },
+      {
+        id: "3",
+        text: "mp4 が無い動画",
+        createdAt: "2026-09-24T21:00:00Z",
+        url: "https://x.com/alice/status/3",
+        author: { id: "u1", username: "alice", name: "Alice" },
+        media: [{ kind: "video", image: "https://pbs.twimg.com/media/still.jpg" }],
+      },
+    ],
+  };
+}
+
+test("list page renders photos, videos, and gifs inside the card", () => {
+  const html = renderHtml(mediaSnapshot(), RENDER_OPTIONS);
+  // 写真は遅延読み込みの img で、alt は本文から補う。
+  assert.ok(
+    html.includes(
+      '<img class="card__media-item" src="https://pbs.twimg.com/media/photo.jpg" alt="写真の投稿です" width="1200" height="800" loading="lazy" decoding="async">',
+    ),
+  );
+  assert.ok(html.includes('<div class="card__media card__media--1">'));
+  // 動画は poster 付きで、開くまで読み込まない。
+  assert.ok(
+    html.includes(
+      '<video class="card__media-item" src="https://video.twimg.com/movie.mp4" poster="https://pbs.twimg.com/media/poster.jpg" width="1280" height="720" controls playsinline preload="none"',
+    ),
+  );
+  // GIF は無音ループでそのまま流す。
+  assert.ok(html.includes("autoplay muted loop playsinline preload=\"metadata\""));
+  assert.ok(html.includes('<div class="card__media card__media--2">'));
+  // mp4 が無い動画はプレビュー画像から投稿へ誘導する。
+  assert.ok(
+    html.includes(
+      '<a class="card__media-link" href="https://x.com/alice/status/3" rel="noreferrer noopener" target="_blank"><img class="card__media-item" src="https://pbs.twimg.com/media/still.jpg"',
+    ),
+  );
+});
+
+test("list page no longer carries the explanatory lead paragraph", () => {
+  const html = renderHtml(mediaSnapshot(), RENDER_OPTIONS);
+  assert.ok(!html.includes('class="lead"'));
+  assert.ok(!html.includes("1日1回、朝9時以降の最初のアクセスで取り直します"));
+  // 件数表示のような UI 要素は残す。
+  assert.ok(html.includes("件の投稿"));
+});
+
+test("embed carries media data and renders it in the card", () => {
+  const code = renderEmbed(mediaSnapshot(), RENDER_OPTIONS);
+  assert.doesNotThrow(() => new Function(code));
+  assert.ok(code.includes("card__media"));
+  assert.ok(code.includes("https://pbs.twimg.com/media/photo.jpg"));
+  assert.ok(code.includes("https://video.twimg.com/movie.mp4"));
+  assert.ok(code.includes("mediaNode"));
+});

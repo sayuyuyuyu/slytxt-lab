@@ -1,4 +1,4 @@
-import type { BookmarkAuthor, KeyValueStore, TokenSet } from "./types.ts";
+import type { BookmarkAuthor, BookmarkMedia, KeyValueStore, TokenSet } from "./types.ts";
 
 const API = "https://api.x.com";
 export const TOKEN_KEY = "token";
@@ -21,13 +21,55 @@ type RawPost = {
   created_at?: string;
   author_id?: string;
   note_tweet?: { text?: string };
+  attachments?: { media_keys?: string[] };
 };
+
+type RawMedia = {
+  media_key: string;
+  type?: string;
+  url?: string;
+  preview_image_url?: string;
+  width?: number;
+  height?: number;
+  alt_text?: string;
+  variants?: { bit_rate?: number; content_type?: string; url?: string }[];
+};
+
+/** X API のメディアを、保存と表示に使う形へ寄せる。 */
+function toMedia(raw: RawMedia): BookmarkMedia | null {
+  if (raw.type === "photo") {
+    if (!raw.url) return null;
+    return {
+      kind: "photo",
+      image: raw.url,
+      width: raw.width,
+      height: raw.height,
+      alt: raw.alt_text
+    };
+  }
+  if (raw.type === "video" || raw.type === "animated_gif") {
+    // 再生に使える一番高ビットレートの mp4 を選ぶ。
+    const mp4 = (raw.variants ?? [])
+      .filter((variant) => variant.content_type === "video/mp4" && variant.url)
+      .sort((a, b) => (b.bit_rate ?? 0) - (a.bit_rate ?? 0))[0];
+    return {
+      kind: raw.type === "video" ? "video" : "gif",
+      image: raw.preview_image_url,
+      videoUrl: mp4?.url,
+      width: raw.width,
+      height: raw.height,
+      alt: raw.alt_text
+    };
+  }
+  return null;
+}
 
 export type BookmarkPost = {
   id: string;
   text: string;
   createdAt: string;
   authorId: string;
+  media: BookmarkMedia[];
 };
 
 export type XClientOptions = {
@@ -146,22 +188,35 @@ export function createXClient(store: KeyValueStore, options: XClientOptions): XC
         // max_results は5件未満を指定できないため、端数は多めに取って最後に切り詰める。
         const params = new URLSearchParams({
           max_results: String(Math.min(100, Math.max(max - posts.length, 5))),
-          "tweet.fields": "created_at,author_id,note_tweet"
+          "tweet.fields": "created_at,author_id,note_tweet,attachments",
+          expansions: "attachments.media_keys",
+          "media.fields": "url,preview_image_url,type,width,height,alt_text,variants"
         });
         if (paginationToken) params.set("pagination_token", paginationToken);
         const payload = await request<{
           data?: RawPost[];
+          includes?: { media?: RawMedia[] };
           meta?: { next_token?: string };
         }>(`/2/users/${tokens.userId}/bookmarks?${params}`);
+
+        const mediaByKey = new Map<string, BookmarkMedia>();
+        for (const raw of payload.includes?.media ?? []) {
+          const media = toMedia(raw);
+          if (media) mediaByKey.set(raw.media_key, media);
+        }
 
         const data = payload.data ?? [];
         for (const post of data) {
           if (!post.author_id) continue;
+          const media = (post.attachments?.media_keys ?? [])
+            .map((key) => mediaByKey.get(key))
+            .filter((value): value is BookmarkMedia => value !== undefined);
           posts.push({
             id: post.id,
             text: post.note_tweet?.text ?? post.text,
             createdAt: post.created_at ?? new Date(now()).toISOString(),
-            authorId: post.author_id
+            authorId: post.author_id,
+            media
           });
         }
         paginationToken = payload.meta?.next_token;
