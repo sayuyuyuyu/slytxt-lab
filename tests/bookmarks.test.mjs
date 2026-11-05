@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  classifyError,
   readFeed,
   readSnapshot,
   postUrl,
   shouldRefresh,
   AUTHORS_KEY,
 } from "../src/lib/bookmarks/feed.ts";
+import { createXClient, XApiError, TOKEN_KEY } from "../src/lib/bookmarks/x.ts";
 import { lastJstBoundary, formatJst, formatRfc822 } from "../src/lib/bookmarks/format.ts";
 import { matchesSecret } from "../src/lib/bookmarks/secret.ts";
 import { renderEmbed, renderHtml, renderJson, renderRss } from "../src/lib/bookmarks/render.ts";
@@ -365,4 +367,137 @@ test("unconnected embed still produces runnable JS", () => {
   const code = renderEmbed(null, RENDER_OPTIONS);
   assert.doesNotThrow(() => new Function(code));
   assert.ok(code.includes("まだXと接続していません"));
+});
+
+test("X client follows pagination until the requested count", async () => {
+  const store = memoryStore();
+  await store.put(
+    TOKEN_KEY,
+    JSON.stringify({
+      refreshToken: "r",
+      accessToken: "a",
+      expiresAt: Date.now() + 3600_000,
+      userId: "me",
+    }),
+  );
+  const seen = [];
+  const pages = [
+    {
+      data: [
+        { id: "1", text: "one", created_at: "2026-09-24T00:00:00Z", author_id: "u1" },
+        { id: "2", text: "two", created_at: "2026-09-24T00:00:00Z", author_id: "u1" },
+      ],
+      meta: { next_token: "next-2" },
+    },
+    {
+      data: [
+        { id: "3", text: "three", created_at: "2026-09-24T00:00:00Z", author_id: "u2" },
+        { id: "4", text: "four", created_at: "2026-09-24T00:00:00Z", author_id: "u2" },
+      ],
+      meta: {},
+    },
+  ];
+  const fetchImpl = async (url) => {
+    seen.push(String(url));
+    return { ok: true, json: async () => pages[seen.length - 1], text: async () => "" };
+  };
+  const client = createXClient(store, {
+    clientId: "client",
+    fetch: fetchImpl,
+    now: () => Date.now(),
+  });
+
+  const posts = await client.bookmarks(3);
+  assert.deepEqual(
+    posts.map((post) => post.id),
+    ["1", "2", "3"],
+  );
+  assert.equal(seen.length, 2);
+  assert.ok(seen[1].includes("pagination_token=next-2"));
+});
+
+test("error classification separates reauthorization from temporary failures", () => {
+  assert.equal(classifyError(new XApiError(401, "", "unauthorized")), "auth");
+  assert.equal(classifyError(new XApiError(400, "invalid_grant", "bad")), "auth");
+  assert.equal(
+    classifyError(new Error("トークンを更新できませんでした。Xでの再認可が必要かもしれません。")),
+    "auth",
+  );
+  assert.equal(classifyError(new Error("まだXと接続していません。")), "auth");
+  assert.equal(classifyError(new XApiError(500, "", "X API が 500 を返しました。")), "temporary");
+  assert.equal(classifyError(new Error("network down")), "temporary");
+});
+
+test("a failed refresh records the error kind alongside the reason", async () => {
+  const store = memoryStore();
+  const failing = {
+    async accessToken() {
+      return "token";
+    },
+    async bookmarks() {
+      throw new XApiError(401, "", "X API が 401 を返しました。");
+    },
+    async authors() {
+      return [];
+    },
+  };
+  const failed = await readFeed({
+    store,
+    x: failing,
+    now: new Date("2026-09-25T01:00:00Z"),
+    boundary: new Date("2026-09-25T00:00:00Z"),
+    count: 100,
+    policy: { retryMinutes: 10 },
+  });
+  assert.equal(failed.snapshot.errorKind, "auth");
+  const json = JSON.parse(renderJson(failed.snapshot));
+  assert.equal(json.errorKind, "auth");
+  assert.equal(json.error, "X API が 401 を返しました。");
+});
+
+function listSnapshot(itemCount) {
+  const items = Array.from({ length: itemCount }, (_, index) => ({
+    id: String(index + 1),
+    text: `投稿 ${index + 1}`,
+    createdAt: "2026-09-24T23:00:00Z",
+    url: `https://x.com/alice/status/${index + 1}`,
+    author: { id: "u1", username: "alice", name: "Alice" },
+  }));
+  return {
+    updatedAt: "2026-09-25T00:00:00Z",
+    attemptedAt: "2026-09-25T00:00:00Z",
+    items,
+  };
+}
+
+test("list page shows the first items and folds the rest behind a more button", () => {
+  const options = { ...RENDER_OPTIONS, count: 100, initialCount: 2, embedCount: 15 };
+  const html = renderHtml(listSnapshot(3), options);
+  assert.equal((html.match(/<li class="card">/g) ?? []).length, 2);
+  assert.equal((html.match(/<li class="card" hidden>/g) ?? []).length, 1);
+  assert.ok(html.includes("もっと見る（あと1件）"));
+});
+
+test("list page notice wording depends on the error kind", () => {
+  const base = listSnapshot(1);
+  const authHtml = renderHtml(
+    { ...base, error: "X API が 401 を返しました。", errorKind: "auth" },
+    RENDER_OPTIONS,
+  );
+  assert.ok(authHtml.includes("再接続が必要です"));
+
+  const tempHtml = renderHtml(
+    { ...base, error: "X API が 500 を返しました。", errorKind: "temporary" },
+    RENDER_OPTIONS,
+  );
+  assert.ok(tempHtml.includes("最新の取得に失敗しました"));
+  assert.ok(!tempHtml.includes("再接続が必要です"));
+});
+
+test("embed output is capped by embedCount", () => {
+  const options = { ...RENDER_OPTIONS, count: 100, embedCount: 2 };
+  const code = renderEmbed(listSnapshot(3), options);
+  assert.doesNotThrow(() => new Function(code));
+  assert.ok(code.includes("投稿 2"));
+  assert.ok(!code.includes("投稿 3"));
 });

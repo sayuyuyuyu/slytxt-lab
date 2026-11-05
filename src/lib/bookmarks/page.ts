@@ -6,8 +6,15 @@ import { site } from "../site.ts";
 import type { BookmarkSnapshot, KeyValueStore, PagesContext, PagesEnv } from "./types.ts";
 import { createXClient } from "./x.ts";
 
-/** 表示する件数。ここを増やすと取得と削除確認の対象が増える。 */
-export const FEED_COUNT = 15;
+/**
+ * スナップショットに保持する上限。X API のブックマーク取得は1リクエスト最大100件のため、
+ * 100件なら通常は1リクエストで収まる。取得は1日1回の更新時だけで、100件でも KV の1値に収まる。
+ */
+export const FETCH_COUNT = 100;
+/** 一覧で最初に表示する件数。残りは「もっと見る」で広げる。 */
+export const INITIAL_COUNT = 30;
+/** 埋め込みに載せる件数。埋め込み先の表示を圧迫しない範囲に抑える。 */
+export const EMBED_COUNT = 15;
 export const REFRESH_HOUR = 9;
 
 export type FeedFormat = "html" | "rss" | "json" | "js";
@@ -24,7 +31,9 @@ function render(format: FeedFormat, snapshot: BookmarkSnapshot | null, origin: s
     pageUrl: `${base}/`,
     rssUrl: `${base}/rss.xml`,
     jsonUrl: `${base}/bookmarks.json`,
-    count: FEED_COUNT
+    count: FETCH_COUNT,
+    initialCount: INITIAL_COUNT,
+    embedCount: EMBED_COUNT
   };
 
   if (format === "rss") {
@@ -94,7 +103,7 @@ export async function handleFeed(
     }),
     now,
     boundary: lastJstBoundary(now, REFRESH_HOUR),
-    count: FEED_COUNT,
+    count: FETCH_COUNT,
     policy: { retryMinutes: 10 }
   });
 

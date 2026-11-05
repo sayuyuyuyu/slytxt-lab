@@ -139,23 +139,35 @@ export function createXClient(store: KeyValueStore, options: XClientOptions): XC
       const tokens = await readTokens(store);
       if (!tokens?.userId) throw new XApiError(0, "", "まだXと接続していません。");
 
-      const params = new URLSearchParams({
-        max_results: String(max),
-        "tweet.fields": "created_at,author_id,note_tweet"
-      });
-      const payload = await request<{ data?: RawPost[] }>(
-        `/2/users/${tokens.userId}/bookmarks?${params}`
-      );
-      const posts = payload.data ?? [];
+      const posts: BookmarkPost[] = [];
+      let paginationToken: string | undefined;
+      // 1リクエストは最大100件。next_token を辿って max 件まで集める（暴走防止に10ページまで）。
+      for (let page = 0; page < 10 && posts.length < max; page += 1) {
+        // max_results は5件未満を指定できないため、端数は多めに取って最後に切り詰める。
+        const params = new URLSearchParams({
+          max_results: String(Math.min(100, Math.max(max - posts.length, 5))),
+          "tweet.fields": "created_at,author_id,note_tweet"
+        });
+        if (paginationToken) params.set("pagination_token", paginationToken);
+        const payload = await request<{
+          data?: RawPost[];
+          meta?: { next_token?: string };
+        }>(`/2/users/${tokens.userId}/bookmarks?${params}`);
 
-      return posts
-        .filter((post) => post.author_id)
-        .map((post) => ({
-          id: post.id,
-          text: post.note_tweet?.text ?? post.text,
-          createdAt: post.created_at ?? new Date(now()).toISOString(),
-          authorId: post.author_id as string
-        }));
+        const data = payload.data ?? [];
+        for (const post of data) {
+          if (!post.author_id) continue;
+          posts.push({
+            id: post.id,
+            text: post.note_tweet?.text ?? post.text,
+            createdAt: post.created_at ?? new Date(now()).toISOString(),
+            authorId: post.author_id
+          });
+        }
+        paginationToken = payload.meta?.next_token;
+        if (!paginationToken || data.length === 0) break;
+      }
+      return posts.slice(0, max);
     },
 
     async authors(ids) {

@@ -16,6 +16,9 @@ export type BookmarkItem = {
   author: BookmarkAuthor;
 };
 
+/** 取得失敗の種別。auth は X の再認可が必要な可能性が高い。 */
+export type BookmarkErrorKind = "auth" | "temporary";
+
 /** KV に置く1日1回の取得結果。 */
 export type BookmarkSnapshot = {
   /** 最後に取得できた時刻。 */
@@ -25,6 +28,8 @@ export type BookmarkSnapshot = {
   items: BookmarkItem[];
   /** 最後の取得が失敗したときの理由。 */
   error?: string;
+  /** 最後の取得が失敗したときの種別。 */
+  errorKind?: BookmarkErrorKind;
 };
 
 export type TokenSet = {

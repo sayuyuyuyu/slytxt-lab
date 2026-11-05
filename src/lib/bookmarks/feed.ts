@@ -1,10 +1,26 @@
 import type {
   BookmarkAuthor,
+  BookmarkErrorKind,
   BookmarkItem,
   BookmarkSnapshot,
   KeyValueStore
 } from "./types.ts";
-import type { XClient } from "./x.ts";
+import { XApiError, type XClient } from "./x.ts";
+
+/** 失敗が再認可でしか直らないものかどうかを見分ける。 */
+export function classifyError(error: unknown): BookmarkErrorKind {
+  const message = error instanceof Error ? error.message : "";
+  const body = error instanceof XApiError ? error.body : "";
+  if (
+    (error instanceof XApiError && error.status === 401) ||
+    body.includes("invalid_grant") ||
+    message.includes("再認可") ||
+    message.includes("接続していません")
+  ) {
+    return "auth";
+  }
+  return "temporary";
+}
 
 /** アイコン付きのカード表示に変えたので、古いキャッシュは読まずに取り直す。 */
 export const SNAPSHOT_KEY = "snapshot:v2";
@@ -130,7 +146,8 @@ export async function refreshSnapshot(deps: FeedDeps): Promise<BookmarkSnapshot>
       updatedAt: previous?.updatedAt ?? attemptedAt,
       attemptedAt,
       items: previous?.items ?? [],
-      error: error instanceof Error ? error.message : "取得に失敗しました。"
+      error: error instanceof Error ? error.message : "取得に失敗しました。",
+      errorKind: classifyError(error)
     };
     await deps.store.put(SNAPSHOT_KEY, JSON.stringify(snapshot));
     return snapshot;
