@@ -339,7 +339,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <style>${STYLE}</style>
-<noscript><style>[hidden]{display:block!important}.tools,.more{display:none!important}</style></noscript>
+<noscript><style>.card[hidden]{display:block!important}.tools,.more{display:none!important}</style></noscript>
 </head>
 <body>
 <header class="site-header">
