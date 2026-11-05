@@ -35,7 +35,13 @@ export default {
       });
     }
     const url = new URL(request.url);
-    const name = decodeURIComponent(url.pathname.replace(/^\//, ""));
+    let name;
+    try {
+      name = decodeURIComponent(url.pathname.replace(/^\//, ""));
+    } catch {
+      // Invalid percent-encoding is just another malformed key.
+      return notFound();
+    }
     if (!KEY_PATTERN.test(name)) return notFound();
 
     const object =

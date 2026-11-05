@@ -68,6 +68,16 @@ test("media: malformed keys return 404 without touching R2", async () => {
   assert.deepEqual(env.MEDIA.requested, []);
 });
 
+test("media: invalid percent-encoding returns 404 without touching R2", async () => {
+  const env = envWith({ [`pub/${HASH_KEY}`]: stored() });
+  for (const path of ["/%E0%A4%A", "/%zz.jpg", "/%"]) {
+    const res = await worker.fetch(req(path), env);
+    assert.equal(res.status, 404, path);
+    assert.equal(res.headers.get("cache-control"), "no-store", path);
+  }
+  assert.deepEqual(env.MEDIA.requested, []);
+});
+
 test("media: missing object returns 404", async () => {
   const env = envWith({});
   const res = await worker.fetch(req(`/${HASH_KEY}`), env);
