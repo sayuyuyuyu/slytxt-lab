@@ -1837,3 +1837,50 @@ html.konami-on .site-main {
     scroll-behavior: auto !important;
   }
 }
+
+/* About「いまの状態」: status.slytxt.dev のスナップショットを静かに見せるパネル。 */
+.status-panel {
+  max-width: var(--article-width);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  padding: 20px 22px;
+  font-family: var(--font-mono);
+}
+.status-panel__cmd {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.status-panel__cmd .prompt {
+  margin-right: 0.5em;
+  color: var(--accent-5);
+}
+.status-panel__state {
+  margin: 0 0 16px;
+  font-size: 1.15rem;
+  color: var(--text);
+}
+.status-panel__list {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+.status-panel__list > div {
+  display: flex;
+  gap: 16px;
+}
+.status-panel__list dt {
+  width: 6.5em;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.status-panel__list dd {
+  margin: 0;
+}
+.status-panel__note {
+  margin: 16px 0 0;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}

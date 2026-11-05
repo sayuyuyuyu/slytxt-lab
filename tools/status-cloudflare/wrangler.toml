@@ -1,0 +1,18 @@
+name = "slytxt-status"
+main = "src/index.mjs"
+compatibility_date = "2025-06-01"
+
+# 入口はカスタムドメイン (status.slytxt.dev) のみ。
+workers_dev = false
+routes = [{ pattern = "status.slytxt.dev", custom_domain = true }]
+
+# 最新スナップショット（キー "latest" の1件だけ）を保持する KV。
+#   npx wrangler kv namespace create slytxt-status-data
+# で作った ID。
+[[kv_namespaces]]
+binding = "STATUS_DATA"
+id = "6718657e6627457a9b1bfc69cd08c51d"
+preview_id = "6718657e6627457a9b1bfc69cd08c51d"
+
+# secrets はここに書かない。デプロイ後に wrangler secret put で登録する:
+#   STATUS_POST_TOKEN  POST /api/status の Bearer トークン（必須）
