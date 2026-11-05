@@ -518,7 +518,29 @@ test("writer: 他端末で進んだ下書きではサーバーが勝ち、端末
   const editor = page.locator('#editorRoot [contenteditable="true"]');
   await editor.click();
   await page.keyboard.type("端末側の本文");
+  // 保存済み表示だけで待ちを終えると、エディタから本文欄への反映や
+  // サーバー同期がまだ済んでいないことがある。その状態で次の操作へ進むと、
+  // リロード時の pagehide 保存が他端末側の更新を古い本文で上書きして
+  // 競合の前提が崩れる。サーバーへ本文が届き、端末コピーが片付くまでを
+  // 状態変化で待ってから進める。
+  await expect(page.locator("#body")).toHaveValue(/端末側の本文/);
+  await expect
+    .poll(
+      async () => {
+        const list = await (await request.get(`${WRITER_URL}/api/drafts`)).json();
+        if (!list.drafts[0]) return "";
+        const { draft } = await (
+          await request.get(`${WRITER_URL}/api/drafts/${list.drafts[0].id}`, {
+            headers: { "x-slytxt-client": "1" }
+          })
+        ).json();
+        return draft.body ?? "";
+      },
+      { timeout: 15_000 }
+    )
+    .toContain("端末側の本文");
   await expectSaved(page);
+  await expect.poll(async () => (await readLocalCopy(page)) === null).toBe(true);
 
   const headers = { "x-slytxt-client": "1", "content-type": "application/json" };
   const list = await (await request.get(`${WRITER_URL}/api/drafts`)).json();
