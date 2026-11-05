@@ -181,10 +181,15 @@ function isCurrentSection(href: string) {
     });
 
     // Tab でメニューの外へ出たら閉じる（フォーカスは移動先へそのまま渡す）。
+    // 移動先が分からない場合（relatedTarget が null）は閉じない。iOS Safari では
+    // トグルボタンをタップしてもフォーカスがボタンへ移らず body に落ちるため、
+    // その状態で閉じると直後の click が「開く」に化けてトグルが反応しなくなる。
+    // 移動先が実在する要素のときだけ閉じれば、Tab 移動での自動クローズは保たれる。
     menu.addEventListener("focusout", (event) => {
       if (!isOpen()) return;
       const next = event.relatedTarget as Node | null;
-      if (next && (menu.contains(next) || next === button)) return;
+      if (!next) return;
+      if (menu.contains(next) || next === button) return;
       setOpen(false, { returnFocus: false });
     });
 
