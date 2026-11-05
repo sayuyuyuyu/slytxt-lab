@@ -97,10 +97,10 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
         .then((data) => {
           setText("state", data.status ?? "不明");
           if (data.heart_rate_bpm != null) {
-            const at = data.heart_rate_at ? new Date(data.heart_rate_at) : null;
+            const at = data.heart_rate_at ? formatAt(data.heart_rate_at) : "";
             setText(
               "heart",
-              `${data.heart_rate_bpm} bpm` + (at ? `（${dateTimeFmt.format(at)}）` : "")
+              `${data.heart_rate_bpm} bpm` + (at ? `（${at}）` : "")
             );
           }
           if (data.resting_heart_rate_bpm != null) {
@@ -114,7 +114,8 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
             setText("steps", `今日 ${numFmt.format(data.steps_today)} 歩`);
           }
           if (data.updated_at) {
-            setText("updated", dateTimeFmt.format(new Date(data.updated_at)));
+            const at = formatAt(data.updated_at);
+            if (at) setText("updated", at);
           }
         })
         .catch(() => {
