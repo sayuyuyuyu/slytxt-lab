@@ -51,6 +51,14 @@ export function formatJst(iso: string): string {
   return `${at.year}-${pad(at.month)}-${pad(at.day)} ${pad(at.hours)}:${pad(at.minutes)}`;
 }
 
+const WEEKDAYS_JA = ["日", "月", "火", "水", "木", "金", "土"] as const;
+
+/** `2026-09-25（金）09:00` の形。一覧の日時表示に使う。 */
+export function formatJstWithWeekday(iso: string): string {
+  const at = toJstParts(iso);
+  return `${at.year}-${pad(at.month)}-${pad(at.day)}（${WEEKDAYS_JA[at.weekday]}）${pad(at.hours)}:${pad(at.minutes)}`;
+}
+
 /** RSS の pubDate に使う RFC 822 形式。 */
 export function formatRfc822(iso: string): string {
   const at = toJstParts(iso);
