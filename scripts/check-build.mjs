@@ -32,6 +32,7 @@ let checkedStructured = 0;
 let checkedImgAlts = 0;
 let checkedSitemapPages = 0;
 let checkedRssMeta = 0;
+let checkedRssItems = 0;
 function unescapeXml(value) {
   return value
     .replaceAll("&lt;", "<")
@@ -332,7 +333,29 @@ if (rssXml !== null) {
     issues.push("rss.xml: atom:link is not a self reference to /rss.xml");
   else checkedRssMeta++;
   for (const item of items) {
-    const link = item[1].match(/<link>([^<]+)<\/link>/)?.[1];
+    const body = item[1];
+    const itemTitle = body.match(/<title>([^<]*)<\/title>/)?.[1]?.trim();
+    if (itemTitle) checkedRssItems++;
+    else issues.push("rss.xml: item without title");
+    const itemDescription = body
+      .match(/<description>([^<]*)<\/description>/)?.[1]
+      ?.trim();
+    if (itemDescription) checkedRssItems++;
+    else issues.push("rss.xml: item without description");
+    const pubDate = body.match(/<pubDate>([^<]*)<\/pubDate>/)?.[1]?.trim();
+    if (!pubDate) issues.push("rss.xml: item without pubDate");
+    else if (Number.isNaN(Date.parse(pubDate)))
+      issues.push(`rss.xml: invalid item pubDate ${pubDate}`);
+    else checkedRssItems++;
+    const guid = body.match(/<guid\b[^>]*>([^<]*)<\/guid>/)?.[1]?.trim();
+    if (guid) checkedRssItems++;
+    else issues.push("rss.xml: item without guid");
+    const categories = [...body.matchAll(/<category>([^<]+)<\/category>/g)]
+      .map((match) => match[1].trim())
+      .filter(Boolean);
+    if (categories.length > 0) checkedRssItems++;
+    else issues.push("rss.xml: item without category");
+    const link = body.match(/<link>([^<]+)<\/link>/)?.[1];
     if (!link) {
       issues.push("rss.xml: item without link");
       continue;
@@ -444,5 +467,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data.`,
 );
