@@ -10,7 +10,10 @@ function page(title: string, body: string, status = 200): Response {
   return new Response(
     `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex"><title>${escapeHtml(title)}</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#05070f">
+<title>${escapeHtml(title)}</title>
+<script>try{var isLight=localStorage.getItem("theme")==="light";document.documentElement.classList.toggle("light",isLight);document.querySelector('meta[name="theme-color"]').setAttribute("content",isLight?"#eef3fb":"#05070f")}catch(e){}</script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -20,7 +23,8 @@ function page(title: string, body: string, status = 200): Response {
 <style>body{margin:0;background:#05070f;color:#d9e6f7;font:16px/1.9 "Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","YuGothic",sans-serif}
 main{max-width:640px;margin:0 auto;padding:64px 20px}h1{font-size:1.4rem;font-weight:400;margin:0 0 16px}a{color:#4cc9f0}
 p{margin:0 0 12px}
-@media (prefers-color-scheme:light){body{background:#eef3fb;color:#0b1220}a{color:#0b63c4}}
+:root.light body{background:#eef3fb;color:#0b1220}
+:root.light a{color:#0b63c4}
 @media print{body{background:#ffffff;color:#0b1220}a{color:#0b63c4}}</style></head>
 <body><main><h1>${escapeHtml(title)}</h1>${body}</main></body></html>`,
     { status, headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex" } }

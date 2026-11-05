@@ -183,6 +183,24 @@ test("callback rejects an expired or unknown state", async () => {
   assert.match(await response.text(), /有効期限が切れています/);
 });
 
+test("callback page follows the stored site theme instead of the OS setting", async () => {
+  const env = { BOOKMARKS: memoryStore() };
+  const response = await callbackRequest(
+    context({ url: "https://slytxt.dev/api/bookmarks/callback?code=abc&state=x", env }),
+  );
+  const html = await response.text();
+  // theme-color starts dark and the init script follows localStorage, like the list page.
+  assert.ok(html.includes('<meta name="theme-color" content="#05070f">'));
+  assert.ok(html.includes('localStorage.getItem("theme")==="light"'));
+  assert.ok(html.includes('classList.toggle("light",isLight)'));
+  // Light colors apply only under :root.light, never from the OS setting.
+  assert.ok(html.includes(":root.light body{background:#eef3fb;color:#0b1220}"));
+  assert.ok(html.includes(":root.light a{color:#0b63c4}"));
+  assert.ok(!html.includes("prefers-color-scheme"));
+  // Print rules stay after the light rules so print colors win in both themes.
+  assert.ok(html.indexOf(":root.light a") < html.indexOf("@media print"));
+});
+
 test("callback answers 500 when the X client id is missing", async () => {
   const env = { BOOKMARKS: memoryStore() };
   const response = await callbackRequest(
