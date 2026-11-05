@@ -1134,3 +1134,86 @@ test("publish: 記事はタイトルが無ければ本文の書き出しをタ�
     assert.match(content, /^title: 書き出しが題になる。$/m);
   });
 });
+
+test("drafts: 保留中インデックスが完全なら list を使わず pr 付きだけを返す", async () => {
+  const kv = memoryKv();
+  let listCalls = 0;
+  const baseList = kv.list;
+  kv.list = async (options) => {
+    listCalls += 1;
+    return baseList(options);
+  };
+  const store = createDraftStore(kv);
+
+  const plain = await store.createDraft({ title: "下書きのまま" });
+  const pending = await store.createDraft({ title: "公開待ち" });
+  await store.writeDraft(pending.id, {
+    body: "公開待ちの本文。",
+    pr: "https://github.com/sayuyuyuyu/slytxt-lab/pull/1"
+  });
+  assert.ok(plain.id);
+
+  // 初回はインデックス再構築で list を使うが、完全なインデックスが残る。
+  const first = await store.listPendingDrafts();
+  assert.deepEqual(
+    first.map((draft) => draft.id),
+    [pending.id]
+  );
+  const callsAfterRebuild = listCalls;
+  assert.ok(callsAfterRebuild >= 1);
+
+  // 2回目以降は get だけで返り、list は増えない（Cron の毎分実行の前提）。
+  const second = await store.listPendingDrafts();
+  assert.deepEqual(
+    second.map((draft) => draft.id),
+    [pending.id]
+  );
+  assert.equal(listCalls, callsAfterRebuild);
+});
+
+test("drafts: 保留中インデックスは pr の解除と削除に追随する", async () => {
+  const store = createDraftStore(memoryKv());
+
+  const draft = await store.createDraft({ title: "公開待ち" });
+  await store.writeDraft(draft.id, {
+    body: "本文。",
+    pr: "https://github.com/sayuyuyuyu/slytxt-lab/pull/2"
+  });
+  assert.equal((await store.listPendingDrafts()).length, 1);
+
+  // pr が外れたら保留中からも外れる。
+  await store.writeDraft(draft.id, { pr: "" });
+  assert.deepEqual(await store.listPendingDrafts(), []);
+
+  // 削除されたら保留中からも外れる。
+  await store.writeDraft(draft.id, {
+    pr: "https://github.com/sayuyuyuyu/slytxt-lab/pull/3"
+  });
+  assert.equal((await store.listPendingDrafts()).length, 1);
+  await store.deleteDraft(draft.id);
+  assert.deepEqual(await store.listPendingDrafts(), []);
+});
+
+test("drafts: インデックスの無い既存データは初回アクセスで再構築される", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+
+  const draft = await store.createDraft({ title: "移行前からある下書き" });
+  await store.writeDraft(draft.id, {
+    body: "本文。",
+    pr: "https://github.com/sayuyuyuyu/slytxt-lab/pull/4"
+  });
+
+  // インデックス導入前に書かれた状態を再現する。
+  kv.map.delete("pending-publishes");
+  assert.equal(kv.map.has("pending-publishes"), false);
+
+  const pending = await store.listPendingDrafts();
+  assert.deepEqual(
+    pending.map((entry) => entry.id),
+    [draft.id]
+  );
+  const index = JSON.parse(kv.map.get("pending-publishes"));
+  assert.equal(index.complete, true);
+  assert.deepEqual(index.ids, [draft.id]);
+});

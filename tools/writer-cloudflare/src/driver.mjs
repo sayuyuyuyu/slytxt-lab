@@ -17,6 +17,11 @@
  * 取得して知らせる。同じ下書き・同じ PR の結果は1スロットに上書きされる
  * ので、tick のたびに増え続けることはない。表示したかどうかの管理は
  * UI 側（localStorage）で行う。
+ *
+ * 対象の取得: 見届け対象は store.listPendingDrafts で引く。全下書きの
+ * list スキャンを毎分行うと無料枠の KV list 上限（1,000件/日）を
+ * 単独で超えるため、保留中の下書きは単一のインデックスキー
+ * （pending-publishes）から get で引く形にしている（drafts-kv.mjs）。
  */
 import { createDraftStore } from "./drafts-kv.mjs";
 import { publishStatus } from "./publish.mjs";
@@ -70,13 +75,11 @@ export async function listPublishResults(env) {
 export async function drivePendingPublishes(env) {
   const store = createDraftStore(env.DRAFTS);
 
-  const drafts = await store.listDrafts().catch((error) => {
-    console.error(`driver: listDrafts failed: ${error?.message ?? error}`);
+  const drafts = await store.listPendingDrafts().catch((error) => {
+    console.error(`driver: listPendingDrafts failed: ${error?.message ?? error}`);
     return [];
   });
-  console.log(
-    `driver: tick drafts=${drafts.length} withPr=${drafts.filter((d) => d.pr).length}`
-  );
+  console.log(`driver: tick pending=${drafts.length}`);
   let driven = 0;
   for (const draft of drafts) {
     if (driven >= MAX_PER_TICK) break;
