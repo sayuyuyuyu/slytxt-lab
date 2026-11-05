@@ -75,6 +75,19 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
         hour: "numeric",
         minute: "2-digit"
       });
+      const dateFmt = new Intl.DateTimeFormat("ja-JP", {
+        month: "numeric",
+        day: "numeric"
+      });
+      const formatAt = (value: string): string => {
+        // 日次集計からしか取れない値は日付（YYYY-MM-DD）だけになることがある。
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          const d = new Date(`${value}T00:00:00`);
+          return Number.isNaN(d.getTime()) ? "" : dateFmt.format(d);
+        }
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? "" : dateTimeFmt.format(d);
+      };
       const numFmt = new Intl.NumberFormat("ja-JP");
       fetch("https://status.slytxt.dev/api/status")
         .then((res) => {
@@ -91,7 +104,8 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
             );
           }
           if (data.resting_heart_rate_bpm != null) {
-            setText("resting", `${data.resting_heart_rate_bpm} bpm`);
+            const at = data.resting_heart_rate_at ? formatAt(data.resting_heart_rate_at) : "";
+            setText("resting", `${data.resting_heart_rate_bpm} bpm` + (at ? `（${at}）` : ""));
           }
           if (data.sleep_hours != null) {
             setText("sleep", `昨夜 ${data.sleep_hours} 時間`);

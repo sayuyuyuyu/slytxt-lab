@@ -24,11 +24,12 @@ About ページの「いまの状態」節に表示する、しらゆ本人の�
   "sleep_date": "2026-11-05",
   "steps_today": 1234,
   "resting_heart_rate_bpm": 58,
+  "resting_heart_rate_at": "2026-11-05T07:30:00+09:00",
   "updated_at": "2026-11-05T09:00:00+09:00"
 }
 ```
 
-取れなかった項目は `null` で残す。
+取れなかった項目は `null` で残す。`resting_heart_rate_at` は安静時心拍の測定日時で、日次集計からしか取れない場合は日付（`YYYY-MM-DD`）だけになることがある。
 
 ## デプロイ手順
 
