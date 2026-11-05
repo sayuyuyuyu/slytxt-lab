@@ -17,6 +17,7 @@ const htmlFiles = (await files(root)).filter((name) => name.endsWith(".html"));
 assert.ok(htmlFiles.length > 0, "Build the site before checking output");
 const issues = [];
 let checkedLinks = 0;
+let checkedFragments = 0;
 let checkedImages = 0;
 let checkedXmlUrls = 0;
 let checkedPagefindAssets = 0;
@@ -37,6 +38,24 @@ async function distFileExists(pathname) {
     return (await stat(target)).isFile();
   } catch {
     return false;
+  }
+}
+const idsByFile = new Map();
+async function idsIn(file) {
+  if (!idsByFile.has(file)) {
+    const content = await readFile(file, "utf8");
+    idsByFile.set(
+      file,
+      new Set([...content.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1])),
+    );
+  }
+  return idsByFile.get(file);
+}
+function decodeFragment(hash) {
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch {
+    return hash.slice(1);
   }
 }
 for (const file of htmlFiles) {
@@ -79,7 +98,14 @@ for (const file of htmlFiles) {
   }
   for (const match of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
     const value = match[1].replaceAll("&amp;", "&");
-    if (value.startsWith("#")) continue;
+    if (value.startsWith("#")) {
+      const fragment = decodeFragment(value);
+      if (fragment) {
+        if ((await idsIn(file)).has(fragment)) checkedFragments++;
+        else issues.push(`${relative}: missing fragment target ${value}`);
+      }
+      continue;
+    }
     let url;
     if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)) {
       try {
@@ -104,6 +130,11 @@ for (const file of htmlFiles) {
         target = path.join(target, "index.html");
       if (!(await stat(target)).isFile()) throw new Error("not a file");
       checkedLinks++;
+      const fragment = url.hash ? decodeFragment(url.hash) : "";
+      if (fragment && target.endsWith(".html")) {
+        if ((await idsIn(target)).has(fragment)) checkedFragments++;
+        else issues.push(`${relative}: missing fragment target ${value}`);
+      }
     } catch {
       issues.push(`${relative}: missing ${value}`);
     }
@@ -214,5 +245,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedLinks} local links/assets, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
 );
