@@ -233,7 +233,7 @@ test("writer: 見出し画像の切り取り→反映→外す→付け直しと
   await expect(page.locator("#coverBox")).toBeVisible();
   await expect(page.locator("#coverPreview")).toHaveAttribute(
     "src",
-    `${WRITER_URL}/media/e2e-cover.png`
+    "/media/e2e-cover.png"
   );
 
   // プレビューにも反映される。
@@ -254,7 +254,7 @@ test("writer: 見出し画像の切り取り→反映→外す→付け直しと
   await expect(page.locator("#coverBox")).toBeVisible();
   await expect(page.locator("#coverPreview")).toHaveAttribute(
     "src",
-    `${WRITER_URL}/media/e2e-cover.png`
+    "/media/e2e-cover.png"
   );
   await page.locator("#coverRemove").click();
   await expect(page.locator("#coverBox")).toBeHidden();
