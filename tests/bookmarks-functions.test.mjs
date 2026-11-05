@@ -204,6 +204,17 @@ test("callback page follows the stored site theme instead of the OS setting", as
   assert.ok(html.indexOf(":root.light a") < html.indexOf("@media print"));
 });
 
+test("callback page has a skip link to the main content", async () => {
+  const env = { BOOKMARKS: memoryStore() };
+  const response = await callbackRequest(
+    context({ url: "https://slytxt.dev/api/bookmarks/callback?code=abc&state=x", env }),
+  );
+  const html = await response.text();
+  assert.ok(html.includes('<a class="skip-link" href="#main-content">Skip to content</a>'));
+  assert.ok(html.includes('<main id="main-content" tabindex="-1">'));
+  assert.ok(html.includes(".skip-link{"));
+});
+
 test("callback answers 500 when the X client id is missing", async () => {
   const env = { BOOKMARKS: memoryStore() };
   const response = await callbackRequest(
