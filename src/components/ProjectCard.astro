@@ -1,5 +1,5 @@
 ---
-import { getEntryDate, getEntryDisplayTitle, getEntryPath, type ProjectEntry } from "@/lib/content";
+import { getEntryDate, getEntryDisplayTitle, getEntryPath, getEntryPreview, type ProjectEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { projectStatusLabels } from "@/lib/site";
 import TagList from "./TagList.astro";
@@ -12,6 +12,13 @@ type Props = {
 const { entry, headingLevel: Heading = "h3" } = Astro.props;
 const date = getEntryDate(entry);
 const displayTitle = getEntryDisplayTitle(entry);
+const preview = getEntryPreview(entry);
+const excerpt =
+  entry.data.description !== displayTitle
+    ? entry.data.description
+    : preview && preview !== displayTitle
+      ? preview
+      : undefined;
 ---
 
 <article class="project-card" data-motion>
@@ -23,6 +30,6 @@ const displayTitle = getEntryDisplayTitle(entry);
   <Heading class="project-card__title">
     <a href={getEntryPath(entry)}>{displayTitle}</a>
   </Heading>
-  <p>{entry.data.description}</p>
+  {excerpt && <p>{excerpt}</p>}
   <TagList tags={entry.data.tags} />
 </article>

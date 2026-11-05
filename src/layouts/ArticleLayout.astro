@@ -26,6 +26,7 @@ const date = getEntryDate(entry);
 const displayTitle = getEntryDisplayTitle(entry);
 const title = `${displayTitle} - ${categoryLabels[entry.collection]} - ${site.name}`;
 const description = getEntryDescription(entry);
+const lead = entry.data.description && entry.data.description !== displayTitle ? entry.data.description : undefined;
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
 const crumbs = [
   { label: "Articles", href: "/articles/" },
@@ -49,7 +50,7 @@ const crumbs = [
       <Breadcrumbs items={crumbs} />
       <p class="eyebrow">{categoryLabels[entry.collection]}</p>
       <h1 class="page-title" data-pagefind-meta="title">{displayTitle}</h1>
-      {entry.data.description && <p class="page-lead">{entry.data.description}</p>}
+      {lead && <p class="page-lead">{lead}</p>}
       <div class="article-meta">
         <span>Published <time datetime={entry.data.published.toISOString()}>{formatDate(entry.data.published)}</time></span>
         {entry.data.updated && <span>Updated <time datetime={date.toISOString()}>{formatDate(date)}</time></span>}

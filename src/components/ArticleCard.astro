@@ -13,7 +13,12 @@ const { entry, headingLevel: Heading = "h3" } = Astro.props;
 const date = getEntryDate(entry);
 const displayTitle = getEntryDisplayTitle(entry);
 const preview = getEntryPreview(entry);
-const excerpt = entry.data.description ?? (preview && preview !== displayTitle ? preview : undefined);
+const excerpt =
+  entry.data.description && entry.data.description !== displayTitle
+    ? entry.data.description
+    : preview && preview !== displayTitle
+      ? preview
+      : undefined;
 ---
 
 <article class:list={["entry-card", { "entry-card--with-thumb": entry.data.cover }]} data-motion>
