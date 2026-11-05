@@ -6,7 +6,7 @@ import type { PagesEnv, PagesFunction } from "../../../src/lib/bookmarks/types.t
 
 const STATE_KEY = "oauth:";
 
-function page(title: string, body: string): Response {
+function page(title: string, body: string, status = 200): Response {
   return new Response(
     `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -22,7 +22,7 @@ function page(title: string, body: string): Response {
 main{max-width:640px;margin:0 auto;padding:64px 20px}h1{font-size:1.4rem;font-weight:400;margin:0 0 16px}a{color:#4cc9f0}
 p{margin:0 0 12px}</style></head>
 <body><main><h1>${escapeHtml(title)}</h1>${body}</main></body></html>`,
-    { status: 200, headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex" } }
+    { status, headers: { "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex" } }
   );
 }
 
@@ -32,15 +32,15 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const state = url.searchParams.get("state");
   const clientId = context.env.X_CLIENT_ID;
 
-  if (!clientId) return page("設定が足りません", "<p>X_CLIENT_ID が設定されていません。</p>");
+  if (!clientId) return page("設定が足りません", "<p>X_CLIENT_ID が設定されていません。</p>", 500);
   if (!code || !state) {
     const reason = url.searchParams.get("error") ?? "認可コードがありません";
-    return page("接続できませんでした", `<p>${escapeHtml(reason)}</p>`);
+    return page("接続できませんでした", `<p>${escapeHtml(reason)}</p>`, 400);
   }
 
   const verifier = await context.env.BOOKMARKS.get(`${STATE_KEY}${state}`);
   if (!verifier) {
-    return page("接続できませんでした", "<p>認可の有効期限が切れています。もう一度やり直してください。</p>");
+    return page("接続できませんでした", "<p>認可の有効期限が切れています。もう一度やり直してください。</p>", 400);
   }
   await context.env.BOOKMARKS.delete(`${STATE_KEY}${state}`);
 
@@ -62,7 +62,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     await context.env.BOOKMARKS.delete(SNAPSHOT_KEY);
   } catch (error) {
     const message = error instanceof Error ? error.message : "不明なエラー";
-    return page("接続できませんでした", `<p>${escapeHtml(message)}</p>`);
+    return page("接続できませんでした", `<p>${escapeHtml(message)}</p>`, 400);
   }
 
   const target = context.env.BOOKMARKS_SECRET ? `/bm/${context.env.BOOKMARKS_SECRET}/` : "/";
