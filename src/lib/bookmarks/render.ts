@@ -12,7 +12,12 @@ export type RenderOptions = {
   pageUrl: string;
   rssUrl: string;
   jsonUrl: string;
+  /** 保持する上限件数。 */
   count: number;
+  /** 一覧で最初に表示する件数。未指定なら全件表示。 */
+  initialCount?: number;
+  /** 埋め込みに載せる件数。未指定なら count まで。 */
+  embedCount?: number;
 };
 
 /** 本文は変えずに、裸の URL だけリンクにする。 */
@@ -49,6 +54,7 @@ export function renderJson(snapshot: BookmarkSnapshot | null): string {
       updatedAt: snapshot?.updatedAt ?? null,
       attemptedAt: snapshot?.attemptedAt ?? null,
       error: snapshot?.error ?? null,
+      errorKind: snapshot?.errorKind ?? null,
       items: snapshot?.items ?? []
     },
     null,
@@ -79,7 +85,7 @@ export function renderRss(snapshot: BookmarkSnapshot | null, options: RenderOpti
     "  <channel>",
     `    <title>${escapeXml(`${options.siteName} のXブックマーク`)}</title>`,
     `    <link>${escapeXml(options.pageUrl)}</link>`,
-    `    <description>${escapeXml(`Xで保存した投稿のうち最新${options.count}件。`)}</description>`,
+    `    <description>${escapeXml(`Xで保存した投稿のうち、新しい順に最大${options.count}件。`)}</description>`,
     `    <language>${site.lang}</language>`,
     `    <lastBuildDate>${formatRfc822(snapshot?.updatedAt ?? new Date(0).toISOString())}</lastBuildDate>`,
     `    <atom:link href="${escapeXml(options.rssUrl)}" rel="self" type="application/rss+xml"/>`
@@ -97,11 +103,11 @@ function avatarHtml(item: BookmarkItem): string {
   return `<span class="card__avatar card__avatar--fallback" aria-hidden="true">${escapeHtml(initialOf(item.author.name))}</span>`;
 }
 
-function cardHtml(item: BookmarkItem): string {
+function cardHtml(item: BookmarkItem, hidden = false): string {
   const handle = item.author.username
     ? `<p class="card__handle">@${escapeHtml(item.author.username)}</p>`
     : "";
-  return `<li class="card">
+  return `<li class="card"${hidden ? " hidden" : ""}>
 <div class="card__head">${avatarHtml(item)}<div class="card__who"><p class="card__name">${escapeHtml(item.author.name)}</p>${handle}</div><time class="card__time" datetime="${escapeHtml(item.createdAt)}">${formatJst(item.createdAt)}</time></div>
 <p class="card__text">${renderText(item.text)}</p>
 <div class="card__foot"><a class="card__open" href="${escapeHtml(item.url)}" rel="noreferrer noopener" target="_blank">Xで開く</a></div>
@@ -133,8 +139,19 @@ h1{margin:8px 0 0;font:400 1.9rem/1.4 var(--font)}
 .card__foot{display:flex;justify-content:flex-end;margin:10px 0 0}
 .card__open{font-size:.8rem}
 .empty{margin:32px 0 0;color:var(--text-muted);font-size:.9rem}
+.more{margin:24px 0 0;text-align:center}
+.more__button{font:inherit;font-size:.85rem;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:10px 24px;cursor:pointer}
 @media print{:root{--bg:#ffffff;--surface:#ffffff;--card:#ffffff;--text:#0b1220;--text-muted:#4a5972;--border:#c3d0e4;--accent:#0b63c4}body{background:#ffffff}}
 `;
+
+function noticeHtml(snapshot: BookmarkSnapshot): string {
+  if (!snapshot.error) return "";
+  const asOf = `${formatJst(snapshot.updatedAt)} 時点の内容を表示しています`;
+  if (snapshot.errorKind === "auth") {
+    return `<p class="notice">Xとの接続の有効期限が切れている可能性があります。${asOf}。復旧には再接続が必要です。</p>`;
+  }
+  return `<p class="notice">最新の取得に失敗しました。${asOf}。時間をおいて開き直すと直ることがあります。</p>`;
+}
 
 export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOptions): string {
   const items = snapshot?.items ?? [];
@@ -146,12 +163,16 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
   } else if (items.length === 0) {
     body = `<p class="empty">ブックマークがまだありません。</p>`;
   } else {
-    body = `<ol class="cards">${items.map(cardHtml).join("\n")}</ol>`;
+    const initial = Math.min(options.initialCount ?? items.length, items.length);
+    const cards = items.map((item, index) => cardHtml(item, index >= initial)).join("\n");
+    const more =
+      items.length > initial
+        ? `\n<p class="more"><button type="button" class="more__button" data-more>もっと見る（あと${items.length - initial}件）</button></p><script>document.querySelector("[data-more]").addEventListener("click",function(){document.querySelectorAll(".card[hidden]").forEach(function(card){card.hidden=false;});this.closest(".more").remove();});</script>`
+        : "";
+    body = `<ol class="cards">${cards}</ol>${more}`;
   }
 
-  const notice = snapshot?.error
-    ? `<p class="notice">最新の取得に失敗しました（${formatJst(snapshot.updatedAt)} 時点の内容）。</p>`
-    : "";
+  const notice = snapshot ? noticeHtml(snapshot) : "";
 
   return `<!doctype html>
 <html lang="ja">
@@ -174,7 +195,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <header>
 <p class="eyebrow">bookmarks</p>
 <h1>Xのブックマーク</h1>
-<p class="lead">Xで保存した投稿のうち、最新${options.count}件。1日1回、朝9時以降の最初のアクセスで取り直します。</p>
+<p class="lead">Xで保存した投稿を、新しい順に最大${options.count}件まで表示します。1日1回、朝9時以降の最初のアクセスで取り直します。</p>
 <p class="links"><a href="${escapeHtml(options.siteUrl)}">${escapeHtml(options.siteName)}</a><a href="${escapeHtml(options.rssUrl)}">RSS</a><a href="${escapeHtml(options.jsonUrl)}">JSON</a>${snapshot ? `<span class="updated">更新 ${formatJst(snapshot.updatedAt)}</span>` : ""}</p>
 </header>
 ${notice}
@@ -211,7 +232,7 @@ a{color:var(--xb-accent,#a43d29)}
 
 /** `<script src=".../embed.js">` で一覧をカードで描く。データは取得済みのものを埋め込むので追加の通信も CORS も要らない。 */
 export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOptions): string {
-  const items = (snapshot?.items ?? []).map((item) => ({
+  const items = (snapshot?.items ?? []).slice(0, options.embedCount ?? options.count).map((item) => ({
     text: item.text,
     url: item.url,
     name: item.author.name,
@@ -227,6 +248,7 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
     rssUrl: options.rssUrl,
     updatedAt: snapshot ? formatJst(snapshot.updatedAt) : null,
     error: snapshot?.error ?? null,
+    errorKind: snapshot?.errorKind ?? null,
     connected: snapshot !== null,
     count: options.count,
     items
