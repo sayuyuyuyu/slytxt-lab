@@ -42,7 +42,7 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
         {entry.data.updated && <span>Updated <time datetime={entry.data.updated.toISOString()}>{formatDate(entry.data.updated)}</time></span>}
         {entry.data.adult && <span role="img" aria-label="Includes an adult content review"> / 🔞</span>}
       </p>
-      {entry.data.cover && <img class="note-cover" src={entry.data.cover} alt="" />}
+      {entry.data.cover && <img class="note-cover" src={entry.data.cover} alt="" fetchpriority="high" />}
       {entry.data.adult && <AdultGate storageKey="adult-content-consent" />}
       <pre class="note__text" data-adult-content data-locked={entry.data.adult ? "true" : "false"}>{text}</pre>
       <TagList tags={entry.data.tags} />
