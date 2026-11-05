@@ -1,13 +1,15 @@
 /**
- * 投稿・画像の「見届け」をサーバー側で駆動する（Cron Triggers から毎分呼ばれる）。
+ * 投稿の「見届け」をサーバー側で駆動する（Cron Triggers から毎分呼ばれる）。
  *
- * 背景: publishStatus / mediaStatus は GitHub の実状態から現在フェーズを
+ * 背景: publishStatus は GitHub の実状態から現在フェーズを
  * 判定する冪等な確認で、merge と後片付けも担う。以前はそれを駆動するのが
  * ブラウザのポーリングだけだったため、投稿後にタブを閉じると CI が通っても
  * merge されず PR が open のまま残った。ここで Worker の scheduled から
  * 定期的に同じ確認を回し、タブを閉じても公開が最後まで完了するようにする。
  * ブラウザのポーリングは従来どおり残る（開いている間の速報用。どちらが
  * 先に merge しても、冪等な確認同士なので競合しない）。
+ * 画像メディアは R2 保存（media.mjs）になり PR を使わないため、
+ * 見届けの対象は投稿だけになった。
  *
  * 結果の通知: 公開が完了すると後片付けで下書き自体が消えるため、再訪時に
  * 「公開されたのか分からない」状態になる。そこで merged / failed の結果を
@@ -17,8 +19,6 @@
  * UI 側（localStorage）で行う。
  */
 import { createDraftStore } from "./drafts-kv.mjs";
-import { createGitHubClient } from "./github.mjs";
-import { mediaStatus } from "./media.mjs";
 import { publishStatus } from "./publish.mjs";
 
 const RESULT_PREFIX = "publish-result:";
@@ -63,8 +63,8 @@ export async function listPublishResults(env) {
 }
 
 /**
- * 保留中の投稿と画像を1ステップずつ進める。scheduled ハンドラから呼ばれる。
- * 個別の失敗は握って次の tick で再試行する（publishStatus / mediaStatus が
+ * 保留中の投稿を1ステップずつ進める。scheduled ハンドラから呼ばれる。
+ * 個別の失敗は握って次の tick で再試行する（publishStatus が
  * 冪等なので、途中からやり直しても同じ結果に収束する）。
  */
 export async function drivePendingPublishes(env) {
@@ -92,35 +92,6 @@ export async function drivePendingPublishes(env) {
       }
     } catch (error) {
       console.error(`driver: publish ${draft.id} failed: ${error?.message ?? error}`);
-      // 次の tick で再試行する。
-    }
-  }
-
-  // 画像 PR（media/*）も同じ見届けに乗せる。キーは PR の変更ファイル
-  // （public/media/<ファイル名>）から復元する。
-  if (!env.GITHUB_TOKEN) return;
-  const gh = createGitHubClient(env);
-  const pulls = await gh.listOpenPulls().catch((error) => {
-    console.error(`driver: listOpenPulls failed: ${error?.message ?? error}`);
-    return [];
-  });
-  console.log(
-    `driver: tick openPulls=${pulls.length} media=${pulls.filter((p) => p.head?.ref?.startsWith("media/")).length}`
-  );
-  let media = 0;
-  for (const pr of pulls) {
-    if (media >= MAX_PER_TICK) break;
-    if (!pr.head?.ref?.startsWith("media/")) continue;
-    media += 1;
-    try {
-      const files = await gh.getPullFiles(pr.number);
-      const file = files.find((entry) => entry.filename?.startsWith("public/media/"));
-      if (file) {
-        const result = await mediaStatus(env, file.filename.split("/").pop());
-        console.log(`driver: media ${pr.head.ref} -> ${result.state}`);
-      }
-    } catch (error) {
-      console.error(`driver: media ${pr.head.ref} failed: ${error?.message ?? error}`);
       // 次の tick で再試行する。
     }
   }

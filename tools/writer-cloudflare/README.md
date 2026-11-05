@@ -14,7 +14,7 @@
 - 認証は Cloudflare Access が担う（`write.slytxt.dev` は本人のメールアドレスのみ許可。後述）。Worker 側にトークン認証は無い。`x-slytxt-client` による書き込み防御（認証とは別の層）は Worker 側に残してある。入口はカスタムドメインのみで、`workers_dev = false` で workers.dev 側を閉じてある（workers.dev は Access の外にあるため）。
 - UI はこのディレクトリの `ui/` が正（`index.html` / `style.css` / `app.js`）。note 風のレイアウト（編集画面のヘッダー、公開確認パネル、一覧の「…」メニュー）は Cloudflare 版だけの差分として `ui/` 側に持つ。`markdown.mjs` は `src/markdown.mjs` をデプロイ準備のときに `public/` へコピーする。`/theme.css` は `src/styles/global.css` の `:root` 変数ブロックから静的に生成する（サイト側の変数を変えたら再生成と再デプロイが要る）。
 - 本文の編集は WYSIWYG（Milkdown Crepe、`ui/editor.js` を esbuild でバンドルして `editor.js` / `editor.css` として配信）。本文の保存形式は従来どおり markdown で、自動保存も textarea 経由の従来の仕組みをそのまま使う。エディタが読み込めない・初期化できない場合は textarea にフォールバックする。このディレクトリはサブプロジェクトとして `package.json` を持ち、依存（Crepe / esbuild 等）はここで `pnpm install` する（`node_modules` は git 管理しない）。往復変換の確認は `node scripts/check-editor.mjs`。
-- 画像は `POST /api/media` で GitHub リポジトリの `public/media/` にコミットし、サイト側の公開 URL を本文へ挿入する（次節）。
+- 画像は `POST /api/media` で Cloudflare R2（非公開バケット `slytxt-writer-media`）へ保存する。下書きでは writer 相対 URL（`/media/<キー>`）で参照し、公開時にだけ公開ファイル側で `https://media.slytxt.dev/<キー>` へ付け替える（次節）。
 
 ## デプロイ手順（本人の作業）
 
@@ -102,19 +102,22 @@ npx wrangler kv key list --binding DRAFTS --remote -c tools/writer-cloudflare/wr
 
 ポリシーを変えるときは、Zero Trust のダッシュボードでこのアプリケーションを編集する。
 
-## 画像メディア（GitHub）
+## 画像メディア（R2）
 
-`POST /api/media`（`src/media.mjs`、書き込み防御の対象）が jpeg / png / gif / webp（10MB まで）を受け取り、GitHub リポジトリの `public/media/<内容ハッシュ32桁>.<ext>` に保存する（ファイル名は内容の SHA-256 ハッシュ先頭32桁）。返却する URL は `https://slytxt.dev/media/<内容ハッシュ32桁>.<ext>` で、エディタはこの URL を本文へ挿入する。下書きの markdown には最初からこの最終 URL が入る。使う認証は投稿フローと同じ secret `GITHUB_TOKEN`（Contents / Pull requests の Read and write）。
+`POST /api/media`（`src/media.mjs`、書き込み防御の対象）が jpeg / png / gif / webp（10MB まで）を受け取り、Cloudflare R2 の非公開バケット `slytxt-writer-media` に保存する（キーは内容の SHA-256 ハッシュ先頭32桁＋拡張子。同じ画像は同じキーに収束する）。公開・非公開の境界はバケット内のプレフィックスで分ける:
 
-main は ruleset で「PR 経由＋チェック `ci` の成功」が必須のため、Contents API で main へ直接コミットはできない（409 になる）。そのため投稿フローと同じ形を取る:
+1. アップロードした画像は `draft/` プレフィックスに置く。返却する URL は writer 相対の `/media/<キー>` で、下書きの markdown とカバーにはこの形が入る。表示は writer 自身が `GET /media/:key` で配信し、write.slytxt.dev は Cloudflare Access の裏にあるため、未認証では取得できない。
+2. 投稿の公開時（`src/publish.mjs`）に、本文とカバーが参照する画像だけを `pub/` プレフィックスへ移し、公開ファイルの中では `https://media.slytxt.dev/<キー>` に付け替える。配信は専用 Worker（`tools/media-cloudflare`）が担い、`pub/` のものだけを返すため、下書きだけの画像は URL が推測できても取得できない。
+3. 旧公開 URL（`https://slytxt.dev/media/<キー>`）は、サイト側の `_redirects` で media.slytxt.dev へ 301 を返す互換を残してある（移行前の下書きや外部リンクのため）。
 
-1. `POST /api/media` がブランチ `media/<内容ハッシュ32桁>` を作ってファイルを置き、PR を作成して返す（state は `waiting`）。
-2. UI のポーリング（`GET /api/media/:key/status`）と Cron の見届け（`src/driver.mjs`、毎分）の両方が status を駆動し、`ci` の成功を見て squash merge し、ブランチを消す。どちらが先に merge しても冪等に収束し、タブを閉じても完了する（Cloudflare Pages の結果は待たない。投稿フローと同じ本人決定）。
-3. merge のコミットが Cloudflare Pages の本番デプロイを起こし、伝わって初めて URL が開ける。
+アップロードは R2 への PUT で即時に完了し、エディタ内でもすぐ表示できる。R2 バインディング（`MEDIA`）が未設定の環境では、`POST /api/media` は 501 を返す。バケットが無ければ作る:
 
-そのため、アップロード操作自体は CI と merge の分だけ（数十秒程度）かかり、画像が実際に表示できるようになるのは merge 後のデプロイ完了までで、合計で数分程度かかることがある（デプロイの所要時間は Cloudflare 側のばらつきに左右される）。アップロード直後にエディタ内で画像が見えないことがあるが、デプロイが伝われば表示される。`GITHUB_TOKEN` が未設定の環境では、`POST /api/media` は 501 を返す。
+```sh
+npx wrangler r2 bucket create slytxt-writer-media
+npx wrangler deploy -c tools/media-cloudflare/wrangler.toml
+```
 
-以前は R2 バケット `slytxt-writer-media` に保存していたが、2026-11-04 の方針変更で GitHub 保存に切り替え、バケットと binding（`MEDIA` / `MEDIA_PUBLIC_BASE_URL`）は撤去した。アカウントの R2 有効化自体は残してある。
+2026-11-04 の方針変更で一時 GitHub の `public/media/`（ブランチ＋PR 方式）に切り替えていたが、公開リポジトリに原画が残る点と GitHub のコンテンツ規約の制約から、2026-11-05 の本人依頼で R2 保存に戻した。移行時点で `public/media/` にあった3ファイルは R2 の `pub/` へ移し、リポジトリからは削除した（git 履歴には残る）。
 
 ## ローカルで試す
 

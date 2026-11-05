@@ -1,0 +1,14 @@
+name = "slytxt-media"
+main = "src/index.mjs"
+compatibility_date = "2025-06-01"
+
+# 入口はカスタムドメイン（media.slytxt.dev）のみ。ここは公開メディアの
+# 配信専用で、認証は付けない（公開済みの画像だけを返す）。
+workers_dev = false
+routes = [{ pattern = "media.slytxt.dev", custom_domain = true }]
+
+# 執筆ツール（tools/writer-cloudflare）と共有する非公開バケット。
+# この Worker が読むのは pub/ プレフィックスだけ（src/index.mjs）。
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "slytxt-writer-media"

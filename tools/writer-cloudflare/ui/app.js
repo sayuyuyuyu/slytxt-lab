@@ -585,28 +585,13 @@ async function uploadMedia(file, hooks = {}) {
   if (!response.ok) {
     throw new Error(payload.error ?? `画像のアップロードに失敗しました (${response.status})`);
   }
-  // POST が通った時点で最終 URL は確定している。以後の反映待ちは
+  // 画像は R2 へ即時に保存され、返ってくる writer 相対 URL
+  // （/media/<キー>）がそのまま下書き側の参照になる。公開時にだけ
+  // 公開ファイル側で media.slytxt.dev の URL へ付け替わる（publish.mjs）。
   // hooks.onPosted 経由で呼び出し側（エディタの非同期アップロード）へ
   // 知らせ、書き手はローカルプレビューのまま書き続けられる。
   hooks.onPosted?.(payload.url);
-  if (payload.state !== "waiting") return payload.url;
-  // main へは PR 経由でしか入れられないため、CI と merge を見届けてから
-  // URL を返す（投稿の pollPublishStatus と同じ形）。merge 後に Pages の
-  // デプロイが伝わるまで、画像は一時的に表示されないことがある。
-  const deadline = Date.now() + 5 * 60 * 1000;
-  let last = payload;
-  while (Date.now() < deadline) {
-    await sleep(4000);
-    const status = await api(`/api/media/${encodeURIComponent(payload.key)}/status`);
-    if (status.state === "merged") return status.url ?? payload.url;
-    if (status.state === "failed") {
-      throw new Error(status.message ?? `画像の反映に失敗しました: ${status.prUrl ?? ""}`);
-    }
-    last = status;
-  }
-  throw new Error(
-    `画像の反映が時間内に終わりませんでした。再試行すると、同じ PR で続きから進みます: ${last?.prUrl ?? ""}`
-  );
+  return payload.url;
 }
 
 let lastUploadDonePulse = 0;
@@ -1333,13 +1318,14 @@ function settleConfirm(value) {
 /*
  * note と同じく、見出し画像はタイトル欄の上で設定する。
  * 保存先は下書き frontmatter の cover（URL）。画像の保存自体は本文画像と
- * 同じ media フロー（PR 経由）で、POST が通った時点で最終 URL が確定する。
+ * 同じ media フロー（R2 保存）で、POST が通った時点で writer 相対 URL
+ * （/media/<キー>）が確定し、writer 自身の配信で即時に開ける。
  * 反映完了まではローカルの blob プレビューで見せる。
  *
- * 注意: 最終 URL が「確定」しても、Cloudflare Pages のデプロイが伝わるまで
- * 実際には開けない（media.mjs のコメント参照）。その間に blob を破棄して
- * 最終 URL へ切り替えると、カバー枠が壊れた画像アイコンだけの大きな枠に
- * なる（2026-11-05 のバグ報告）。blob は最終 URL が実際に読み込めるまで
+ * 注意: URL が「確定」しても、読み込みが実際に通るまでは blob を破棄
+ * しない。その間に blob を破棄して最終 URL へ切り替えると、カバー枠が
+ * 壊れた画像アイコンだけの大きな枠になる（2026-11-05 のバグ報告、
+ * 当時は Pages 伝播待ちが原因）。blob は最終 URL が実際に読み込めるまで
  * 出し続け、読み込み確認が取れてから切り替える。
  */
 let coverDisplayUrl = "";
@@ -1495,7 +1481,7 @@ function removeCover() {
  * 入力は 20MB まで（超えたらその場で断る）。選んだ画像は切り取り
  * ダイアログを出し、公開側の表示アスペクト比（.article-cover の 191:100。
  * note の見出し画像推奨 1280×670 と同じ比率）に固定で切り取る。
- * 出力は横 1280px までの JPEG（quality 0.85）にして、従来の media
+ * 出力は横 1280px までの JPEG（quality 0.85）にして、media
  * フロー（uploadMedia）へ渡す。Worker 側にも media.mjs の上限（10MB）が
  * あるが、切り取り後の JPEG はそれより十分小さくなる。
  * アニメーション GIF は切り取ると静止画になってしまうため、サイズ
