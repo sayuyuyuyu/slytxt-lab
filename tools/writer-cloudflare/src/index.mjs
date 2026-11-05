@@ -16,7 +16,7 @@ import {
 } from "./drafts-kv.mjs";
 import { PublishError, deriveDescription, publishPost, publishStatus } from "./publish.mjs";
 import { generateSummary } from "./summary.mjs";
-import { MediaError, mediaStatus, uploadMedia } from "./media.mjs";
+import { MediaError, mediaStatus, serveDraftMedia, uploadMedia } from "./media.mjs";
 import { drivePendingPublishes, listPublishResults } from "./driver.mjs";
 
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -194,6 +194,18 @@ export default {
       if (url.pathname.startsWith("/api/")) {
         return (await handleApi(request, env, url)) ?? json({ error: "not found" }, 404);
       }
+      // 下書き段階の画像の配信。ここは Cloudflare Access の裏なので、
+      // 未認証では取得できない。公開済みの画像の配信は media.slytxt.dev
+      // （tools/media-cloudflare）が担う。
+      const mediaMatch = /^\/media\/(.+)$/.exec(url.pathname);
+      if (mediaMatch && (request.method === "GET" || request.method === "HEAD")) {
+        const served = await serveDraftMedia(env, decodeURIComponent(mediaMatch[1]));
+        if (served) return served;
+        return new Response("not found", {
+          status: 404,
+          headers: { "content-type": "text/plain; charset=utf-8" }
+        });
+      }
       if (env.ASSETS) {
         return await env.ASSETS.fetch(request);
       }
@@ -215,8 +227,8 @@ export default {
   },
 
   /**
-   * Cron Triggers（wrangler.toml の [triggers]、毎分）: 保留中の投稿と
-   * 画像の見届けをサーバー側で進める。投稿後にタブを閉じても、CI 成功
+   * Cron Triggers（wrangler.toml の [triggers]、毎分）: 保留中の投稿の
+   * 見届けをサーバー側で進める。投稿後にタブを閉じても、CI 成功
    * 後の merge と後片付けがここで完了する（driver.mjs）。
    */
   async scheduled(_event, env, ctx) {

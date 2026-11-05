@@ -19,6 +19,12 @@ import { plainText, truncateText } from "./markdown.mjs";
 import { generateSummary } from "./summary.mjs";
 import { today } from "./date.mjs";
 import { GitHubError, createGitHubClient } from "./github.mjs";
+import {
+  MediaError,
+  extractMediaKeys,
+  publishMedia,
+  rewriteMediaUrls
+} from "./media.mjs";
 
 export class PublishError extends Error {}
 
@@ -98,6 +104,9 @@ function asPublishError(error) {
   if (error instanceof GitHubError) {
     return new PublishError(error.message);
   }
+  if (error instanceof MediaError) {
+    return new PublishError(error.message);
+  }
   return error;
 }
 
@@ -142,6 +151,21 @@ async function publishPostInner({ env, store, id, onLog }) {
   // 誤字チェック pass は 2026-11-04 に廃止。本文をそのまま投稿する。
   const body = draft.body.trim();
 
+  // 画像メディア: 下書きでは writer 相対 URL（/media/<キー>）で参照して
+  // いるものを、公開にあわせて R2 の公開側（pub/）へ移し、公開ファイルの
+  // 中では media.slytxt.dev の URL に付け替える。旧公開 URL
+  // （slytxt.dev/media/...）で参照している移行前の画像も同じ扱いにする。
+  // 下書き側の本文は書き換えない（付け替えは公開ファイルに対してだけ行う）。
+  const mediaKeys = [
+    ...new Set([...extractMediaKeys(body), ...extractMediaKeys(draft.cover ?? "")])
+  ];
+  if (mediaKeys.length) {
+    await publishMedia(env, mediaKeys);
+    onLog(`画像 ${mediaKeys.length} 件を公開側へ移しました。`);
+  }
+  const publicBody = rewriteMediaUrls(body);
+  const publicCover = draft.cover ? rewriteMediaUrls(draft.cover) : "";
+
   const title = deriveTitle(draft, body);
   const description = await resolveDescription({ env, store, id, draft, title, body, onLog });
   // タグの上限は note に合わせて10件（公開パネルの UI と揃える）。
@@ -155,8 +179,8 @@ async function publishPostInner({ env, store, id, onLog }) {
   // 空文字列のキーを落とすが、サイト側のスキーマは title キーが必須なので、
   // extras で行そのものを足す。
   const content = stringifyFrontmatter(
-    { title, description, published, tags, cover: draft.cover || undefined },
-    body,
+    { title, description, published, tags, cover: publicCover || undefined },
+    publicBody,
     title === "" ? ['title: ""'] : []
   );
   const commitMessage = `${note ? "note" : "post"}: ${title || slug}`;

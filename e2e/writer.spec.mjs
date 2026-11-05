@@ -175,9 +175,8 @@ async function injectCoverFile(page, kind) {
 test("writer: 見出し画像の切り取り→反映→外す→付け直しと、大きすぎる画像の拒否", async ({
   page
 }) => {
-  // 本番の media フロー（PR 作成→CI→マージ→Pages 伝播）はローカルで
-  // 再現できないため、POST /api/media は「マージ済み」で返し、最終 URL の
-  // 実体もその場で返す。検証するのはカバーまわりの UI 挙動。
+  // media フロー（R2 保存）はモックし、POST /api/media は writer 相対 URL
+  // を返し、その URL の実体もその場で返す。検証するのはカバーまわりの UI 挙動。
   const png = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
     "base64"
@@ -187,17 +186,16 @@ test("writer: 見出し画像の切り取り→反映→外す→付け直しと
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
-          url: "https://slytxt.dev/media/e2e-cover.png",
+          url: "/media/e2e-cover.png",
           key: "e2e-cover.png",
-          state: "merged",
-          prUrl: ""
+          state: "stored"
         })
       });
     } else {
       await route.continue();
     }
   });
-  await page.route("https://slytxt.dev/media/**", async (route) => {
+  await page.route(/\/media\/e2e-cover\.png/, async (route) => {
     await route.fulfill({ contentType: "image/png", body: png });
   });
 
@@ -235,7 +233,7 @@ test("writer: 見出し画像の切り取り→反映→外す→付け直しと
   await expect(page.locator("#coverBox")).toBeVisible();
   await expect(page.locator("#coverPreview")).toHaveAttribute(
     "src",
-    "https://slytxt.dev/media/e2e-cover.png"
+    `${WRITER_URL}/media/e2e-cover.png`
   );
 
   // プレビューにも反映される。
@@ -256,7 +254,7 @@ test("writer: 見出し画像の切り取り→反映→外す→付け直しと
   await expect(page.locator("#coverBox")).toBeVisible();
   await expect(page.locator("#coverPreview")).toHaveAttribute(
     "src",
-    "https://slytxt.dev/media/e2e-cover.png"
+    `${WRITER_URL}/media/e2e-cover.png`
   );
   await page.locator("#coverRemove").click();
   await expect(page.locator("#coverBox")).toBeHidden();
