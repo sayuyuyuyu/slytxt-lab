@@ -1,5 +1,5 @@
 ---
-import { getEntryDate, getEntryDisplayTitle, getEntryPath, type ArticleEntry } from "@/lib/content";
+import { getEntryDate, getEntryDisplayTitle, getEntryPath, getEntryPreview, type ArticleEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels } from "@/lib/site";
 import TagList from "./TagList.astro";
@@ -11,6 +11,9 @@ type Props = {
 
 const { entry, headingLevel: Heading = "h3" } = Astro.props;
 const date = getEntryDate(entry);
+const displayTitle = getEntryDisplayTitle(entry);
+const preview = getEntryPreview(entry);
+const excerpt = entry.data.description ?? (preview && preview !== displayTitle ? preview : undefined);
 ---
 
 <article class:list={["entry-card", { "entry-card--with-thumb": entry.data.cover }]} data-motion>
@@ -22,9 +25,9 @@ const date = getEntryDate(entry);
     {entry.data.adult && <span role="img" aria-label="Includes an adult content review"> / 🔞</span>}
   </div>
   <Heading class="entry-card__title">
-    <a href={getEntryPath(entry)}>{getEntryDisplayTitle(entry)}</a>
+    <a href={getEntryPath(entry)}>{displayTitle}</a>
   </Heading>
-  {entry.data.description && <p>{entry.data.description}</p>}
+  {excerpt && <p>{excerpt}</p>}
   {entry.data.tags.length > 0 && (
     <div class="entry-card__footer">
       <TagList tags={entry.data.tags} />
