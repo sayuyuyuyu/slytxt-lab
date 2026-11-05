@@ -1922,7 +1922,14 @@ html.konami-on .site-main {
   }
   .site-header,
   .site-footer,
-  .skip-link {
+  .skip-link,
+  .toc,
+  .article-nav,
+  .pagination,
+  .listing-tools,
+  .terminal__console,
+  .terminal__suggestions,
+  .home-hero__links {
     display: none !important;
   }
   [data-motion] {
