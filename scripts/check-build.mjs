@@ -20,6 +20,7 @@ let checkedLinks = 0;
 let checkedImages = 0;
 let checkedXmlUrls = 0;
 let checkedPagefindAssets = 0;
+let checkedRobotsRules = 0;
 function unescapeXml(value) {
   return value
     .replaceAll("&lt;", "<")
@@ -159,6 +160,31 @@ if (rssXml !== null) {
     else issues.push(`rss.xml: missing ${value}`);
   }
 }
+let robotsTxt = null;
+try {
+  robotsTxt = await readFile(path.join(root, "robots.txt"), "utf8");
+} catch {
+  issues.push("robots.txt: missing file");
+}
+if (robotsTxt !== null) {
+  const lines = robotsTxt.split(/\r?\n/).map((line) => line.trim());
+  const sitemapLine = lines.find((line) => line.startsWith("Sitemap:"));
+  let sitemapOk = false;
+  if (sitemapLine) {
+    try {
+      const url = new URL(sitemapLine.slice("Sitemap:".length).trim());
+      sitemapOk = url.origin === SITE_ORIGIN && url.pathname === "/sitemap.xml";
+    } catch {
+      sitemapOk = false;
+    }
+  }
+  if (sitemapOk) checkedRobotsRules++;
+  else issues.push(`robots.txt: missing Sitemap: ${SITE_ORIGIN}/sitemap.xml`);
+  for (const rule of ["Disallow: /bm/", "Disallow: /api/"]) {
+    if (lines.includes(rule)) checkedRobotsRules++;
+    else issues.push(`robots.txt: missing ${rule}`);
+  }
+}
 for (const asset of [
   "pagefind/pagefind-ui.js",
   "pagefind/pagefind-ui.css",
@@ -188,5 +214,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedLinks} local links/assets, ${checkedImages} og images, ${checkedXmlUrls} XML urls and ${checkedPagefindAssets} Pagefind assets.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedLinks} local links/assets, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
 );
