@@ -159,6 +159,61 @@ for (const file of htmlFiles) {
       else checkedStructured++;
     }
   }
+  // BreadcrumbList must match the visible breadcrumbs, if any.
+  const breadcrumbNav = html.match(/<nav\b[^>]*\bclass="breadcrumbs"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
+  const breadcrumbLd = jsonLdItems.find((item) => item?.["@type"] === "BreadcrumbList");
+  if (breadcrumbNav && !breadcrumbLd) {
+    issues.push(`${relative}: missing BreadcrumbList JSON-LD`);
+  } else if (!breadcrumbNav && breadcrumbLd) {
+    issues.push(`${relative}: BreadcrumbList JSON-LD without breadcrumbs`);
+  } else if (breadcrumbNav && breadcrumbLd) {
+    const decodeHtml = (value) =>
+      value
+        .replaceAll("&lt;", "<")
+        .replaceAll("&gt;", ">")
+        .replaceAll("&quot;", '"')
+        .replaceAll("&#39;", "'")
+        .replaceAll("&apos;", "'")
+        .replaceAll("&amp;", "&");
+    const displayed = [];
+    for (const m of breadcrumbNav.matchAll(/<a\b[^>]*\bhref="([^"]+)"[^>]*>([^<]*)<\/a>|<span\b[^>]*\baria-current="page"[^>]*>([^<]*)<\/span>/g)) {
+      if (m[1] !== undefined) displayed.push({ href: m[1], label: decodeHtml(m[2].trim()) });
+      else displayed.push({ label: decodeHtml(m[3].trim()) });
+    }
+    const elements = Array.isArray(breadcrumbLd.itemListElement) ? breadcrumbLd.itemListElement : [];
+    if (displayed.length === 0) {
+      issues.push(`${relative}: breadcrumbs without items`);
+    } else if (elements.length !== displayed.length) {
+      issues.push(`${relative}: BreadcrumbList has ${elements.length} items, breadcrumbs show ${displayed.length}`);
+    } else {
+      let breadcrumbOk = true;
+      for (let i = 0; i < displayed.length; i++) {
+        const el = elements[i];
+        const shown = displayed[i];
+        if (el?.["@type"] !== "ListItem" || el?.position !== i + 1 || el?.name !== shown.label) {
+          issues.push(`${relative}: BreadcrumbList item ${i + 1} does not match breadcrumbs`);
+          breadcrumbOk = false;
+          break;
+        }
+        const isLast = i === displayed.length - 1;
+        if (isLast) {
+          if (el.item !== undefined) {
+            issues.push(`${relative}: BreadcrumbList last item must not have item URL`);
+            breadcrumbOk = false;
+            break;
+          }
+        } else {
+          const expectedItem = shown.href ? new URL(shown.href, SITE_ORIGIN).href : undefined;
+          if (!expectedItem || el.item !== expectedItem) {
+            issues.push(`${relative}: BreadcrumbList item ${i + 1} url does not match breadcrumbs`);
+            breadcrumbOk = false;
+            break;
+          }
+        }
+      }
+      if (breadcrumbOk) checkedStructured++;
+    }
+  }
   if (!html.includes('id="main-content"'))
     issues.push(`${relative}: missing skip-link target`);
   const robotsContent = metaContent("name", "robots");

@@ -20,6 +20,7 @@ const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 const displayTitle = getEntryDisplayTitle(entry);
 const lead = entry.data.description !== displayTitle ? entry.data.description : undefined;
+const crumbs = [{ label: "Projects", href: "/projects/" }, { label: displayTitle }];
 ---
 
 <BaseLayout
@@ -32,10 +33,11 @@ const lead = entry.data.description !== displayTitle ? entry.data.description : 
   creativeWork
   searchable
   loadXWidgets={hasXEmbed(entry.body)}
+  breadcrumbs={crumbs}
 >
   <header class="article-hero" data-motion>
     <div class="container">
-      <Breadcrumbs items={[{ label: "Projects", href: "/projects/" }, { label: displayTitle }]} />
+      <Breadcrumbs items={crumbs} />
       <p class="eyebrow">{categoryLabels.projects}</p>
       <h1 class="page-title" data-pagefind-meta="title">{displayTitle}</h1>
       {lead && <p class="page-lead">{lead}</p>}
