@@ -51,6 +51,10 @@ const websiteJsonLd = {
   description: site.description,
   inLanguage: site.lang
 };
+const authorJsonLd = {
+  "@type": "Person",
+  name: "しらゆ（slytxt）"
+};
 const postingJsonLd =
   type === "article" && published
     ? {
@@ -59,6 +63,7 @@ const postingJsonLd =
         headline,
         description,
         image: imageUrl.href,
+        author: authorJsonLd,
         datePublished: published.toISOString(),
         dateModified: (updated ?? published).toISOString(),
         url: canonical.href,
@@ -74,6 +79,7 @@ const workJsonLd =
         headline,
         description,
         image: imageUrl.href,
+        author: authorJsonLd,
         datePublished: published.toISOString(),
         dateModified: (updated ?? published).toISOString(),
         url: canonical.href,
@@ -88,8 +94,7 @@ const profileJsonLd = profilePage
       url: canonical.href,
       inLanguage: site.lang,
       mainEntity: {
-        "@type": "Person",
-        name: "しらゆ（slytxt）",
+        ...authorJsonLd,
         alternateName: "slytxt",
         url: canonical.href
       }
