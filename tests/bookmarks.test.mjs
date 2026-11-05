@@ -323,6 +323,15 @@ test("bookmark list page carries the same favicon links as the site", () => {
   assert.ok(html.includes('<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">'));
 });
 
+test("bookmark list page advertises its RSS feed for autodiscovery", () => {
+  const html = renderHtml(null, RENDER_OPTIONS);
+  assert.ok(
+    html.includes(
+      '<link rel="alternate" type="application/rss+xml" title="slytxt.lab" href="https://slytxt.dev/bm/secret/rss.xml">',
+    ),
+  );
+});
+
 test("rendering an unconnected feed says so instead of failing", () => {
   const html = renderHtml(null, RENDER_OPTIONS);
   assert.ok(html.includes("まだXと接続していません"));
