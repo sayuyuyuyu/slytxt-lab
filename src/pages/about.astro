@@ -69,7 +69,6 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
         const el = panel.querySelector(`[data-status-field="${name}"]`);
         if (el) el.textContent = text;
       };
-      const timeFmt = new Intl.DateTimeFormat("ja-JP", { hour: "numeric", minute: "2-digit" });
       const dateTimeFmt = new Intl.DateTimeFormat("ja-JP", {
         month: "numeric",
         day: "numeric",
@@ -88,7 +87,7 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
             const at = data.heart_rate_at ? new Date(data.heart_rate_at) : null;
             setText(
               "heart",
-              `${data.heart_rate_bpm} bpm` + (at ? `（${timeFmt.format(at)}）` : "")
+              `${data.heart_rate_bpm} bpm` + (at ? `（${dateTimeFmt.format(at)}）` : "")
             );
           }
           if (data.resting_heart_rate_bpm != null) {
