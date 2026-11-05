@@ -167,7 +167,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <style>${STYLE}</style>
 </head>
 <body>
-<div class="wrap">
+<main class="wrap">
 <header>
 <p class="eyebrow">bookmarks</p>
 <h1>Xのブックマーク</h1>
@@ -176,7 +176,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 </header>
 ${notice}
 ${body}
-</div>
+</main>
 </body>
 </html>
 `;

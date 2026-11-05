@@ -308,6 +308,14 @@ test("embed avatar initial is taken by code point, not code unit", () => {
   assert.equal([..."😀Alice".trim()][0], "😀");
 });
 
+test("bookmark list page wraps its content in a main landmark", () => {
+  const html = renderHtml(null, RENDER_OPTIONS);
+  assert.ok(html.includes('<main class="wrap">'));
+  assert.ok(!html.includes('<div class="wrap">'));
+  assert.ok(html.indexOf('<main class="wrap">') < html.indexOf("<header>"));
+  assert.ok(html.indexOf("</main>") > html.indexOf("まだXと接続していません"));
+});
+
 test("bookmark list page carries the same favicon links as the site", () => {
   const html = renderHtml(null, RENDER_OPTIONS);
   assert.ok(html.includes('<link rel="icon" type="image/svg+xml" href="/favicon.svg">'));
