@@ -101,10 +101,15 @@ export function renderRss(snapshot: BookmarkSnapshot | null, options: RenderOpti
     `    <title>${escapeXml(`${options.siteName} のXブックマーク`)}</title>`,
     `    <link>${escapeXml(options.pageUrl)}</link>`,
     `    <description>${escapeXml(`Xで保存した投稿のうち、新しい順に最大${options.count}件。`)}</description>`,
-    `    <language>${site.lang}</language>`,
-    `    <lastBuildDate>${formatRfc822(snapshot?.updatedAt ?? new Date(0).toISOString())}</lastBuildDate>`,
-    `    <atom:link href="${escapeXml(options.rssUrl)}" rel="self" type="application/rss+xml"/>`
+    `    <language>${site.lang}</language>`
   ];
+  // 本体 RSS と同じく、項目が無い（未接続の）ときは lastBuildDate 自体を出さない。
+  if (snapshot) {
+    lines.push(`    <lastBuildDate>${formatRfc822(snapshot.updatedAt)}</lastBuildDate>`);
+  }
+  lines.push(
+    `    <atom:link href="${escapeXml(options.rssUrl)}" rel="self" type="application/rss+xml"/>`
+  );
   if (entries) lines.push(entries);
   lines.push("  </channel>", "</rss>", "");
 

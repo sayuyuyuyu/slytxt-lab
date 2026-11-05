@@ -249,6 +249,17 @@ test("rendering escapes markup, linkifies bare URLs, and hides the page", () => 
   assert.equal(json.error, null);
 });
 
+test("RSS omits lastBuildDate when there is no snapshot yet", () => {
+  const rss = renderRss(null, RENDER_OPTIONS);
+  assert.ok(!rss.includes("lastBuildDate"));
+  assert.ok(!rss.includes("1970"));
+
+  const withSnapshot = renderRss(listSnapshot(1), RENDER_OPTIONS);
+  assert.ok(
+    withSnapshot.includes("<lastBuildDate>Fri, 25 Sep 2026 09:00:00 +0900</lastBuildDate>"),
+  );
+});
+
 test("RSS title truncation counts code points and does not split an emoji", () => {
   const emoji = "\u{1F600}";
   const text = "a".repeat(79) + emoji + "bcdef";
