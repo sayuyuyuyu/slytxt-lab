@@ -86,15 +86,15 @@ export function getEntryDate(entry: SiteEntry): Date {
   return entry.collection === "projects" ? projectDate(entry) : articleDate(entry);
 }
 
-/** 本文の書き出しから作るプレビュー。先頭3行をプレーンテキストにし、90字で切る。 */
-export function getEntryPreview(entry: SiteEntry): string {
+/** 本文の書き出しから作るプレビュー。先頭3行をプレーンテキストにし、maxLength 字（既定は90字）で切る。 */
+export function getEntryPreview(entry: SiteEntry, maxLength = 90): string {
   const lines = (entry.body ?? "")
     .trim()
     .split("\n")
     .filter((line) => line.trim());
   const text = toPlainText(lines.slice(0, 3).join("\n"));
   const chars = Array.from(text);
-  return chars.length > 90 ? `${chars.slice(0, 90).join("")}…` : text;
+  return chars.length > maxLength ? `${chars.slice(0, maxLength).join("")}…` : text;
 }
 
 /** 表示名。タイトルが空のときはプレビュー（本文の書き出し）から作る。 */
