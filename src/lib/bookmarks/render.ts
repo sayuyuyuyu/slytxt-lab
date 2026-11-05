@@ -162,6 +162,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="alternate" type="application/rss+xml" title="${escapeHtml(options.siteName)}" href="${escapeHtml(options.rssUrl)}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
