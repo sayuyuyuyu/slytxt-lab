@@ -16,6 +16,8 @@ async function files(directory) {
 const htmlFiles = (await files(root)).filter((name) => name.endsWith(".html"));
 assert.ok(htmlFiles.length > 0, "Build the site before checking output");
 const issues = [];
+let checkedTitles = 0;
+let checkedDescriptions = 0;
 let checkedLinks = 0;
 let checkedFragments = 0;
 let checkedImages = 0;
@@ -64,6 +66,13 @@ for (const file of htmlFiles) {
   const route = "/" + relative.replace(/index\.html$/, "");
   if ((html.match(/<h1(?:\s|>)/g) ?? []).length !== 1)
     issues.push(`${relative}: expected one h1`);
+  const title = html.match(/<title>([^<]*)<\/title>/)?.[1]?.trim();
+  if (title) checkedTitles++;
+  else issues.push(`${relative}: missing or empty title`);
+  const descriptionTag = html.match(/<meta\b[^>]*\bname="description"[^>]*>/)?.[0];
+  const description = descriptionTag?.match(/\bcontent="([^"]*)"/)?.[1]?.trim();
+  if (description) checkedDescriptions++;
+  else issues.push(`${relative}: missing or empty meta description`);
   if (!html.includes('id="main-content"'))
     issues.push(`${relative}: missing skip-link target`);
   if (relative === "404.html") {
@@ -245,5 +254,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
 );
