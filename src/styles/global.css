@@ -1884,3 +1884,50 @@ html.konami-on .site-main {
   font-size: 0.78rem;
   color: var(--text-muted);
 }
+
+/* 印刷時は画面用の装飾を落とし、白背景・濃い文字色で本文が読める形にする。 */
+@media print {
+  :root,
+  :root.light {
+    color-scheme: light;
+    --bg: #ffffff;
+    --bg-soft: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #ffffff;
+    --text: #111111;
+    --text-muted: #444444;
+    --border: #cccccc;
+    --border-strong: #999999;
+    --shadow: transparent;
+  }
+  html {
+    background: #ffffff;
+    background-image: none;
+    background-attachment: scroll;
+  }
+  body {
+    background: #ffffff;
+    color: #111111;
+  }
+  body::after,
+  .site-footer::before {
+    display: none !important;
+  }
+  .site-header,
+  .site-footer,
+  .skip-link {
+    display: none !important;
+  }
+  [data-motion] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
