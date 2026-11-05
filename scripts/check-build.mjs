@@ -29,6 +29,7 @@ let checkedRobotsRules = 0;
 let checkedRedirects = 0;
 let checkedNoindex = 0;
 let checkedStructured = 0;
+let checkedImgAlts = 0;
 let checkedSitemapPages = 0;
 let checkedRssMeta = 0;
 function unescapeXml(value) {
@@ -209,6 +210,12 @@ for (const file of htmlFiles) {
     } catch {
       issues.push(`${relative}: missing og image ${value}`);
     }
+  }
+  for (const tag of html.matchAll(/<img\b[^>]*>/g)) {
+    // An empty alt is fine for decorative images; only a missing
+    // attribute means the alternative text was dropped entirely.
+    if (/\balt="[^"]*"/.test(tag[0])) checkedImgAlts++;
+    else issues.push(`${relative}: img without alt attribute`);
   }
   for (const match of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
     const value = match[1].replaceAll("&amp;", "&");
@@ -437,5 +444,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data.`,
 );
