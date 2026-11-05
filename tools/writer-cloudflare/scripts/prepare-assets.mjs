@@ -15,6 +15,7 @@
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { extractThemeCss } from "./theme-css.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const toolRoot = path.resolve(here, "..");
@@ -57,9 +58,7 @@ await build({
 });
 
 const globalCss = await readFile(path.join(repoRoot, "src", "styles", "global.css"), "utf8");
-const themeCss = [...globalCss.matchAll(/:root(?:\.light)?\s*\{[^}]*\}/g)]
-  .map((match) => match[0])
-  .join("\n");
+const themeCss = extractThemeCss(globalCss);
 await writeFile(path.join(publicDir, "theme.css"), `${themeCss}\n`, "utf8");
 
 console.log(`public/ を用意しました: ${publicDir}`);
