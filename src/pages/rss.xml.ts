@@ -2,7 +2,7 @@ import rss from "@astrojs/rss";
 import type { APIContext } from "astro";
 import { formatRfc822 } from "@/lib/bookmarks/format";
 import { getAllWriting, getEntryDate, getEntryDescription, getEntryDisplayTitle, getEntryPath } from "@/lib/content";
-import { site } from "@/lib/site";
+import { categoryLabels, site } from "@/lib/site";
 
 export async function GET(context: APIContext) {
   const articles = await getAllWriting();
@@ -24,7 +24,8 @@ export async function GET(context: APIContext) {
       title: getEntryDisplayTitle(entry),
       description: getEntryDescription(entry) ?? site.description,
       pubDate: entry.data.published,
-      link: getEntryPath(entry)
+      link: getEntryPath(entry),
+      categories: [...new Set([categoryLabels[entry.collection], ...entry.data.tags])]
     })),
     customData:
       `<language>${site.lang}</language>` +
