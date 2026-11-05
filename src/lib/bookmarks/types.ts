@@ -8,12 +8,26 @@ export type BookmarkAuthor = {
   avatar?: string;
 };
 
+export type BookmarkMedia = {
+  kind: "photo" | "video" | "gif";
+  /** photo は画像そのもの、video / gif はプレビュー画像。 */
+  image?: string;
+  /** video / gif の再生用 mp4。取れなければ未設定で、プレビュー画像から投稿へ誘導する。 */
+  videoUrl?: string;
+  width?: number;
+  height?: number;
+  /** X が付けた代替テキスト。無ければ未設定で、表示側が本文から補う。 */
+  alt?: string;
+};
+
 export type BookmarkItem = {
   id: string;
   text: string;
   createdAt: string;
   url: string;
   author: BookmarkAuthor;
+  /** 投稿に付いた画像・動画。無ければ未設定。 */
+  media?: BookmarkMedia[];
 };
 
 /** 取得失敗の種別。auth は X の再認可が必要な可能性が高い。 */

@@ -22,8 +22,8 @@ export function classifyError(error: unknown): BookmarkErrorKind {
   return "temporary";
 }
 
-/** アイコン付きのカード表示に変えたので、古いキャッシュは読まずに取り直す。 */
-export const SNAPSHOT_KEY = "snapshot:v2";
+/** メディア付きの保存形式に変えたので、古いキャッシュは読まずに取り直す。 */
+export const SNAPSHOT_KEY = "snapshot:v3";
 export const AUTHORS_KEY = "authors:v2";
 export const LOCK_KEY = "refresh-lock";
 
@@ -121,7 +121,8 @@ async function buildItems(deps: FeedDeps, posts: Awaited<ReturnType<XClient["boo
       text: post.text,
       createdAt: post.createdAt,
       url: postUrl(author, post.id),
-      author
+      author,
+      ...(post.media && post.media.length > 0 ? { media: post.media } : {})
     });
   }
   return items;
