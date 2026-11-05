@@ -84,13 +84,21 @@ for (const file of htmlFiles) {
     )?.[0];
     return tag?.match(/\bcontent="([^"]*)"/)?.[1]?.trim();
   };
+  const ogImageUrl = metaContent("property", "og:image");
+  let ogImagePath = "";
+  try {
+    ogImagePath = new URL(ogImageUrl).pathname;
+  } catch {}
+  // The default OG image shows only the site name and description, so its
+  // alt must be the site name, not the page title.
+  const imageAlt = ogImagePath === "/og/site.png" ? "slytxt.lab" : title;
   for (const [attr, name, expected] of [
     ["property", "og:title", title],
     ["property", "og:description", description],
     ["name", "twitter:title", title],
     ["name", "twitter:description", description],
-    ["property", "og:image:alt", title],
-    ["name", "twitter:image:alt", title],
+    ["property", "og:image:alt", imageAlt],
+    ["name", "twitter:image:alt", imageAlt],
   ]) {
     const value = metaContent(attr, name);
     if (!value) issues.push(`${relative}: missing or empty ${name}`);
