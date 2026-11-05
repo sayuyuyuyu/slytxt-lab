@@ -26,9 +26,6 @@ const lead = entry.data.description !== displayTitle ? entry.data.description : 
   title={`${displayTitle} - Projects - ${site.name}`}
   description={getEntryDescription(entry)}
   image={`/og/projects/${getEntrySlug(entry)}.png`}
-  type="article"
-  published={entry.data.started}
-  updated={entry.data.updated}
   searchable
   loadXWidgets={hasXEmbed(entry.body)}
 >

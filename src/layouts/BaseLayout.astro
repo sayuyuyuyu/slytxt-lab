@@ -103,8 +103,8 @@ const imageUrl = new URL(image, Astro.site);
     <meta name="twitter:image" content={imageUrl.href} />
     <meta name="twitter:image:alt" content={title} />
     {site.twitter && <meta name="twitter:site" content={site.twitter} />}
-    {published && <meta property="article:published_time" content={published.toISOString()} />}
-    {updated && <meta property="article:modified_time" content={updated.toISOString()} />}
+    {type === "article" && published && <meta property="article:published_time" content={published.toISOString()} />}
+    {type === "article" && updated && <meta property="article:modified_time" content={updated.toISOString()} />}
     <slot name="head" />
   </head>
   <body data-pagefind-ignore={searchable ? undefined : "all"}>
