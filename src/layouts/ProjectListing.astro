@@ -20,7 +20,7 @@ const hasTags = collectTags(await getAllEntries()).size > 0;
 <BaseLayout title={`Projects${suffix} - ${site.name}`} description={pageDescriptions.projects}>
   <PageHeader
     eyebrow="projects"
-    title="Projects"
+    title={`Projects${suffix}`}
     count={page.totalEntries}
     countLabel="projects"
     countLabelOne="project"
