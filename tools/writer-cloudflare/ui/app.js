@@ -2110,19 +2110,35 @@ async function removeDraft(id) {
 
 /* ---- 起動 ---- */
 
+const FALLBACK_META = {
+  categories: ["tech", "journal", "notes"],
+  categoryLabels: { tech: "Tech", journal: "Journal", notes: "Notes" },
+  draftsDir: "Cloudflare KV",
+  tags: []
+};
+
 async function boot() {
   try {
     state.meta = await api("/api/meta");
   } catch (error) {
+    // meta が取れなくても起動は止めない。カテゴリは固定値で続け、
+    // タグ候補だけが無い状態で編集画面まで進める（issue #584）。
+    state.meta = FALLBACK_META;
     toast(error.message, "error");
-    return;
   }
 
   fillSelect(els.category, state.meta.categories, state.meta.categoryLabels);
   fillTagCandidates();
 
   await setupEditor();
-  await loadDrafts();
+  try {
+    await loadDrafts();
+  } catch (error) {
+    // 一覧が取れなくても画面と操作系は生かす（issue #584）。
+    state.drafts = [];
+    renderList();
+    toast(error.message, "error");
+  }
   if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
   else clearEditor();
   setBusy(false);

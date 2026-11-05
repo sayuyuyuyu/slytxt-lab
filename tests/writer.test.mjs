@@ -1217,3 +1217,56 @@ test("drafts: インデックスの無い既存データは初回アクセスで
   assert.equal(index.complete, true);
   assert.deepEqual(index.ids, [draft.id]);
 });
+
+test("drafts: 下書き一覧インデックスが完全なら list を使わずに一覧を返す", async () => {
+  const kv = memoryKv();
+  let listCalls = 0;
+  const baseList = kv.list;
+  kv.list = async (options) => {
+    listCalls += 1;
+    return baseList(options);
+  };
+  const store = createDraftStore(kv);
+  const a = await store.createDraft({ title: "一覧の1件目" });
+  const b = await store.createDraft({ title: "一覧の2件目" });
+  await store.writeDraft(a.id, { body: "1件目の本文。" });
+  assert.ok(b.id);
+  const first = await store.listDrafts();
+  assert.equal(first.length, 2);
+  const callsAfterRebuild = listCalls;
+  assert.ok(callsAfterRebuild >= 1);
+  const second = await store.listDrafts();
+  assert.equal(second.length, 2);
+  assert.equal(listCalls, callsAfterRebuild);
+  // list が上限で失敗する状況でも、インデックス経由なら一覧が返る。
+  kv.list = async () => {
+    throw new Error("KV list() limit exceeded for the day.");
+  };
+  const third = await store.listDrafts();
+  assert.equal(third.length, 2);
+});
+
+test("drafts: 下書き一覧インデックスは作成と削除に追随する", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  const draft = await store.createDraft({ title: "消える下書き" });
+  assert.equal((await store.listDrafts()).length, 1);
+  await store.deleteDraft(draft.id);
+  assert.deepEqual(await store.listDrafts(), []);
+  const index = JSON.parse(kv.map.get("draft-index"));
+  assert.deepEqual(index.ids, []);
+});
+
+test("drafts: 下書き一覧インデックスの無い既存データは初回アクセスで再構築される", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  const draft = await store.createDraft({ title: "移行前からある下書き" });
+  await store.writeDraft(draft.id, { body: "本文。" });
+  kv.map.delete("draft-index");
+  assert.equal(kv.map.has("draft-index"), false);
+  const listed = await store.listDrafts();
+  assert.deepEqual(listed.map((entry) => entry.id), [draft.id]);
+  const index = JSON.parse(kv.map.get("draft-index"));
+  assert.equal(index.complete, true);
+  assert.deepEqual(index.ids, [draft.id]);
+});
