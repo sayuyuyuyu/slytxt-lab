@@ -26,6 +26,7 @@ let checkedImages = 0;
 let checkedXmlUrls = 0;
 let checkedPagefindAssets = 0;
 let checkedRobotsRules = 0;
+let checkedRedirects = 0;
 let checkedNoindex = 0;
 function unescapeXml(value) {
   return value
@@ -271,6 +272,47 @@ if (robotsTxt !== null) {
     else issues.push(`robots.txt: missing ${rule}`);
   }
 }
+let redirectsTxt = null;
+try {
+  redirectsTxt = await readFile(path.join(root, "_redirects"), "utf8");
+} catch {
+  issues.push("_redirects: missing file");
+}
+if (redirectsTxt !== null) {
+  for (const rawLine of redirectsTxt.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const target = line.split(/\s+/)[1];
+    if (!target) {
+      issues.push(`_redirects: line without target: ${line}`);
+      continue;
+    }
+    // Dynamic targets cannot be resolved to a single file in dist.
+    if (target.includes(":splat") || target.includes("*")) continue;
+    let pathname = target;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(target)) {
+      try {
+        const url = new URL(target);
+        if (url.origin !== SITE_ORIGIN) continue;
+        pathname = url.pathname;
+      } catch {
+        issues.push(`_redirects: invalid target ${target}`);
+        continue;
+      }
+    }
+    let decoded;
+    try {
+      decoded = decodeURIComponent(pathname);
+    } catch {
+      issues.push(`_redirects: invalid target ${target}`);
+      continue;
+    }
+    if (await distFileExists(decoded)) checkedRedirects++;
+    else issues.push(`_redirects: missing redirect target ${target}`);
+  }
+  if (checkedRedirects === 0)
+    issues.push("_redirects: no static redirect targets checked");
+}
 for (const asset of [
   "pagefind/pagefind-ui.js",
   "pagefind/pagefind-ui.css",
@@ -300,5 +342,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules and ${checkedNoindex} noindex checks.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects and ${checkedNoindex} noindex checks.`,
 );
