@@ -285,6 +285,9 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.8 var(--font);t
 a{color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 button,input,select{font:inherit}
+.skip-link{position:absolute;top:12px;left:16px;z-index:60;padding:8px 16px;background:var(--surface);border:1px solid var(--accent);transform:translateY(-180%)}
+.skip-link:focus{transform:translateY(0)}
+.wrap:focus{outline:none}
 .site-header{position:sticky;top:0;z-index:50;background:var(--bg)}
 .site-header__inner{width:min(100% - 48px,1040px);margin-inline:auto;min-height:65px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--border)}
 .brand{display:inline-flex;align-items:center;gap:10px;min-width:0;font-family:var(--font-mono);font-size:.98rem;font-weight:700;letter-spacing:.02em;text-decoration:none;color:var(--text)}
@@ -339,7 +342,7 @@ h1{margin:0;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:500;line-height:1.4}
 .footer-links a::before{content:"$ ";color:var(--accent-5)}
 .footer-links a:hover{color:var(--accent-strong)}
 @media (max-width:640px){.site-header__inner,.wrap,.site-footer__inner{width:min(100% - 32px,1040px)}.tools__search{flex-basis:100%}}
-@media print{:root,:root.light{color-scheme:light;--bg:#ffffff;--bg-soft:#ffffff;--surface:#ffffff;--surface-2:#ffffff;--text:#111111;--text-muted:#444444;--border:#cccccc;--border-strong:#999999;--accent:#0b63c4;--accent-strong:#084a96;--accent-3:#7a3fd1;--accent-5:#0a6b4a;--accent-warn:#9a6a00;--accent-red:#c02b3f}body{background:#ffffff}.site-header,.site-footer,.tools,.more{display:none!important}}
+@media print{:root,:root.light{color-scheme:light;--bg:#ffffff;--bg-soft:#ffffff;--surface:#ffffff;--surface-2:#ffffff;--text:#111111;--text-muted:#444444;--border:#cccccc;--border-strong:#999999;--accent:#0b63c4;--accent-strong:#084a96;--accent-3:#7a3fd1;--accent-5:#0a6b4a;--accent-warn:#9a6a00;--accent-red:#c02b3f}body{background:#ffffff}.site-header,.site-footer,.skip-link,.tools,.more{display:none!important}}
 `;
 
 export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOptions): string {
@@ -409,13 +412,14 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <noscript><style>.card[hidden]{display:block!important}.tools,.more{display:none!important}</style></noscript>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
 <div class="site-header__inner">
 <a class="brand" href="${escapeHtml(options.siteUrl)}" aria-label="${escapeHtml(options.siteName)} トップ"><span class="brand__mark" aria-hidden="true">❯</span><span class="brand__name">${escapeHtml(options.siteName)}</span><span class="brand__cursor" aria-hidden="true"></span></a>
 <button class="theme-toggle" type="button" aria-label="Toggle theme" data-theme-toggle><span aria-hidden="true" data-theme-icon>◐</span></button>
 </div>
 </header>
-<main class="wrap">
+<main id="main-content" class="wrap" tabindex="-1">
 <div class="page-head">
 <p class="eyebrow">Bookmarks</p>
 <h1>Xのブックマーク</h1>
