@@ -18,6 +18,7 @@ type Props = {
   noCanonical?: boolean;
   searchable?: boolean;
   loadXWidgets?: boolean;
+  creativeWork?: boolean;
 };
 
 const {
@@ -31,7 +32,8 @@ const {
   noindex = false,
   noCanonical = false,
   searchable = false,
-  loadXWidgets = false
+  loadXWidgets = false,
+  creativeWork = false
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -52,6 +54,21 @@ const postingJsonLd =
     ? {
         "@context": "https://schema.org",
         "@type": "BlogPosting",
+        headline,
+        description,
+        image: imageUrl.href,
+        datePublished: published.toISOString(),
+        dateModified: (updated ?? published).toISOString(),
+        url: canonical.href,
+        mainEntityOfPage: canonical.href,
+        inLanguage: site.lang
+      }
+    : undefined;
+const workJsonLd =
+  creativeWork && published
+    ? {
+        "@context": "https://schema.org",
+        "@type": "CreativeWork",
         headline,
         description,
         image: imageUrl.href,
@@ -137,6 +154,7 @@ const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003
     {type === "article" && updated && <meta property="article:modified_time" content={updated.toISOString()} />}
     <script type="application/ld+json" set:html={toJsonLd(websiteJsonLd)} />
     {postingJsonLd && <script type="application/ld+json" set:html={toJsonLd(postingJsonLd)} />}
+    {workJsonLd && <script type="application/ld+json" set:html={toJsonLd(workJsonLd)} />}
     <slot name="head" />
   </head>
   <body data-pagefind-ignore={searchable ? undefined : "all"}>

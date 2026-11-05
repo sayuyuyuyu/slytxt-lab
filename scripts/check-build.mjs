@@ -120,6 +120,18 @@ for (const file of htmlFiles) {
   else if (!websiteLd.name || websiteLd.url !== `${SITE_ORIGIN}/`)
     issues.push(`${relative}: WebSite JSON-LD missing name or url`);
   else checkedStructured++;
+  if (/^projects\/[^/]+\/index\.html$/.test(relative)) {
+    const workLd = jsonLdItems.find((item) => item?.["@type"] === "CreativeWork");
+    if (!workLd) issues.push(`${relative}: missing CreativeWork JSON-LD`);
+    else {
+      const missingKeys = ["headline", "datePublished", "dateModified", "image"].filter((key) => !workLd[key]);
+      if (missingKeys.length > 0)
+        issues.push(`${relative}: CreativeWork JSON-LD missing ${missingKeys.join(", ")}`);
+      else if (Number.isNaN(Date.parse(workLd.datePublished)) || Number.isNaN(Date.parse(workLd.dateModified)))
+        issues.push(`${relative}: CreativeWork JSON-LD has invalid dates`);
+      else checkedStructured++;
+    }
+  }
   if (metaContent("property", "og:type") === "article") {
     const postingLd = jsonLdItems.find((item) => item?.["@type"] === "BlogPosting");
     if (!postingLd) issues.push(`${relative}: missing BlogPosting JSON-LD`);
