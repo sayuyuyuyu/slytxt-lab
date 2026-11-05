@@ -6,6 +6,9 @@ const AUTHORIZE = "https://x.com/i/oauth2/authorize";
 
 export const SCOPES = ["tweet.read", "users.read", "bookmark.read", "offline.access"] as const;
 
+/** 認可途中の PKCE verifier を KV に置くキーの接頭辞。後ろに state を付ける。 */
+export const STATE_KEY = "oauth:";
+
 export async function createPkce(): Promise<{ verifier: string; challenge: string }> {
   const verifier = randomToken(32);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));

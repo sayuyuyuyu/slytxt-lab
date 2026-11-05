@@ -3,6 +3,7 @@ import test from "node:test";
 import { onRequest as feedRequest } from "../functions/bm/[secret]/[[path]].ts";
 import { onRequest as connectRequest } from "../functions/api/bookmarks/connect.ts";
 import { onRequest as callbackRequest } from "../functions/api/bookmarks/callback.ts";
+import { STATE_KEY } from "../src/lib/bookmarks/oauth.ts";
 
 function memoryStore() {
   const map = new Map();
@@ -147,7 +148,9 @@ test("connect redirects to the X authorize page and stores the state", async () 
   assert.match(location.searchParams.get("scope"), /bookmark\.read/);
   const state = location.searchParams.get("state");
   assert.ok(state);
-  assert.ok(await store.get(`oauth:${state}`), "PKCE verifier is stored under the state");
+  // KV のキー形式は変えない（connect と callback が共有定義を参照する）。
+  assert.equal(STATE_KEY, "oauth:");
+  assert.ok(await store.get(`${STATE_KEY}${state}`), "PKCE verifier is stored under the state");
 });
 
 test("callback answers 400 without a code", async () => {
