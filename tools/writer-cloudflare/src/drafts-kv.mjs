@@ -4,6 +4,13 @@
  * キーは `draft:<id>`、値は移行前のファイル保存版が drafts/<id>.md に
  * 書いていたテキストそのもの。置き場所だけがファイルから KV に変わり、
  * API 形状・直列化形式は移行時から変えていない。
+ *
+ * 保留中の公開ジョブ（pr が残っている下書き）の ID は、単一キー
+ * `pending-publishes` に JSON で保持する。Cron の見届け（driver.mjs）が
+ * 毎分 list を呼ぶと無料枠の list 上限（1,000件/日）を単独で超えてしまう
+ * ため、一覧スキャンは UI 操作時とインデックス再構築時だけに限る。
+ * インデックスは下書きの作成・保存・削除に追随して更新され、欠落・
+ * 不完全な場合は list スキャンで再構築する（自己修復）。
  */
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText, textLength, truncateText } from "./markdown.mjs";
@@ -15,6 +22,8 @@ export class DraftNotFound extends Error {}
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
 const KEY_PREFIX = "draft:";
+/** 保留中公開ジョブのインデックスキー。値は { ids: string[], complete: boolean }。 */
+const PENDING_KEY = "pending-publishes";
 
 export function assertId(id) {
   if (typeof id !== "string" || !ID_PATTERN.test(id) || id.includes("..")) {
@@ -119,6 +128,24 @@ function slugFragment(title) {
   return ascii || "memo";
 }
 
+/** 一覧表示用の要約（listDrafts / listPendingDrafts 共通）。 */
+function summarizeDraft(draft) {
+  return {
+    id: draft.id,
+    title: draft.title,
+    category: draft.category,
+    tags: draft.tags,
+    updated: draft.updated,
+    pr: draft.pr,
+    excerpt: truncateText(plainText(draft.body), 120),
+    chars: textLength(draft.body)
+  };
+}
+
+function sortSummaries(drafts) {
+  return drafts.sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
+}
+
 /**
  * KV バインディングを受け取って、ファイル保存版と同じ関数群を返す。
  * KV には排他作成がないため、createDraft の競合窓は
@@ -143,17 +170,7 @@ export function createDraftStore(kv) {
         const id = entry.name.slice(KEY_PREFIX.length);
         if (!ID_PATTERN.test(id)) continue;
         try {
-          const draft = await readDraft(id);
-          drafts.push({
-            id: draft.id,
-            title: draft.title,
-            category: draft.category,
-            tags: draft.tags,
-            updated: draft.updated,
-            pr: draft.pr,
-            excerpt: truncateText(plainText(draft.body), 120),
-            chars: textLength(draft.body)
-          });
+          drafts.push(summarizeDraft(await readDraft(id)));
         } catch {
           // 壊れたレコードは一覧から落とすだけにして、他を開けなくしない。
         }
@@ -161,7 +178,97 @@ export function createDraftStore(kv) {
       if (page.list_complete) break;
       cursor = page.cursor;
     }
-    return drafts.sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
+    return sortSummaries(drafts);
+  }
+
+  /**
+   * 保留中インデックスを読む。欠落・破損時は null。
+   * complete が false のインデックスは「一部の ID しか入っていない
+   * かもしれない」状態で、次回の listPendingDrafts で再構築される。
+   */
+  async function readPendingIndex() {
+    const raw = await kv.get(PENDING_KEY).catch(() => null);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.ids)) return null;
+      return {
+        ids: parsed.ids.filter((id) => typeof id === "string" && ID_PATTERN.test(id)),
+        complete: parsed.complete === true
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async function writePendingIndex(ids, complete) {
+    await kv.put(PENDING_KEY, JSON.stringify({ ids: [...new Set(ids)], complete }));
+  }
+
+  /** 保存・削除に追随して保留中インデックスを更新する。 */
+  async function syncPendingIndex(draft) {
+    const index = await readPendingIndex();
+    if (!index) {
+      // インデックスが無い間は、保留中の下書きが現れたときだけ
+      // 部分インデックスを作る（残りは再構築で埋まる）。
+      if (draft.pr) await writePendingIndex([draft.id], false);
+      return;
+    }
+    const has = index.ids.includes(draft.id);
+    if (draft.pr && !has) {
+      await writePendingIndex([...index.ids, draft.id], index.complete);
+    } else if (!draft.pr && has) {
+      await writePendingIndex(
+        index.ids.filter((id) => id !== draft.id),
+        index.complete
+      );
+    }
+  }
+
+  async function dropFromPendingIndex(id) {
+    const index = await readPendingIndex();
+    if (!index || !index.ids.includes(id)) return;
+    await writePendingIndex(
+      index.ids.filter((entry) => entry !== id),
+      index.complete
+    );
+  }
+
+  /**
+   * 保留中の公開ジョブがある下書きの要約だけを返す（Cron の見届け用）。
+   * インデックスが完全なら get だけで済み、list は呼ばない。
+   * インデックスが欠落・不完全なときだけ list スキャンで再構築する。
+   */
+  async function listPendingDrafts() {
+    const index = await readPendingIndex();
+    if (!index || !index.complete) {
+      const all = await listDrafts();
+      const pending = all.filter((draft) => draft.pr);
+      await writePendingIndex(
+        pending.map((draft) => draft.id),
+        true
+      );
+      return pending;
+    }
+    const drafts = [];
+    const stale = [];
+    for (const id of index.ids) {
+      try {
+        const draft = await readDraft(id);
+        if (draft.pr) drafts.push(summarizeDraft(draft));
+        else stale.push(id);
+      } catch (error) {
+        if (error instanceof DraftNotFound) stale.push(id);
+        else throw error;
+      }
+    }
+    if (stale.length) {
+      await writePendingIndex(
+        index.ids.filter((id) => !stale.includes(id)),
+        true
+      ).catch(() => {});
+    }
+    return sortSummaries(drafts);
   }
 
   async function writeDraft(id, patch) {
@@ -186,6 +293,7 @@ export function createDraftStore(kv) {
       base.extras
     );
     await kv.put(keyOf(id), serializeDraft(next));
+    await syncPendingIndex(next);
     return next;
   }
 
@@ -208,8 +316,9 @@ export function createDraftStore(kv) {
   async function deleteDraft(id) {
     if ((await kv.get(keyOf(id))) == null) return false;
     await kv.delete(keyOf(id));
+    await dropFromPendingIndex(id);
     return true;
   }
 
-  return { listDrafts, readDraft, writeDraft, createDraft, deleteDraft };
+  return { listDrafts, listPendingDrafts, readDraft, writeDraft, createDraft, deleteDraft };
 }
