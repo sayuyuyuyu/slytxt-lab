@@ -86,6 +86,12 @@ export function getEntryDate(entry: SiteEntry): Date {
   return entry.collection === "projects" ? projectDate(entry) : articleDate(entry);
 }
 
+/** getEntryDate が返す日付の意味。更新日がある場合は Updated、無ければ記事・メモは Published、Projects は Started。 */
+export function getEntryDateLabel(entry: SiteEntry): string {
+  if (entry.data.updated) return "Updated";
+  return entry.collection === "projects" ? "Started" : "Published";
+}
+
 /** 埋め込みになる単独 URL 行か（裸 URL / autolink / テキストが URL そのもののリンク）。公開側ではプレイヤーやカードに変換されるため、本文テキストとして数えない。 */
 function isEmbedOnlyLine(line: string): boolean {
   const text = line.trim();
