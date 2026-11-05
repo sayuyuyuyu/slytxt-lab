@@ -25,7 +25,9 @@ const date = getEntryDate(entry);
     <a href={getEntryPath(entry)}>{getEntryDisplayTitle(entry)}</a>
   </Heading>
   {entry.data.description && <p>{entry.data.description}</p>}
-  <div class="entry-card__footer">
-    <TagList tags={entry.data.tags} />
-  </div>
+  {entry.data.tags.length > 0 && (
+    <div class="entry-card__footer">
+      <TagList tags={entry.data.tags} />
+    </div>
+  )}
 </article>
