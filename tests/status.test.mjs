@@ -69,7 +69,7 @@ test("status: oversized body returns 413", async () => {
 
 test("status: POST then GET returns saved value", async () => {
   const env = envWith();
-  const payload = { status: "genki", heart_rate_bpm: 72, steps_today: 1234 };
+  const payload = { status: "genki", heart_rate_bpm: 72, steps_today: 1234, resting_heart_rate_bpm: 58, resting_heart_rate_at: "2026-11-05T07:30:00+09:00" };
   const postRes = await worker.fetch(postReq(JSON.stringify(payload), "Bearer test-token"), env);
   assert.equal(postRes.status, 200);
   assert.deepEqual(await postRes.json(), { ok: true });
