@@ -89,7 +89,7 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
         return Number.isNaN(d.getTime()) ? "" : dateTimeFmt.format(d);
       };
       const numFmt = new Intl.NumberFormat("ja-JP");
-      fetch("https://status.slytxt.dev/api/status")
+      fetch("https://status.slytxt.dev/api/status", { signal: AbortSignal.timeout(5000) })
         .then((res) => {
           if (!res.ok) throw new Error(`status ${res.status}`);
           return res.json();
