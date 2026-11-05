@@ -1,8 +1,6 @@
-import { authorizeUrl, createPkce } from "../../../src/lib/bookmarks/oauth.ts";
+import { authorizeUrl, createPkce, STATE_KEY } from "../../../src/lib/bookmarks/oauth.ts";
 import { matchesSecret, randomToken } from "../../../src/lib/bookmarks/secret.ts";
 import type { PagesEnv, PagesFunction } from "../../../src/lib/bookmarks/types.ts";
-
-const STATE_KEY = "oauth:";
 
 /** 認可を始める。合言葉が無いと URL を返さない。 */
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
