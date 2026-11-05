@@ -108,7 +108,7 @@ export function linkCardHtml({ url, ogp }) {
     ? `<span class="link-card__desc">${escapeHtml(ogp.description.trim())}</span>`
     : "";
   const image = ogp?.image
-    ? `<img class="link-card__image" src="${escapeHtml(ogp.image)}" alt="" loading="lazy">`
+    ? `<img class="link-card__image" src="${escapeHtml(ogp.image)}" alt="" loading="lazy" decoding="async">`
     : "";
   return `<a class="link-card" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${image}<span class="link-card__body"><span class="link-card__title">${escapeHtml(title)}</span>${description}<span class="link-card__host">${escapeHtml(host)}</span></span></a>`;
 }

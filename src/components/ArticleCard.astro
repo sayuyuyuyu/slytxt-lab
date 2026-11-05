@@ -23,7 +23,7 @@ const excerpt =
 ---
 
 <article class:list={["entry-card", { "entry-card--with-thumb": entry.data.cover }]} data-motion>
-  {entry.data.cover && <img class="entry-card__thumb" src={entry.data.cover} alt="" loading="lazy" />}
+  {entry.data.cover && <img class="entry-card__thumb" src={entry.data.cover} alt="" loading="lazy" decoding="async" />}
   <div class="entry-card__meta">
     <span>{categoryLabels[entry.collection]}</span>
     <span aria-hidden="true"> / </span>

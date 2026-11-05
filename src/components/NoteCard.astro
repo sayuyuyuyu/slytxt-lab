@@ -15,7 +15,7 @@ const preview = getEntryPreview(entry);
 ---
 
 <article class="note-card" data-motion>
-  {entry.data.cover && <img class="note-card__thumb" src={entry.data.cover} alt="" loading="lazy" />}
+  {entry.data.cover && <img class="note-card__thumb" src={entry.data.cover} alt="" loading="lazy" decoding="async" />}
   <div class="note-card__meta">
     <span>{categoryLabels.notes}</span>
     <span aria-hidden="true"> / </span>
