@@ -28,6 +28,7 @@ let checkedPagefindAssets = 0;
 let checkedRobotsRules = 0;
 let checkedRedirects = 0;
 let checkedNoindex = 0;
+let checkedStructured = 0;
 function unescapeXml(value) {
   return value
     .replaceAll("&lt;", "<")
@@ -96,6 +97,32 @@ for (const file of htmlFiles) {
     else if (expected && value !== expected)
       issues.push(`${relative}: ${name} does not match ${expected}`);
     else checkedSocial++;
+  }
+  const jsonLdItems = [];
+  for (const match of html.matchAll(/<script\b[^>]*\btype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      jsonLdItems.push(...(Array.isArray(parsed) ? parsed : [parsed]));
+    } catch {
+      issues.push(`${relative}: invalid JSON-LD`);
+    }
+  }
+  const websiteLd = jsonLdItems.find((item) => item?.["@type"] === "WebSite");
+  if (!websiteLd) issues.push(`${relative}: missing WebSite JSON-LD`);
+  else if (!websiteLd.name || websiteLd.url !== `${SITE_ORIGIN}/`)
+    issues.push(`${relative}: WebSite JSON-LD missing name or url`);
+  else checkedStructured++;
+  if (metaContent("property", "og:type") === "article") {
+    const postingLd = jsonLdItems.find((item) => item?.["@type"] === "BlogPosting");
+    if (!postingLd) issues.push(`${relative}: missing BlogPosting JSON-LD`);
+    else {
+      const missingKeys = ["headline", "datePublished", "dateModified", "image"].filter((key) => !postingLd[key]);
+      if (missingKeys.length > 0)
+        issues.push(`${relative}: BlogPosting JSON-LD missing ${missingKeys.join(", ")}`);
+      else if (Number.isNaN(Date.parse(postingLd.datePublished)) || Number.isNaN(Date.parse(postingLd.dateModified)))
+        issues.push(`${relative}: BlogPosting JSON-LD has invalid dates`);
+      else checkedStructured++;
+    }
   }
   if (!html.includes('id="main-content"'))
     issues.push(`${relative}: missing skip-link target`);
@@ -344,5 +371,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects and ${checkedNoindex} noindex checks.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data.`,
 );
