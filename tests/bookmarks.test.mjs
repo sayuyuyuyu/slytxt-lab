@@ -483,6 +483,16 @@ test("list page shows the first items and folds the rest behind a more button", 
   assert.ok(html.includes("もっと見る（あと1件）"));
 });
 
+test("list page noscript style only unhides folded cards", () => {
+  const options = { ...RENDER_OPTIONS, count: 100, initialCount: 2, embedCount: 15 };
+  const html = renderHtml(listSnapshot(3), options);
+  const noscript = html.match(/<noscript><style>([^<]*)<\/style><\/noscript>/)?.[1] ?? "";
+  // Only folded cards are unhidden: a bare [hidden] rule would also reveal
+  // the no-match note and the hidden avatar fallback.
+  assert.ok(noscript.includes(".card[hidden]{display:block!important}"));
+  assert.ok(!/(^|})\[hidden\]\{/.test(noscript));
+});
+
 test("list page notice wording depends on the error kind", () => {
   const base = listSnapshot(1);
   const authHtml = renderHtml(
