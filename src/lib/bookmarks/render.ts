@@ -1,6 +1,7 @@
 import { formatJst, formatRfc822 } from "./format.ts";
 import type { BookmarkItem, BookmarkSnapshot } from "./types.ts";
 import { escapeXml } from "../xml.ts";
+import { site } from "../site.ts";
 import { escapeHtml } from "../html.ts";
 
 export { escapeXml, escapeHtml };
@@ -79,7 +80,7 @@ export function renderRss(snapshot: BookmarkSnapshot | null, options: RenderOpti
     `    <title>${escapeXml(`${options.siteName} のXブックマーク`)}</title>`,
     `    <link>${escapeXml(options.pageUrl)}</link>`,
     `    <description>${escapeXml(`Xで保存した投稿のうち最新${options.count}件。`)}</description>`,
-    "    <language>ja</language>",
+    `    <language>${site.lang}</language>`,
     `    <lastBuildDate>${formatRfc822(snapshot?.updatedAt ?? new Date(0).toISOString())}</lastBuildDate>`,
     `    <atom:link href="${escapeXml(options.rssUrl)}" rel="self" type="application/rss+xml"/>`
   ];
