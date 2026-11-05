@@ -16,6 +16,6 @@ export async function GET(context: APIContext) {
       pubDate: entry.data.published,
       link: getEntryPath(entry)
     })),
-    customData: "<language>ja-jp</language>"
+    customData: `<language>${site.lang}</language>`
   });
 }
