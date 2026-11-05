@@ -75,6 +75,7 @@ const els = {
   publishCategory: $("#publishCategory"),
   categoryNote: $("#categoryNote"),
   publishDescription: $("#publishDescription"),
+  publishDescriptionCount: $("#publishDescriptionCount"),
   publishDescriptionNote: $("#publishDescriptionNote"),
   tags: $("#tags"),
   tagInput: $("#tagInput"),
@@ -527,6 +528,13 @@ function showEmpty(empty) {
   els.empty.hidden = !empty;
 }
 
+/* 説明文の文字数を上限と並べて表示する（maxlength=300 で入力が止まる理由が分かるように）。 */
+function updatePublishDescriptionCount() {
+  if (!els.publishDescriptionCount) return;
+  const chars = [...els.publishDescription.value].length;
+  els.publishDescriptionCount.textContent = `${chars} / 300`;
+}
+
 function updateCount() {
   const text = els.body.value;
   // markdown ソースの長さではなく、本文の見た目の文字数を数える。
@@ -687,6 +695,7 @@ function applyDraft(draft) {
   els.titleInput.value = draft.title && draft.title !== "無題" ? draft.title : "";
   els.body.value = draft.body;
   els.publishDescription.value = draft.description ?? "";
+  updatePublishDescriptionCount();
   state.tags = [...(draft.tags ?? [])];
   renderTags();
   state.cover = draft.cover ?? "";
@@ -717,6 +726,7 @@ function clearEditor() {
   els.titleInput.value = "";
   els.body.value = "";
   els.publishDescription.value = "";
+  updatePublishDescriptionCount();
   editorSet("");
   els.titleInput.hidden = false;
   resizeTitle();
@@ -1896,6 +1906,7 @@ function openPublishPanel() {
     state.meta?.categoryLabels?.[els.category.value] ?? els.category.value;
   publishTagsSnapshot = [...state.tags];
   publishDescriptionSnapshot = els.publishDescription.value;
+  updatePublishDescriptionCount();
   renderTags();
   updatePublishFile();
   publishReturnFocus = rememberFocus();
@@ -1925,6 +1936,7 @@ function closePublishPanel({ restore = false } = {}) {
       els.publishDescription.value !== publishDescriptionSnapshot
     ) {
       els.publishDescription.value = publishDescriptionSnapshot;
+      updatePublishDescriptionCount();
       changed = true;
     }
     // 変更時に先行して保存済み／保存予定でも、戻した内容で保存し直す。
@@ -1976,6 +1988,7 @@ async function fillDescriptionSuggestion() {
     if (state.current?.id !== id) return;
     if (data.summary && !els.publishDescription.value.trim()) {
       els.publishDescription.value = data.summary;
+      updatePublishDescriptionCount();
     }
     setPublishDescriptionNote(
       data.source === "ai"
@@ -2136,6 +2149,7 @@ async function boot() {
     editorBridge.handle?.retryFailedUploads?.();
   });
   els.body.addEventListener("input", onInput);
+  els.publishDescription.addEventListener("input", updatePublishDescriptionCount);
   els.titleInput.addEventListener("input", scheduleSave);
   els.titleInput.addEventListener("input", resizeTitle);
   window.addEventListener("resize", resizeTitle);
