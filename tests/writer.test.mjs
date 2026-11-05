@@ -350,6 +350,21 @@ test("plainText: 記号を落として1行にする", () => {
   );
 });
 
+test("plainText: 埋め込みになる単独 URL 行を落とす", () => {
+  assert.equal(
+    plainText("https://open.spotify.com/track/abc123\n\n次のテキストです。"),
+    "次のテキストです。"
+  );
+  assert.equal(plainText("<https://example.com/a>\n\n本文です。"), "本文です。");
+  assert.equal(
+    plainText("[https://example.com/a](https://example.com/a)\n\n本文です。"),
+    "本文です。"
+  );
+  assert.equal(plainText("https://open.spotify.com/track/abc123"), "");
+  // 文中の URL は行として単独でないので残す。
+  assert.equal(plainText("見て https://example.com/a これ"), "見て https://example.com/a これ");
+});
+
 test("plainText: 生の HTML タグを落とす", () => {
   assert.equal(
     plainText("1行目です。\n\n<br />\n\n2行目です。<br>続き。"),
