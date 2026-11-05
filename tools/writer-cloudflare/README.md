@@ -7,7 +7,7 @@
 ## 構成
 
 - 単一 Worker（`src/index.mjs`）+ Workers Static Assets（`public/`、生成物なので git 管理しない）。
-- 下書きは Cloudflare KV（バインディング `DRAFTS`）。キー `draft:<id>`、値は移行前のファイル保存版が `drafts/<id>.md` に書いていたテキストそのまま。直列化・正規化の規則はファイル保存版から変えていない（`src/drafts-kv.mjs`）。
+- 下書きは端末（ブラウザの localStorage）へ即時保存され、サーバー側は Cloudflare KV（バインディング `DRAFTS`）で、同期は裏で間引いて行う（未同期の間は端末内だけに存在する）。キー `draft:<id>`、値は移行前のファイル保存版が `drafts/<id>.md` に書いていたテキストそのまま。直列化・正規化の規則はファイル保存版から変えていない（`src/drafts-kv.mjs`）。
 - 純粋モジュール（`frontmatter.mjs` / `markdown.mjs` と、日付の `date.mjs`）は `src/` に同梱している（旧ローカル版から引き継いだもの）。
 - 投稿は GitHub REST API（`src/github.mjs` / `src/publish.mjs`）。ブランチ作成 → ファイル作成 → PR 作成までを投稿リクエストの中で行い、CI 待ちと merge は UI のポーリング（`GET /api/publish/:id/status`）と Cron の見届け（`src/driver.mjs`、毎分）の両方が駆動して完了させる。どちらが先に merge しても冪等に収束し、タブを閉じても公開が完了する。結果は KV に `publish-result:<下書きID>` として残り、次回 writer を開いたときに UI が `GET /api/publish-results` で取得して知らせる。ローカルの `pnpm run check` は持たず、PR の CI（チェック名 `ci`）が門番で、成功したら merge する。Cloudflare Pages の結果はマージ条件に入れない（2026-11-04 本人決定。投稿の待ちを CI だけにするため）。
 - 投稿は下書きの本文をそのまま使う。誤字チェック pass（Anthropic API）は 2026-11-04 に廃止した。
