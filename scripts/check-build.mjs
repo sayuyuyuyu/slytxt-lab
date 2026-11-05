@@ -103,6 +103,10 @@ for (const file of htmlFiles) {
     ["name", "twitter:description", description],
     ["property", "og:image:alt", imageAlt],
     ["name", "twitter:image:alt", imageAlt],
+    ["property", "og:image:width", "1200"],
+    ["property", "og:image:height", "630"],
+    ["property", "og:image:type", "image/png"],
+    ["name", "twitter:card", "summary_large_image"],
   ]) {
     const value = metaContent(attr, name);
     if (!value) issues.push(`${relative}: missing or empty ${name}`);
