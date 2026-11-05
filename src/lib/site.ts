@@ -3,7 +3,6 @@ export const site = {
   title: "slytxt.lab",
   description:
     "AIやクラウドを試した記録と、日々のこと、つくったもの。",
-  author: "slytxt",
   locale: "ja_JP",
   lang: "ja",
   twitter: "@sybtxt",
