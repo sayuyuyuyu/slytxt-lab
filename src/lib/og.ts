@@ -2,6 +2,9 @@ import { Resvg } from "@resvg/resvg-js";
 import { formatDate } from "./format";
 import { escapeXml } from "./xml";
 import { categoryLabels, site } from "./site";
+import { wrapText } from "./og-wrap";
+
+export { wrapText } from "./og-wrap";
 
 const WIDTH = 1200;
 const HEIGHT = 630;
@@ -9,18 +12,6 @@ const HEIGHT = 630;
 /** OG 画像の寸法。BaseLayout の og:image:width / og:image:height と生成側を一致させるための公開定数。 */
 export const OG_IMAGE_WIDTH = WIDTH;
 export const OG_IMAGE_HEIGHT = HEIGHT;
-
-function wrapText(value: string, maxLength = 17): string[] {
-  const characters = Array.from(value);
-  const lines: string[] = [];
-
-  for (let index = 0; index < characters.length; index += maxLength) {
-    lines.push(characters.slice(index, index + maxLength).join(""));
-  }
-
-  if (lines.length > 3) lines[2] = Array.from(lines[2]).slice(0, maxLength - 1).join("") + "…";
-  return lines.slice(0, 3);
-}
 
 export function renderOgPng(options: {
   title: string;
