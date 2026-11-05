@@ -19,6 +19,7 @@ export async function getStaticPaths() {
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 const displayTitle = getEntryDisplayTitle(entry);
+const lead = entry.data.description !== displayTitle ? entry.data.description : undefined;
 ---
 
 <BaseLayout
@@ -36,7 +37,7 @@ const displayTitle = getEntryDisplayTitle(entry);
       <Breadcrumbs items={[{ label: "Projects", href: "/projects/" }, { label: displayTitle }]} />
       <p class="eyebrow">{categoryLabels.projects}</p>
       <h1 class="page-title" data-pagefind-meta="title">{displayTitle}</h1>
-      <p class="page-lead">{entry.data.description}</p>
+      {lead && <p class="page-lead">{lead}</p>}
       <div class="article-meta">
         <span class="status">{projectStatusLabels[entry.data.status]}</span>
         <span>Started <time datetime={entry.data.started.toISOString()}>{formatDate(entry.data.started)}</time></span>
