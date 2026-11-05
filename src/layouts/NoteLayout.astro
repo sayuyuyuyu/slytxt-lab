@@ -20,6 +20,7 @@ const description = getEntryDescription(entry);
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
 
 const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
+const crumbs = [{ label: "Notes", href: categoryPaths.notes }, { label }];
 ---
 
 <BaseLayout
@@ -31,10 +32,11 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
   published={entry.data.published}
   updated={entry.data.updated}
   searchable
+  breadcrumbs={crumbs}
 >
   <article class="note" data-motion data-pagefind-filter={`category:${categoryLabels.notes}`}>
     <div class="container note__inner">
-      <Breadcrumbs items={[{ label: "Notes", href: categoryPaths.notes }, { label }]} />
+      <Breadcrumbs items={crumbs} />
       <h1 class="sr-only" data-pagefind-meta="title">{label}</h1>
       <p class="note__meta">
         <span>{categoryLabels.notes}</span>

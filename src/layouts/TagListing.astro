@@ -22,16 +22,17 @@ const articles = page.entries.filter(
 ) as ArticleEntry[];
 const notes = page.entries.filter((entry) => entry.collection === "notes") as ArticleEntry[];
 const projects = page.entries.filter((entry) => entry.collection === "projects") as ProjectEntry[];
+const breadcrumbs = [{ label: "Tags", href: "/tags/" }, { label: `#${label}` }];
 ---
 
-<BaseLayout title={`#${label}${suffix} - Tags - ${site.name}`} description={`#${label} が付いた記事とメモ、つくったもの。`}>
+<BaseLayout title={`#${label}${suffix} - Tags - ${site.name}`} description={`#${label} が付いた記事とメモ、つくったもの。`} breadcrumbs={breadcrumbs}>
   <PageHeader
     eyebrow="tag"
     title={`#${label}${suffix}`}
     count={page.totalEntries}
     countLabel="entries"
     countLabelOne="entry"
-    breadcrumbs={[{ label: "Tags", href: "/tags/" }, { label: `#${label}` }]}
+    breadcrumbs={breadcrumbs}
   />
   <section class="listing" aria-label="Tag listing">
     <div class="container">
