@@ -16,7 +16,12 @@ import {
   publishPost,
   publishStatus
 } from "../tools/writer-cloudflare/src/publish.mjs";
-import { mediaStatus, uploadMedia } from "../tools/writer-cloudflare/src/media.mjs";
+import {
+  mediaStatus,
+  publishMedia,
+  serveDraftMedia,
+  uploadMedia
+} from "../tools/writer-cloudflare/src/media.mjs";
 import { cleanSummary, generateSummary, summaryConfig } from "../tools/writer-cloudflare/src/summary.mjs";
 
 /**
@@ -805,69 +810,150 @@ function mediaRequest(bytes) {
   };
 }
 
-test("media冪等: 同じ画像の再試行・重複アップロードで PR が増えない", async () => {
+/**
+ * R2 バケットの最小インターフェースをメモリ上で再現する
+ * （get / head / put / delete）。値は { bytes, contentType } で持つ。
+ */
+function memoryR2() {
+  const map = new Map();
+  const view = (entry) => ({
+    body: entry.bytes,
+    size: entry.bytes.length,
+    httpEtag: '"test-etag"',
+    httpMetadata: { contentType: entry.contentType },
+    async arrayBuffer() {
+      return entry.bytes.buffer.slice(
+        entry.bytes.byteOffset,
+        entry.bytes.byteOffset + entry.bytes.byteLength
+      );
+    }
+  });
+  return {
+    map,
+    async get(key) {
+      const entry = map.get(key);
+      return entry ? view(entry) : null;
+    },
+    async head(key) {
+      const entry = map.get(key);
+      return entry ? view(entry) : null;
+    },
+    async put(key, bytes, options = {}) {
+      map.set(key, {
+        bytes: new Uint8Array(bytes),
+        contentType: options.httpMetadata?.contentType ?? ""
+      });
+    },
+    async delete(key) {
+      map.delete(key);
+    }
+  };
+}
+
+test("media: アップロードは R2 の下書き側へ即時に保存され、再試行で増えない", async () => {
+  const media = memoryR2();
+  const env = { MEDIA: media };
+
+  const first = await uploadMedia(mediaRequest(PNG_BYTES), env);
+  assert.equal(first.state, "stored");
+  assert.equal(first.published, false);
+  assert.match(first.key, /^[0-9a-f]{32}\.png$/);
+  assert.equal(first.url, `/media/${first.key}`);
+  assert.equal(first.publicUrl, `https://media.slytxt.dev/${first.key}`);
+  // 下書き側にだけあり、公開側には無い。
+  assert.ok(media.map.has(`draft/${first.key}`));
+  assert.equal(media.map.has(`pub/${first.key}`), false);
+
+  // 再試行（同じバイト列）は同じキーに収束し、オブジェクトは増えない。
+  const retry = await uploadMedia(mediaRequest(PNG_BYTES), env);
+  assert.equal(retry.key, first.key);
+  assert.equal(media.map.size, 1);
+
+  // 違う画像は違うキーになる。
+  const otherBytes = new Uint8Array(PNG_BYTES);
+  otherBytes[20] ^= 0xff;
+  const other = await uploadMedia(mediaRequest(otherBytes), env);
+  assert.notEqual(other.key, first.key);
+  assert.equal(media.map.size, 2);
+
+  // 状態確認: 未公開は stored、ストレージに無いキーは 404。
+  const status = await mediaStatus(env, first.key);
+  assert.equal(status.state, "stored");
+  await assert.rejects(() => mediaStatus(env, "not-a-key.png"));
+  await assert.rejects(() => mediaStatus(env, `${"0".repeat(32)}.png`));
+});
+
+test("media: 公開で pub/ へ移り、配信と状態が公開側に切り替わる", async () => {
+  const media = memoryR2();
+  const env = { MEDIA: media };
+  const posted = await uploadMedia(mediaRequest(PNG_BYTES), env);
+
+  // 下書き段階の配信は writer 側（serveDraftMedia）で返る。
+  const served = await serveDraftMedia(env, posted.key);
+  assert.equal(served.status, 200);
+  assert.equal(served.headers.get("content-type"), "image/png");
+
+  await publishMedia(env, [posted.key]);
+  assert.equal(media.map.has(`draft/${posted.key}`), false);
+  assert.ok(media.map.has(`pub/${posted.key}`));
+
+  // 公開は冪等。もう一度呼んでも変わらない。
+  await publishMedia(env, [posted.key]);
+  assert.ok(media.map.has(`pub/${posted.key}`));
+
+  const status = await mediaStatus(env, posted.key);
+  assert.equal(status.state, "merged");
+  assert.equal(status.published, true);
+
+  // 公開後の再アップロードも成功として収束し、下書き側へは戻らない。
+  const again = await uploadMedia(mediaRequest(PNG_BYTES), env);
+  assert.equal(again.published, true);
+  assert.equal(media.map.has(`draft/${posted.key}`), false);
+
+  // ストレージに無い画像の公開は、壊れた画像を出さないよう失敗する。
+  await assert.rejects(() => publishMedia(env, [`${"1".repeat(32)}.png`]));
+});
+
+test("media: 移行前の UUID キーでも状態を確認できる", async () => {
+  const media = memoryR2();
+  const env = { MEDIA: media };
+  const uuid = "12345678-1234-1234-1234-123456789012";
+  await media.put(`pub/${uuid}.png`, PNG_BYTES, {
+    httpMetadata: { contentType: "image/png" }
+  });
+  const status = await mediaStatus(env, `${uuid}.png`);
+  assert.equal(status.state, "merged");
+});
+
+test("publish: 本文とカバーの画像は公開側へ移り、URL が media.slytxt.dev になる", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
-    const first = await uploadMedia(mediaRequest(PNG_BYTES), testEnv);
-    assert.equal(first.state, "waiting");
-    assert.match(first.key, /^[0-9a-f]{32}\.png$/);
-    assert.equal(gh.state.pulls.length, 1);
+    const media = memoryR2();
+    const env = { GITHUB_TOKEN: "test-token", MEDIA: media };
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "画像つき", category: "journal" });
 
-    // 再試行（同じバイト列）は同じキー・同じ PR を返す。
-    const retry = await uploadMedia(mediaRequest(PNG_BYTES), testEnv);
-    assert.equal(retry.key, first.key);
-    assert.equal(retry.prUrl, first.prUrl);
-    assert.equal(retry.state, "waiting");
-    assert.equal(gh.state.pulls.length, 1);
-
-    // ci 成功でマージまで進む。
-    const pr = gh.state.pulls[0];
-    gh.state.checks.set(pr.headSha, "success");
-    const status = await mediaStatus(testEnv, first.key);
-    assert.equal(status.state, "merged");
-
-    // マージ後の再アップロードも成功として即座に収束する。
-    const again = await uploadMedia(mediaRequest(PNG_BYTES), testEnv);
-    assert.equal(again.state, "merged");
-    assert.equal(again.key, first.key);
-    assert.equal(gh.state.pulls.length, 1);
-
-    // 違う画像は違うキー・別の PR になる。
+    const cover = await uploadMedia(mediaRequest(PNG_BYTES), env);
     const otherBytes = new Uint8Array(PNG_BYTES);
     otherBytes[20] ^= 0xff;
-    const other = await uploadMedia(mediaRequest(otherBytes), testEnv);
-    assert.notEqual(other.key, first.key);
-    assert.equal(other.state, "waiting");
-    assert.equal(gh.state.pulls.length, 2);
-  });
-});
+    const inline = await uploadMedia(mediaRequest(otherBytes), env);
 
-test("media冪等: BEHIND の media PR もブランチ更新で回復する", async () => {
-  const gh = fakeGitHub();
-  await withGitHub(gh, async () => {
-    const posted = await uploadMedia(mediaRequest(PNG_BYTES), testEnv);
-    const pr = gh.state.pulls[0];
-    gh.state.checks.set(pr.headSha, "success");
-    pr.mergeable_state = "behind";
-    const step1 = await mediaStatus(testEnv, posted.key);
-    assert.equal(step1.state, "waiting");
-    assert.equal(gh.state.updateCount, 1);
-    gh.state.checks.set(pr.headSha, "success");
-    const step2 = await mediaStatus(testEnv, posted.key);
-    assert.equal(step2.state, "merged");
-    assert.equal(pr.merged, true);
-  });
-});
+    await store.writeDraft(draft.id, {
+      cover: cover.url,
+      body: `本文です。\n\n![画像](${inline.url})\n`
+    });
+    const posted = await publishPost({ env, store, id: draft.id });
+    assert.equal(posted.state, "waiting");
 
-test("media冪等: 移行前の UUID キーでも状態を確認できる", async () => {
-  const gh = fakeGitHub();
-  await withGitHub(gh, async () => {
-    const uuid = "12345678-1234-1234-1234-123456789012";
-    gh.state.mainFiles.set(`public/media/${uuid}.png`, "x");
-    // PR は無いが main にファイルがあるので merged として収束する。
-    const status = await mediaStatus(testEnv, `${uuid}.png`);
-    assert.equal(status.state, "merged");
-    await assert.rejects(() => mediaStatus(testEnv, "not-a-key.png"));
+    // 公開ファイルの中では公開 URL に付け替わっている。
+    const content = Buffer.from([...gh.state.branchFiles.values()][0], "base64").toString("utf8");
+    assert.ok(content.includes(`https://media.slytxt.dev/${inline.key}`), content);
+    assert.ok(content.includes(`https://media.slytxt.dev/${cover.key}`), content);
+    assert.equal(content.includes("/media/"), false);
+
+    // R2 側はどちらも公開側へ移っている。
+    assert.ok(media.map.has(`pub/${inline.key}`));
+    assert.ok(media.map.has(`pub/${cover.key}`));
   });
 });
 

@@ -3,3 +3,6 @@
 /tech/*    /articles/tech/:splat  301
 /life/     /articles/journal/  301
 /life/*    /articles/journal/:splat  301
+
+# Media moved to R2 (media.slytxt.dev). Keep old URLs working.
+/media/*    https://media.slytxt.dev/:splat    301
