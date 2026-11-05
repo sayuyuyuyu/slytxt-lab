@@ -1,0 +1,31 @@
+flowchart LR
+  reader["読者（ブラウザ）"]
+  author["本人（ブラウザ）"]
+  access["Cloudflare Access<br/>本人のメールアドレスのみ許可"]
+  pages["Cloudflare Pages<br/>slytxt.dev<br/>Astro 静的サイト"]
+  functions["Pages Functions<br/>X ブックマーク配信"]
+  bmKv[("KV<br/>BOOKMARKS")]
+  xapi["X API"]
+  writer["Worker: slytxt-writer<br/>write.slytxt.dev<br/>執筆ツール"]
+  draftsKv[("KV<br/>slytxt-writer-drafts")]
+  r2[("R2: slytxt-writer-media<br/>非公開バケット")]
+  media["Worker: slytxt-media<br/>media.slytxt.dev"]
+  github["GitHub: sayuyuyuyu/slytxt-lab<br/>ブランチ / PR / CI"]
+  status["Worker: slytxt-status<br/>status.slytxt.dev"]
+  statusKv[("KV<br/>slytxt-status-data")]
+  updater["更新スクリプト<br/>Muse の VM（Apple Health 集計）"]
+
+  reader -->|記事・ページの閲覧| pages
+  reader -->|公開済み画像| media
+  reader -->|推測不能な URL の下の一覧・RSS・JSON| functions
+  functions --> bmKv
+  functions -->|OAuth・ブックマーク取得| xapi
+  author --> access --> writer
+  writer -->|下書きの同期| draftsKv
+  writer -->|画像は下書き時 draft: 公開時 pub:| r2
+  writer -->|投稿でブランチ・ファイル・PR を作成| github
+  github -->|main へのマージでビルド・デプロイ| pages
+  media -->|pub: の画像だけを配信| r2
+  pages -->|About の「いまの状態」が取得| status
+  status --> statusKv
+  updater -->|POST /api/status（Bearer 認証）| status

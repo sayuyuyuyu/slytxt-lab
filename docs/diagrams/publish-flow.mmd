@@ -1,0 +1,16 @@
+flowchart TD
+  write["書く<br/>ブラウザの localStorage へ即時保存"]
+  sync["裏で間引いて同期<br/>KV に draft: キーで保存"]
+  post["投稿ボタン"]
+  branch["GitHub API でブランチ作成 → ファイル作成 → PR 作成"]
+  mediaMove["画像を R2 の draft: から pub: へ移し<br/>本文の URL を media.slytxt.dev へ付け替える"]
+  ci["CI（チェック名 ci）"]
+  merge["マージ<br/>駆動は UI のポーリングと<br/>Cron の見届け（毎分）の両方"]
+  result["結果を KV に保存<br/>publish-result: キー"]
+  notify["次回 writer を開いたときに通知<br/>公開できた下書きは一覧から消える"]
+  deploy["Cloudflare Pages が main をビルド<br/>slytxt.dev へ公開"]
+
+  write --> sync --> post --> branch --> mediaMove --> ci
+  ci -->|成功したら| merge
+  merge --> result --> notify
+  merge --> deploy
