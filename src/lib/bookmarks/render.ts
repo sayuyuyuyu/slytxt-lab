@@ -133,6 +133,7 @@ h1{margin:8px 0 0;font:400 1.9rem/1.4 var(--font)}
 .card__foot{display:flex;justify-content:flex-end;margin:10px 0 0}
 .card__open{font-size:.8rem}
 .empty{margin:32px 0 0;color:var(--text-muted);font-size:.9rem}
+@media print{:root{--bg:#ffffff;--surface:#ffffff;--card:#ffffff;--text:#0b1220;--text-muted:#4a5972;--border:#c3d0e4;--accent:#0b63c4}body{background:#ffffff}}
 `;
 
 export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOptions): string {
