@@ -19,6 +19,7 @@ const issues = [];
 let checkedTitles = 0;
 let checkedCanonicals = 0;
 let checkedDescriptions = 0;
+let checkedSocial = 0;
 let checkedLinks = 0;
 let checkedFragments = 0;
 let checkedImages = 0;
@@ -74,6 +75,24 @@ for (const file of htmlFiles) {
   const description = descriptionTag?.match(/\bcontent="([^"]*)"/)?.[1]?.trim();
   if (description) checkedDescriptions++;
   else issues.push(`${relative}: missing or empty meta description`);
+  const metaContent = (attr, name) => {
+    const tag = html.match(
+      new RegExp(`<meta\\b[^>]*\\b${attr}="${name}"[^>]*>`),
+    )?.[0];
+    return tag?.match(/\bcontent="([^"]*)"/)?.[1]?.trim();
+  };
+  for (const [attr, name, expected] of [
+    ["property", "og:title", title],
+    ["property", "og:description", description],
+    ["name", "twitter:title", title],
+    ["name", "twitter:description", description],
+  ]) {
+    const value = metaContent(attr, name);
+    if (!value) issues.push(`${relative}: missing or empty ${name}`);
+    else if (expected && value !== expected)
+      issues.push(`${relative}: ${name} does not match ${expected}`);
+    else checkedSocial++;
+  }
   if (!html.includes('id="main-content"'))
     issues.push(`${relative}: missing skip-link target`);
   if (relative === "404.html") {
@@ -272,5 +291,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
 );
