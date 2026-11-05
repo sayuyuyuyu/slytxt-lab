@@ -4,7 +4,7 @@
  *
  * main は ruleset で「PR 経由＋ ci 成功」が必須のため、Contents API で
  * 直接コミットできない。そのため投稿フロー（publish.mjs）と同じ形にする:
- * POST /api/media がブランチ media/<uuid> にファイルを置いて PR を作り、
+ * POST /api/media がブランチ media/<内容ハッシュ32桁> にファイルを置いて PR を作り、
  * GET /api/media/:key/status が CI の成功を見て squash merge する。
  * UI は status をポーリングして merge 完了後に URL を本文へ挿入する。
  * merge 後、Cloudflare Pages のデプロイが伝わって初めて URL が開ける

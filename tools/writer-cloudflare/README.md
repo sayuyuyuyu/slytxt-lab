@@ -104,11 +104,11 @@ npx wrangler kv key list --binding DRAFTS --remote -c tools/writer-cloudflare/wr
 
 ## 画像メディア（GitHub）
 
-`POST /api/media`（`src/media.mjs`、書き込み防御の対象）が jpeg / png / gif / webp（10MB まで）を受け取り、GitHub リポジトリの `public/media/<uuid>.<ext>` に保存する。返却する URL は `https://slytxt.dev/media/<uuid>.<ext>` で、エディタはこの URL を本文へ挿入する。下書きの markdown には最初からこの最終 URL が入る。使う認証は投稿フローと同じ secret `GITHUB_TOKEN`（Contents / Pull requests の Read and write）。
+`POST /api/media`（`src/media.mjs`、書き込み防御の対象）が jpeg / png / gif / webp（10MB まで）を受け取り、GitHub リポジトリの `public/media/<内容ハッシュ32桁>.<ext>` に保存する（ファイル名は内容の SHA-256 ハッシュ先頭32桁）。返却する URL は `https://slytxt.dev/media/<内容ハッシュ32桁>.<ext>` で、エディタはこの URL を本文へ挿入する。下書きの markdown には最初からこの最終 URL が入る。使う認証は投稿フローと同じ secret `GITHUB_TOKEN`（Contents / Pull requests の Read and write）。
 
 main は ruleset で「PR 経由＋チェック `ci` の成功」が必須のため、Contents API で main へ直接コミットはできない（409 になる）。そのため投稿フローと同じ形を取る:
 
-1. `POST /api/media` がブランチ `media/<uuid>` を作ってファイルを置き、PR を作成して返す（state は `waiting`）。
+1. `POST /api/media` がブランチ `media/<内容ハッシュ32桁>` を作ってファイルを置き、PR を作成して返す（state は `waiting`）。
 2. UI のポーリング（`GET /api/media/:key/status`）と Cron の見届け（`src/driver.mjs`、毎分）の両方が status を駆動し、`ci` の成功を見て squash merge し、ブランチを消す。どちらが先に merge しても冪等に収束し、タブを閉じても完了する（Cloudflare Pages の結果は待たない。投稿フローと同じ本人決定）。
 3. merge のコミットが Cloudflare Pages の本番デプロイを起こし、伝わって初めて URL が開ける。
 
