@@ -21,7 +21,7 @@ const suffix = page.currentPage > 1 ? ` (page ${page.currentPage})` : "";
 const hasTags = collectTags(await getAllEntries()).size > 0;
 ---
 <BaseLayout title={`${section.title}${suffix} - ${site.name}`} description={section.description}>
-  <PageHeader title={section.title} eyebrow={section.eyebrow} count={page.totalEntries} countLabel="entries" countLabelOne="entry" />
+  <PageHeader title={`${section.title}${suffix}`} eyebrow={section.eyebrow} count={page.totalEntries} countLabel="entries" countLabelOne="entry" />
   <section class="listing" aria-label={`${section.title} listing`}>
     <div class="container">
       {hasTags && <div class="listing-tools"><a href="/tags/">Browse tags <span aria-hidden="true">↗</span></a></div>}
