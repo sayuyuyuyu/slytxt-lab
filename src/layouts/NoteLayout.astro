@@ -46,7 +46,8 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
       {entry.data.adult && <AdultGate storageKey="adult-content-consent" />}
       <pre class="note__text" data-adult-content data-locked={entry.data.adult ? "true" : "false"}>{text}</pre>
       <TagList tags={entry.data.tags} />
-      <nav class="article-nav" aria-label="Note navigation" data-pagefind-ignore data-motion>
+      {(previous || next) && (
+        <nav class="article-nav" aria-label="Note navigation" data-pagefind-ignore data-motion>
         {previous ? (
           <a href={getEntryPath(previous)}>
             <span>Previous</span>
@@ -64,6 +65,7 @@ const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
           <span></span>
         )}
       </nav>
+      )}
     </div>
   </article>
 </BaseLayout>
