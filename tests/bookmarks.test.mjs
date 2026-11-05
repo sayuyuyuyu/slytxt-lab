@@ -597,3 +597,16 @@ test("list page has keyword and author filters plus a site-like frame", () => {
   // テーマはサイト本体と同じ localStorage キーで初期化する。
   assert.ok(html.includes('localStorage.getItem("theme")'));
 });
+
+test("list page theme toggle mirrors the main site toggle", () => {
+  const html = renderHtml(listSnapshot(1), RENDER_OPTIONS);
+  // theme-color starts dark and follows the stored theme, like BaseLayout.
+  assert.ok(html.includes('<meta name="theme-color" content="#05070f">'));
+  assert.ok(html.includes('data-theme-icon'));
+  assert.ok(html.includes('aria-label="Toggle theme"'));
+  // THEME_SCRIPT swaps the icon and label for the current theme and
+  // follows storage events, including a full clear (key === null).
+  assert.ok(html.includes("Switch to light mode"));
+  assert.ok(html.includes("Switch to dark mode"));
+  assert.ok(html.includes("event.key !== \"theme\" && event.key !== null"));
+});

@@ -195,19 +195,33 @@ function listScript(initial: number): string {
 const THEME_SCRIPT = `<script>
 (function () {
   var toggle = document.querySelector("[data-theme-toggle]");
+  var icon = document.querySelector("[data-theme-icon]");
+  function setIcon() {
+    var light = document.documentElement.classList.contains("light");
+    var next = light ? "Switch to dark mode" : "Switch to light mode";
+    if (icon) icon.textContent = light ? "☼" : "☾";
+    if (toggle) {
+      toggle.setAttribute("aria-label", next);
+      toggle.setAttribute("title", next);
+    }
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", light ? "#eef3fb" : "#05070f");
+  }
   if (toggle) {
     toggle.addEventListener("click", function () {
       var light = document.documentElement.classList.toggle("light");
       try {
         localStorage.setItem("theme", light ? "light" : "dark");
       } catch (e) {}
+      setIcon();
     });
   }
   window.addEventListener("storage", function (event) {
-    if (event.key === "theme") {
-      document.documentElement.classList.toggle("light", event.newValue === "light");
-    }
+    if (event.key !== "theme" && event.key !== null) return;
+    document.documentElement.classList.toggle("light", event.newValue === "light");
+    setIcon();
   });
+  setIcon();
 })();
 </script>`;
 
@@ -329,8 +343,9 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#05070f">
 <title>${escapeHtml(title)}</title>
-<script>try{if(localStorage.getItem("theme")==="light")document.documentElement.classList.add("light")}catch(e){}</script>
+<script>try{var isLight=localStorage.getItem("theme")==="light";document.documentElement.classList.toggle("light",isLight);document.querySelector('meta[name="theme-color"]').setAttribute("content",isLight?"#eef3fb":"#05070f")}catch(e){}</script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -345,7 +360,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <header class="site-header">
 <div class="site-header__inner">
 <a class="brand" href="${escapeHtml(options.siteUrl)}" aria-label="${escapeHtml(options.siteName)} トップ"><span class="brand__mark" aria-hidden="true">❯</span><span class="brand__name">${escapeHtml(options.siteName)}</span><span class="brand__cursor" aria-hidden="true"></span></a>
-<button class="theme-toggle" type="button" aria-label="テーマを切り替える" data-theme-toggle><span aria-hidden="true">◐</span></button>
+<button class="theme-toggle" type="button" aria-label="Toggle theme" data-theme-toggle><span aria-hidden="true" data-theme-icon>◐</span></button>
 </div>
 </header>
 <main class="wrap">
