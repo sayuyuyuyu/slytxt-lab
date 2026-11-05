@@ -1,0 +1,71 @@
+---
+import PageHeader from "@/components/PageHeader.astro";
+import ArticleCard from "@/components/ArticleCard.astro";
+import NoteCard from "@/components/NoteCard.astro";
+import ProjectCard from "@/components/ProjectCard.astro";
+import Pagination from "@/components/Pagination.astro";
+import type { ArticleEntry, ProjectEntry, SiteEntry } from "@/lib/content";
+import type { PageData } from "@/lib/pagination";
+import { site } from "@/lib/site";
+import BaseLayout from "./BaseLayout.astro";
+
+type Props = {
+  label: string;
+  tag: string;
+  page: PageData<SiteEntry>;
+};
+const { label, tag, page } = Astro.props;
+const basePath = `/tags/${tag}`;
+const suffix = page.currentPage > 1 ? ` (page ${page.currentPage})` : "";
+const articles = page.entries.filter(
+  (entry) => entry.collection === "tech" || entry.collection === "journal"
+) as ArticleEntry[];
+const notes = page.entries.filter((entry) => entry.collection === "notes") as ArticleEntry[];
+const projects = page.entries.filter((entry) => entry.collection === "projects") as ProjectEntry[];
+---
+
+<BaseLayout title={`#${label}${suffix} - Tags - ${site.name}`} description={`#${label} が付いた記事とメモ、つくったもの。`}>
+  <PageHeader
+    eyebrow="tag"
+    title={`#${label}`}
+    count={page.totalEntries}
+    countLabel="entries"
+    countLabelOne="entry"
+    breadcrumbs={[{ label: "Tags", href: "/tags/" }, { label: `#${label}` }]}
+  />
+  <section class="listing" aria-label="Tag listing">
+    <div class="container">
+      {articles.length > 0 && (
+        <>
+          <div class="section-head">
+            <h2>Articles</h2>
+          </div>
+          <div class="listing-list">
+            {articles.map((entry) => <ArticleCard entry={entry} />)}
+          </div>
+        </>
+      )}
+      {notes.length > 0 && (
+        <>
+          <div class={articles.length > 0 ? "section-head section-head--following" : "section-head"}>
+            <h2>Notes</h2>
+          </div>
+          <div class="listing-list">
+            {notes.map((entry) => <NoteCard entry={entry} />)}
+          </div>
+        </>
+      )}
+      {projects.length > 0 && (
+        <>
+          <div class={articles.length > 0 || notes.length > 0 ? "section-head section-head--following" : "section-head"}>
+            <h2>Projects</h2>
+          </div>
+          <div class="project-grid">
+            {projects.map((entry) => <ProjectCard entry={entry} />)}
+          </div>
+        </>
+      )}
+      <Pagination basePath={basePath} {...page} />
+    </div>
+  </section>
+</BaseLayout>

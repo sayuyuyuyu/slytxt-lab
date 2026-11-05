@@ -1,0 +1,24 @@
+---
+import { collectTags } from "@/lib/tags";
+import { getAllEntries, getEntriesByTag } from "@/lib/content";
+import { pagedStaticPaths } from "@/lib/pagination";
+import TagListing from "@/layouts/TagListing.astro";
+
+export async function getStaticPaths() {
+  const allEntries = await getAllEntries();
+  const tags = collectTags(allEntries);
+
+  return Array.from(tags.entries()).flatMap(([slug, label]) => {
+    const entries = getEntriesByTag(allEntries, slug);
+    return pagedStaticPaths(entries, `/tags/${slug}`).map((path) => ({
+      params: { tag: slug, page: path.params.page },
+      props: { label, page: path.props.page }
+    }));
+  });
+}
+
+const { tag } = Astro.params;
+const { label, page } = Astro.props;
+---
+
+<TagListing label={label} tag={tag} page={page} />
