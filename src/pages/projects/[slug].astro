@@ -47,7 +47,6 @@ const lead = entry.data.description !== displayTitle ? entry.data.description : 
     </div>
   </header>
   <div class:list={["article-shell", { "article-shell--wide": !headings.some((heading) => heading.depth === 2 || heading.depth === 3) }]}>
-    <TableOfContents headings={headings} />
     <article class="article-main" data-pagefind-filter={`category:${categoryLabels.projects}`}>
       <div class="article-body">
         <Content />
@@ -59,5 +58,6 @@ const lead = entry.data.description !== displayTitle ? entry.data.description : 
         </nav>
       )}
     </article>
+    <TableOfContents headings={headings} />
   </div>
 </BaseLayout>
