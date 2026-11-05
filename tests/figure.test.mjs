@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { figureFromParagraph } from "../src/lib/rehype-figure.mjs";
+import { figureFromParagraph, lazyImageNode } from "../src/lib/rehype-figure.mjs";
 
 function img(properties) {
   return { type: "element", tagName: "img", properties, children: [] };
@@ -44,4 +44,26 @@ test("figure: 対象でないものは触らない", () => {
     figureFromParagraph({ type: "element", tagName: "div", properties: {}, children: [] }),
     null
   );
+});
+
+test("lazy image: 本文画像に loading=lazy と decoding=async が付く", () => {
+  const node = img({ src: "/a.png", alt: "x" });
+  const result = lazyImageNode(node);
+  assert.equal(result.properties.loading, "lazy");
+  assert.equal(result.properties.decoding, "async");
+  assert.equal(result.properties.src, "/a.png");
+  assert.equal(result.properties.alt, "x");
+});
+
+test("lazy image: 明示された属性は上書きしない", () => {
+  const node = img({ src: "/a.png", alt: "", loading: "eager" });
+  assert.equal(lazyImageNode(node).properties.loading, "eager");
+});
+
+test("lazy image: 画像でないノードは触らない", () => {
+  assert.equal(
+    lazyImageNode({ type: "element", tagName: "p", properties: {}, children: [] }),
+    null
+  );
+  assert.equal(lazyImageNode({ type: "text", value: "x" }), null);
 });

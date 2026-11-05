@@ -47,3 +47,29 @@ export const figureHastPlugin = {
     }
   }
 };
+
+/**
+ * 本文画像に loading="lazy" / decoding="async" を付ける。
+ * 詳細ページの見出し画像（cover）は Markdown を通らないので対象外で、
+ * 従来どおり遅延させない。本文画像はタイトルや cover より下に来るため、
+ * 一覧カードやリンクカードと同じく遅延読み込みでよい。
+ * 著者が属性を明示している場合はそちらを優先する。
+ */
+export function lazyImageNode(node) {
+  if (node?.type !== "element" || node.tagName !== "img") return null;
+  return {
+    ...node,
+    properties: { loading: "lazy", decoding: "async", ...node.properties }
+  };
+}
+
+/** Sätteri の hast プラグイン（astro.config.mjs の hastPlugins に渡す）。 */
+export const lazyImageHastPlugin = {
+  name: "slytxt-lazy-image",
+  element: {
+    filter: ["img"],
+    visit(node) {
+      return lazyImageNode(node) ?? undefined;
+    }
+  }
+};
