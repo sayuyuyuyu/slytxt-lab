@@ -86,12 +86,21 @@ export function getEntryDate(entry: SiteEntry): Date {
   return entry.collection === "projects" ? projectDate(entry) : articleDate(entry);
 }
 
-/** 本文の書き出しから作るプレビュー。先頭3行をプレーンテキストにし、maxLength 字（既定は90字）で切る。 */
+/** 埋め込みになる単独 URL 行か（裸 URL / autolink / テキストが URL そのもののリンク）。公開側ではプレイヤーやカードに変換されるため、本文テキストとして数えない。 */
+function isEmbedOnlyLine(line: string): boolean {
+  const text = line.trim();
+  if (/^https?:\/\/\S+$/.test(text)) return true;
+  if (/^<https?:\/\/\S+>$/.test(text)) return true;
+  const link = text.match(/^\[([^\]]+)\]\((\S+)\)$/);
+  return link ? link[1] === link[2] : false;
+}
+
+/** 本文の書き出しから作るプレビュー。先頭3行（埋め込みになる単独 URL 行を除く）をプレーンテキストにし、maxLength 字（既定は90字）で切る。 */
 export function getEntryPreview(entry: SiteEntry, maxLength = 90): string {
   const lines = (entry.body ?? "")
     .trim()
     .split("\n")
-    .filter((line) => line.trim());
+    .filter((line) => line.trim() && !isEmbedOnlyLine(line));
   const text = toPlainText(lines.slice(0, 3).join("\n"));
   const chars = Array.from(text);
   return chars.length > maxLength ? `${chars.slice(0, maxLength).join("")}…` : text;
@@ -140,6 +149,9 @@ export function getAdjacentArticles<T extends ArticleEntry>(entries: T[], curren
 /** Markdown の記号を落としてプレーンテキストにする。writer 側の plainText と扱いをそろえる。 */
 export function toPlainText(source: string): string {
   return String(source ?? "")
+    .split("\n")
+    .filter((line) => !isEmbedOnlyLine(line))
+    .join("\n")
     .replace(/```[\s\S]*?```/g, " ")
     // 生の HTML（<br /> など）は表示用の記号なので、文字列として残さない。
     .replace(/<!--[\s\S]*?-->/g, " ")

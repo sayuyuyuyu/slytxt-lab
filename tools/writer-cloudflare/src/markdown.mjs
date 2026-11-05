@@ -528,8 +528,21 @@ export function truncateText(text, limit) {
   return chars.length <= limit ? value : chars.slice(0, limit).join("");
 }
 
+// 埋め込みになる単独 URL 行か（裸 URL / autolink / テキストが URL そのもののリンク）。
+// 公開側ではプレイヤーやカードに変換されるため、本文テキストとして数えない。本体の toPlainText と扱いをそろえる。
+function isEmbedOnlyLine(line) {
+  const text = line.trim();
+  if (/^https?:\/\/\S+$/.test(text)) return true;
+  if (/^<https?:\/\/\S+>$/.test(text)) return true;
+  const link = text.match(/^\[([^\]]+)\]\((\S+)\)$/);
+  return link ? link[1] === link[2] : false;
+}
+
 export function plainText(source) {
   return String(source ?? "")
+    .split("\n")
+    .filter((line) => !isEmbedOnlyLine(line))
+    .join("\n")
     .replace(/```[\s\S]*?```/g, " ")
     // 生の HTML（<br /> など）は表示用の記号なので、文字列として残さない。
     .replace(/<!--[\s\S]*?-->/g, " ")
