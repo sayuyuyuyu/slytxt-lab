@@ -1,0 +1,1 @@
+{"description":"健康状態スナップショットの受け口（Cloudflare Workers）。About ページの「いまの状態」表示用。","name":"slytxt-status-cloudflare","private":true,"type":"module","version":"0.1.0"}

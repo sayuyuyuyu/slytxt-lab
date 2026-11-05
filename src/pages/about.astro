@@ -15,4 +15,89 @@ import { categoryLabels, pageDescriptions, site } from "@/lib/site";
       </article>
     </div>
   </section>
+  <section class="section" aria-labelledby="status-title" data-motion>
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">status</p>
+          <h2 id="status-title">いまの状態</h2>
+        </div>
+      </div>
+      <div class="status-panel" data-status-panel>
+        <p class="status-panel__cmd"><span class="prompt" aria-hidden="true">$</span>health check</p>
+        <p class="status-panel__state" data-status-field="state">読み込み中…</p>
+        <dl class="status-panel__list">
+          <div>
+            <dt>心拍</dt>
+            <dd data-status-field="heart">—</dd>
+          </div>
+          <div>
+            <dt>安静時心拍</dt>
+            <dd data-status-field="resting">—</dd>
+          </div>
+          <div>
+            <dt>睡眠</dt>
+            <dd data-status-field="sleep">—</dd>
+          </div>
+          <div>
+            <dt>歩数</dt>
+            <dd data-status-field="steps">—</dd>
+          </div>
+          <div>
+            <dt>最終更新</dt>
+            <dd data-status-field="updated">—</dd>
+          </div>
+        </dl>
+        <p class="status-panel__note">Apple Health の記録から自動で更新しています。</p>
+      </div>
+    </div>
+  </section>
+  <script>
+    (() => {
+      const panel = document.querySelector("[data-status-panel]");
+      if (!panel) return;
+      const setText = (name: string, text: string): void => {
+        const el = panel.querySelector(`[data-status-field="${name}"]`);
+        if (el) el.textContent = text;
+      };
+      const timeFmt = new Intl.DateTimeFormat("ja-JP", { hour: "numeric", minute: "2-digit" });
+      const dateTimeFmt = new Intl.DateTimeFormat("ja-JP", {
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+      const numFmt = new Intl.NumberFormat("ja-JP");
+      fetch("https://status.slytxt.dev/api/status")
+        .then((res) => {
+          if (!res.ok) throw new Error(`status ${res.status}`);
+          return res.json();
+        })
+        .then((data) => {
+          setText("state", data.status ?? "不明");
+          if (data.heart_rate_bpm != null) {
+            const at = data.heart_rate_at ? new Date(data.heart_rate_at) : null;
+            setText(
+              "heart",
+              `${data.heart_rate_bpm} bpm` + (at ? `（${timeFmt.format(at)}）` : "")
+            );
+          }
+          if (data.resting_heart_rate_bpm != null) {
+            setText("resting", `${data.resting_heart_rate_bpm} bpm`);
+          }
+          if (data.sleep_hours != null) {
+            setText("sleep", `昨夜 ${data.sleep_hours} 時間`);
+          }
+          if (data.steps_today != null) {
+            setText("steps", `今日 ${numFmt.format(data.steps_today)} 歩`);
+          }
+          if (data.updated_at) {
+            setText("updated", dateTimeFmt.format(new Date(data.updated_at)));
+          }
+        })
+        .catch(() => {
+          setText("state", "取得できませんでした");
+        });
+    })();
+  </script>
 </BaseLayout>
