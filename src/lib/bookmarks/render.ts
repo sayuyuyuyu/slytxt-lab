@@ -1,5 +1,5 @@
 import { formatJst, formatJstWithWeekday, formatRfc822 } from "./format.ts";
-import type { BookmarkItem, BookmarkSnapshot } from "./types.ts";
+import type { BookmarkItem, BookmarkMedia, BookmarkSnapshot } from "./types.ts";
 import { escapeXml } from "../xml.ts";
 import { site } from "../site.ts";
 import { escapeHtml } from "../html.ts";
@@ -119,6 +119,47 @@ function avatarHtml(item: BookmarkItem): string {
   return `<img class="card__avatar" src="${escapeHtml(item.author.avatar)}" alt="" width="40" height="40" loading="lazy" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false">${hiddenFallback}`;
 }
 
+
+/** メディアの alt。X 側の代替テキストが無ければ本文の1行目で補う。 */
+function mediaAlt(item: BookmarkItem, media: BookmarkMedia): string {
+  return media.alt?.trim() ? media.alt : firstLine(item.text);
+}
+
+/** 投稿の画像・動画をカード内に並べる。一般的な埋め込みと同じく、本文の下に置く。 */
+function mediaHtml(item: BookmarkItem): string {
+  const media = item.media ?? [];
+  if (media.length === 0) return "";
+  const cells: string[] = [];
+  for (const entry of media.slice(0, 4)) {
+    const alt = escapeHtml(mediaAlt(item, entry));
+    const dims =
+      entry.width && entry.height ? ` width="${entry.width}" height="${entry.height}"` : "";
+    if (entry.kind === "photo" && entry.image) {
+      cells.push(
+        `<img class="card__media-item" src="${escapeHtml(entry.image)}" alt="${alt}"${dims} loading="lazy" decoding="async">`
+      );
+    } else if (entry.videoUrl) {
+      const poster = entry.image ? ` poster="${escapeHtml(entry.image)}"` : "";
+      if (entry.kind === "gif") {
+        cells.push(
+          `<video class="card__media-item" src="${escapeHtml(entry.videoUrl)}"${poster}${dims} autoplay muted loop playsinline preload="metadata" aria-label="${alt}"></video>`
+        );
+      } else {
+        cells.push(
+          `<video class="card__media-item" src="${escapeHtml(entry.videoUrl)}"${poster}${dims} controls playsinline preload="none" aria-label="${alt}"></video>`
+        );
+      }
+    } else if (entry.image) {
+      // 再生できる mp4 が無い動画は、プレビュー画像から投稿本体へ誘導する。
+      cells.push(
+        `<a class="card__media-link" href="${escapeHtml(item.url)}" rel="noreferrer noopener" target="_blank"><img class="card__media-item" src="${escapeHtml(entry.image)}" alt="${alt}"${dims} loading="lazy" decoding="async"></a>`
+      );
+    }
+  }
+  if (cells.length === 0) return "";
+  return `<div class="card__media card__media--${cells.length}">${cells.join("")}</div>`;
+}
+
 function cardHtml(item: BookmarkItem, hidden = false): string {
   const handle = item.author.username
     ? `<p class="card__handle">@${escapeHtml(item.author.username)}</p>`
@@ -126,7 +167,7 @@ function cardHtml(item: BookmarkItem, hidden = false): string {
   return `<li class="card" data-author="${escapeHtml(item.author.username)}"${hidden ? " hidden" : ""}>
 <div class="card__head">${avatarHtml(item)}<div class="card__who"><p class="card__name">${escapeHtml(item.author.name)}</p>${handle}</div><time class="card__time" datetime="${escapeHtml(item.createdAt)}">${formatJstWithWeekday(item.createdAt)}</time></div>
 <p class="card__text">${renderText(item.text)}</p>
-<div class="card__foot"><a class="card__open" href="${escapeHtml(item.url)}" rel="noreferrer noopener" target="_blank">Xで開く</a></div>
+${mediaHtml(item)}<div class="card__foot"><a class="card__open" href="${escapeHtml(item.url)}" rel="noreferrer noopener" target="_blank">Xで開く</a></div>
 </li>`;
 }
 
@@ -251,7 +292,6 @@ button,input,select{font:inherit}
 .eyebrow{margin:0 0 12px;color:var(--accent);font-family:var(--font-mono);font-size:.72rem;letter-spacing:.08em;font-weight:500}
 .eyebrow::before{content:"❯ ";color:var(--accent-5)}
 h1{margin:0;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:500;line-height:1.4}
-.lead{margin:16px 0 0;max-width:680px;color:var(--text-muted);font-size:.95rem;line-height:1.9}
 .page-count{margin:14px 0 0;color:var(--text-muted);font-family:var(--font-mono);font-size:.78rem}
 .notice{margin:24px 0 0;border:1px solid var(--border);border-left:3px solid var(--accent);background:var(--surface);padding:12px 16px;font-size:.88rem}
 .notice--auth{border-left-color:var(--accent-warn)}
@@ -273,6 +313,13 @@ h1{margin:0;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:500;line-height:1.4}
 .card__text{margin:12px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem;line-height:1.85}
 .card__foot{display:flex;justify-content:flex-end;margin:10px 0 0}
 .card__open{font-size:.8rem}
+.card__media{display:grid;gap:6px;margin:12px 0 0;grid-template-columns:minmax(0,1fr)}
+.card__media--2,.card__media--3,.card__media--4{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card__media-item{display:block;width:100%;height:auto;min-width:0;object-fit:cover;border:1px solid var(--border);border-radius:4px;background:var(--surface)}
+.card__media--1 .card__media-item{max-height:480px}
+.card__media--2 .card__media-item,.card__media--3 .card__media-item,.card__media--4 .card__media-item{aspect-ratio:16/10}
+.card__media--3 .card__media-item:first-child{grid-row:span 2;aspect-ratio:auto;height:100%}
+.card__media-link{display:block}
 .empty{margin:16px 0 0;border-top:1px solid var(--border);padding:28px 2px;color:var(--text-muted);font-size:.92rem}
 .no-match{margin:16px 0 0;border-top:1px solid var(--border);padding:28px 2px;color:var(--text-muted);font-size:.92rem}
 .more{margin:28px 0 0;text-align:center}
@@ -299,7 +346,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
   let tools = "";
   let script = "";
   if (!snapshot) {
-    body = `<p class="empty">まだXと接続していません。接続すると、ここに保存した投稿が並びます。</p>`;
+    body = `<p class="empty">まだXと接続していません。</p>`;
   } else if (items.length === 0) {
     body = `<p class="empty">ブックマークがまだありません。</p>`;
   } else {
@@ -367,7 +414,6 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <div class="page-head">
 <p class="eyebrow">Bookmarks</p>
 <h1>Xのブックマーク</h1>
-<p class="lead">Xで保存した投稿を、新しい順に最大${options.count}件まで表示します。1日1回、朝9時以降の最初のアクセスで取り直します。</p>
 ${countLine}
 </div>
 ${notice}
@@ -408,6 +454,13 @@ a{color:var(--xb-accent,#a43d29)}
 .card__text{margin:12px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem;line-height:1.85}
 .card__foot{display:flex;justify-content:flex-end;margin:10px 0 0}
 .card__open{font-size:.8rem}
+.card__media{display:grid;gap:6px;margin:12px 0 0;grid-template-columns:minmax(0,1fr)}
+.card__media--2,.card__media--3,.card__media--4{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card__media-item{display:block;width:100%;height:auto;min-width:0;object-fit:cover;border:1px solid var(--xb-border,#e2dcd0);border-radius:10px}
+.card__media--1 .card__media-item{max-height:420px}
+.card__media--2 .card__media-item,.card__media--3 .card__media-item,.card__media--4 .card__media-item{aspect-ratio:16/10}
+.card__media--3 .card__media-item:first-child{grid-row:span 2;aspect-ratio:auto;height:100%}
+.card__media-link{display:block}
 .notice,.empty{margin:14px 0 0;color:var(--xb-muted,#706a60);font-size:.85rem}
 `;
 
@@ -419,6 +472,8 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
     name: item.author.name,
     username: item.author.username,
     avatar: item.author.avatar ?? null,
+    media: item.media ?? [],
+    textFirstLine: firstLine(item.text),
     createdAt: item.createdAt,
     displayAt: formatJst(item.createdAt)
   }));
@@ -512,6 +567,61 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
     return fallback();
   }
 
+  function mediaNode(item) {
+    var list = (item.media || []).slice(0, 4);
+    if (!list.length) return null;
+    var wrap = el("div", "card__media");
+
+    function sized(node, m) {
+      if (m.width) node.width = m.width;
+      if (m.height) node.height = m.height;
+      return node;
+    }
+
+    list.forEach(function (m) {
+      var alt = m.alt || item.textFirstLine || "";
+      if (m.kind === "photo" && m.image) {
+        var img = sized(el("img", "card__media-item"), m);
+        img.src = m.image;
+        img.alt = alt;
+        img.loading = "lazy";
+        img.decoding = "async";
+        wrap.appendChild(img);
+      } else if (m.videoUrl) {
+        var video = sized(el("video", "card__media-item"), m);
+        video.src = m.videoUrl;
+        if (m.image) video.poster = m.image;
+        video.setAttribute("playsinline", "");
+        video.setAttribute("aria-label", alt);
+        if (m.kind === "gif") {
+          video.autoplay = true;
+          video.muted = true;
+          video.loop = true;
+          video.preload = "metadata";
+        } else {
+          video.controls = true;
+          video.preload = "none";
+        }
+        wrap.appendChild(video);
+      } else if (m.image) {
+        var link = el("a", "card__media-link");
+        link.href = item.url;
+        link.rel = "noreferrer noopener";
+        link.target = "_blank";
+        var thumb = sized(el("img", "card__media-item"), m);
+        thumb.src = m.image;
+        thumb.alt = alt;
+        thumb.loading = "lazy";
+        thumb.decoding = "async";
+        link.appendChild(thumb);
+        wrap.appendChild(link);
+      }
+    });
+    if (!wrap.childNodes.length) return null;
+    wrap.className = "card__media card__media--" + wrap.childNodes.length;
+    return wrap;
+  }
+
   function card(item) {
     var li = el("li", "card");
 
@@ -529,6 +639,9 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
     var body = el("p", "card__text");
     body.appendChild(linked(item.text));
     li.appendChild(body);
+
+    var media = mediaNode(item);
+    if (media) li.appendChild(media);
 
     var foot = el("div", "card__foot");
     var open = el("a", "card__open", "Xで開く");

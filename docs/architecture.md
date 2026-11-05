@@ -27,8 +27,8 @@ Astro（TypeScript / Tailwind CSS）で静的生成し、Cloudflare Pages が配
 コードは `src/lib/bookmarks/`（取得・描画）と `functions/bm/[secret]/`・`functions/api/bookmarks/`（入口）です。X API の OAuth2 認可（PKCE、スコープに `bookmark.read` と `offline.access`）で本人のブックマークを取得し、結果は KV バインディング `BOOKMARKS` にキャッシュします。
 
 - 配信は秘密 URL の下の4形式です。一覧（HTML）/ `rss.xml` / `bookmarks.json` / `embed.js`。秘密文字列が一致しない場合はすべて 404 を返し、全形式に `noindex` を付けます。サイト本体のナビゲーションからはリンクしません。
-- 取得は1日1回までで、JST 朝9時の境界を過ぎた最初のアクセスで取り直します（Cron ではなくアクセス駆動）。X API のページング（`next_token`）を辿り、スナップショットには最大100件を保持します。一覧は最初の30件を表示し、残りは「もっと見る」で広げます。埋め込みは15件までです。
-- KV のキーは `snapshot:v2`（取得結果と失敗理由・種別）、`authors:v2`（投稿者情報のキャッシュ）、`token`（OAuth トークン一式）、`oauth:state`（認可途中の PKCE verifier、10分で失効）、`refresh-lock`（同時更新の防止）です。
+- 取得は1日1回までで、JST 朝9時の境界を過ぎた最初のアクセスで取り直します（Cron ではなくアクセス駆動）。X API のページング（`next_token`）を辿り、スナップショットには最大100件を保持します。投稿に付いた画像・動画はメディア情報として一緒に保存し、一覧と埋め込みではカード内に表示します。一覧は最初の30件を表示し、残りは「もっと見る」で広げます。埋め込みは15件までです。
+- KV のキーは `snapshot:v3`（取得結果と失敗理由・種別）、`authors:v2`（投稿者情報のキャッシュ）、`token`（OAuth トークン一式）、`oauth:state`（認可途中の PKCE verifier、10分で失効）、`refresh-lock`（同時更新の防止）です。
 - 取得に失敗しても前回の内容は残し、一覧に notice を出します。失敗の種別は `bookmarks.json` の `errorKind` にも出ます（`auth` は再認可が必要な可能性が高いもの、`temporary` は一時的なもの）。
 
 #### 再認可の手順（トークン失効時）
