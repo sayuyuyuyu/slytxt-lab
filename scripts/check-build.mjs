@@ -126,7 +126,7 @@ for (const file of htmlFiles) {
     const workLd = jsonLdItems.find((item) => item?.["@type"] === "CreativeWork");
     if (!workLd) issues.push(`${relative}: missing CreativeWork JSON-LD`);
     else {
-      const missingKeys = ["headline", "datePublished", "dateModified", "image"].filter((key) => !workLd[key]);
+      const missingKeys = ["headline", "datePublished", "dateModified", "image", "author"].filter((key) => !workLd[key]);
       if (missingKeys.length > 0)
         issues.push(`${relative}: CreativeWork JSON-LD missing ${missingKeys.join(", ")}`);
       else if (Number.isNaN(Date.parse(workLd.datePublished)) || Number.isNaN(Date.parse(workLd.dateModified)))
@@ -145,7 +145,7 @@ for (const file of htmlFiles) {
     const postingLd = jsonLdItems.find((item) => item?.["@type"] === "BlogPosting");
     if (!postingLd) issues.push(`${relative}: missing BlogPosting JSON-LD`);
     else {
-      const missingKeys = ["headline", "datePublished", "dateModified", "image"].filter((key) => !postingLd[key]);
+      const missingKeys = ["headline", "datePublished", "dateModified", "image", "author"].filter((key) => !postingLd[key]);
       if (missingKeys.length > 0)
         issues.push(`${relative}: BlogPosting JSON-LD missing ${missingKeys.join(", ")}`);
       else if (Number.isNaN(Date.parse(postingLd.datePublished)) || Number.isNaN(Date.parse(postingLd.dateModified)))
