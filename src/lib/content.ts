@@ -104,6 +104,15 @@ export function getEntryDisplayTitle(entry: SiteEntry): string {
   return getEntryPreview(entry) || "（無題）";
 }
 
+/** meta / RSS 用の説明文。明示 description が表示名と同一なら使わず、本文プレビュー（200字）も表示名と同一なら undefined を返し、呼び出し側の既定文に落とす。 */
+export function getEntryDescription(entry: SiteEntry): string | undefined {
+  const displayTitle = getEntryDisplayTitle(entry);
+  const explicit = entry.data.description;
+  if (explicit && explicit !== displayTitle) return explicit;
+  const preview = getEntryPreview(entry, 200);
+  return preview && preview !== displayTitle ? preview : undefined;
+}
+
 export function getEntrySlug(entry: SiteEntry): string {
   return entry.id.replace(/(\.sample)?\.md$/, "");
 }
