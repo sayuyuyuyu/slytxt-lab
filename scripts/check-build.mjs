@@ -26,6 +26,7 @@ let checkedImages = 0;
 let checkedXmlUrls = 0;
 let checkedPagefindAssets = 0;
 let checkedRobotsRules = 0;
+let checkedNoindex = 0;
 function unescapeXml(value) {
   return value
     .replaceAll("&lt;", "<")
@@ -95,6 +96,14 @@ for (const file of htmlFiles) {
   }
   if (!html.includes('id="main-content"'))
     issues.push(`${relative}: missing skip-link target`);
+  const robotsContent = metaContent("name", "robots");
+  const expectsNoindex = relative === "404.html" || relative === "search/index.html";
+  if (expectsNoindex) {
+    if (robotsContent === "noindex") checkedNoindex++;
+    else issues.push(`${relative}: missing noindex robots meta`);
+  } else if (robotsContent === "noindex") {
+    issues.push(`${relative}: unexpected noindex robots meta`);
+  } else checkedNoindex++;
   if (relative === "404.html") {
     if (html.includes('rel="canonical"'))
       issues.push(`${relative}: unexpected canonical`);
@@ -291,5 +300,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules and ${checkedNoindex} noindex checks.`,
 );
