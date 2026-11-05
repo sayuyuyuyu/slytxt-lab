@@ -17,6 +17,7 @@ const htmlFiles = (await files(root)).filter((name) => name.endsWith(".html"));
 assert.ok(htmlFiles.length > 0, "Build the site before checking output");
 const issues = [];
 let checkedTitles = 0;
+let checkedCanonicals = 0;
 let checkedDescriptions = 0;
 let checkedLinks = 0;
 let checkedFragments = 0;
@@ -80,8 +81,25 @@ for (const file of htmlFiles) {
       issues.push(`${relative}: unexpected canonical`);
     if (html.includes('property="og:url"'))
       issues.push(`${relative}: unexpected og:url`);
-  } else if (!html.includes('rel="canonical"'))
-    issues.push(`${relative}: missing canonical`);
+  } else {
+    const expectedCanonical = new URL(route, SITE_ORIGIN).href;
+    const canonicalTag = html.match(/<link\b[^>]*\brel="canonical"[^>]*>/)?.[0];
+    const canonicalHref = canonicalTag?.match(/\bhref="([^"]*)"/)?.[1];
+    if (!canonicalHref) issues.push(`${relative}: missing canonical`);
+    else if (canonicalHref !== expectedCanonical)
+      issues.push(
+        `${relative}: canonical ${canonicalHref} does not match ${expectedCanonical}`,
+      );
+    else checkedCanonicals++;
+    const ogUrlTag = html.match(/<meta\b[^>]*\bproperty="og:url"[^>]*>/)?.[0];
+    const ogUrl = ogUrlTag?.match(/\bcontent="([^"]*)"/)?.[1];
+    if (!ogUrl) issues.push(`${relative}: missing og:url`);
+    else if (ogUrl !== expectedCanonical)
+      issues.push(
+        `${relative}: og:url ${ogUrl} does not match ${expectedCanonical}`,
+      );
+    else checkedCanonicals++;
+  }
   for (const tag of html.matchAll(
     /<meta\b[^>]*\b(?:property="og:image"|name="twitter:image")[^>]*>/g,
   )) {
@@ -254,5 +272,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets and ${checkedRobotsRules} robots rules.`,
 );
