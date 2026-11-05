@@ -9,7 +9,12 @@ import {
   AUTHORS_KEY,
 } from "../src/lib/bookmarks/feed.ts";
 import { createXClient, XApiError, TOKEN_KEY } from "../src/lib/bookmarks/x.ts";
-import { lastJstBoundary, formatJst, formatRfc822 } from "../src/lib/bookmarks/format.ts";
+import {
+  lastJstBoundary,
+  formatJst,
+  formatJstWithWeekday,
+  formatRfc822,
+} from "../src/lib/bookmarks/format.ts";
 import { matchesSecret } from "../src/lib/bookmarks/secret.ts";
 import { renderEmbed, renderHtml, renderJson, renderRss } from "../src/lib/bookmarks/render.ts";
 
@@ -230,7 +235,7 @@ test("rendering escapes markup, linkifies bare URLs, and hides the page", () => 
   assert.ok(html.includes('<a href="https://example.com?a=1&amp;b=2"'));
   assert.ok(html.includes("Alice &amp; Bob"));
   assert.ok(html.includes('name="robots" content="noindex"'));
-  assert.ok(html.includes('<li class="card">'));
+  assert.ok(html.includes('<li class="card" data-author="alice">'));
   assert.ok(html.includes('<img class="card__avatar" src="https://pbs.twimg.com/a.jpg"'));
   assert.ok(html.includes('<p class="card__text">'));
 
@@ -314,7 +319,7 @@ test("bookmark list page wraps its content in a main landmark", () => {
   const html = renderHtml(null, RENDER_OPTIONS);
   assert.ok(html.includes('<main class="wrap">'));
   assert.ok(!html.includes('<div class="wrap">'));
-  assert.ok(html.indexOf('<main class="wrap">') < html.indexOf("<header>"));
+  assert.ok(html.indexOf('<main class="wrap">') < html.indexOf('<div class="page-head">'));
   assert.ok(html.indexOf("</main>") > html.indexOf("まだXと接続していません"));
 });
 
@@ -473,8 +478,8 @@ function listSnapshot(itemCount) {
 test("list page shows the first items and folds the rest behind a more button", () => {
   const options = { ...RENDER_OPTIONS, count: 100, initialCount: 2, embedCount: 15 };
   const html = renderHtml(listSnapshot(3), options);
-  assert.equal((html.match(/<li class="card">/g) ?? []).length, 2);
-  assert.equal((html.match(/<li class="card" hidden>/g) ?? []).length, 1);
+  assert.equal((html.match(/<li class="card" data-author="alice">/g) ?? []).length, 2);
+  assert.equal((html.match(/<li class="card" data-author="alice" hidden>/g) ?? []).length, 1);
   assert.ok(html.includes("もっと見る（あと1件）"));
 });
 
@@ -500,4 +505,85 @@ test("embed output is capped by embedCount", () => {
   assert.doesNotThrow(() => new Function(code));
   assert.ok(code.includes("投稿 2"));
   assert.ok(!code.includes("投稿 3"));
+});
+
+test("weekday formatting adds the Japanese weekday", () => {
+  assert.equal(formatJstWithWeekday("2026-09-25T00:00:00Z"), "2026-09-25（金）09:00");
+});
+
+test("mentions and hashtags are linkified, URLs are left whole", () => {
+  const snapshot = {
+    updatedAt: "2026-09-25T00:00:00Z",
+    attemptedAt: "2026-09-25T00:00:00Z",
+    items: [
+      {
+        id: "1",
+        text: "@alice さんの #Astro 紹介 https://example.com/path#frag と #日本語タグ",
+        createdAt: "2026-09-24T23:00:00Z",
+        url: "https://x.com/bob/status/1",
+        author: { id: "u2", username: "bob", name: "Bob" },
+      },
+    ],
+  };
+  const html = renderHtml(snapshot, RENDER_OPTIONS);
+  assert.ok(html.includes('<a href="https://x.com/alice"'));
+  assert.ok(html.includes('<a href="https://x.com/hashtag/Astro"'));
+  assert.ok(html.includes('<a href="https://x.com/hashtag/日本語タグ"'));
+  // URL の中の # はハッシュタグとして拾わない。
+  assert.ok(html.includes('<a href="https://example.com/path#frag"'));
+  assert.ok(!html.includes("hashtag/frag"));
+  // メールアドレス風の @ は拾わない。
+  const mail = renderHtml(
+    {
+      ...snapshot,
+      items: [{ ...snapshot.items[0], text: "連絡は mail@example.com まで" }],
+    },
+    RENDER_OPTIONS,
+  );
+  assert.ok(!mail.includes("https://x.com/example"));
+});
+
+test("an avatar image carries an initial fallback for load failures", () => {
+  const snapshot = {
+    updatedAt: "2026-09-25T00:00:00Z",
+    attemptedAt: "2026-09-25T00:00:00Z",
+    items: [
+      {
+        id: "1",
+        text: "hello",
+        createdAt: "2026-09-24T23:00:00Z",
+        url: "https://x.com/alice/status/1",
+        author: {
+          id: "u1",
+          username: "alice",
+          name: "Alice",
+          avatar: "https://pbs.twimg.com/a.jpg",
+        },
+      },
+    ],
+  };
+  const html = renderHtml(snapshot, RENDER_OPTIONS);
+  assert.ok(html.includes("onerror="));
+  assert.ok(html.includes('card__avatar--fallback" aria-hidden="true" hidden>A<'));
+
+  const code = renderEmbed(snapshot, RENDER_OPTIONS);
+  assert.doesNotThrow(() => new Function(code));
+  assert.ok(code.includes("img.onerror"));
+});
+
+test("list page has keyword and author filters plus a site-like frame", () => {
+  const html = renderHtml(listSnapshot(3), {
+    ...RENDER_OPTIONS,
+    count: 100,
+    initialCount: 30,
+  });
+  assert.ok(html.includes("data-filter-keyword"));
+  assert.ok(html.includes("data-filter-author"));
+  assert.ok(html.includes('<option value="alice">Alice（@alice）</option>'));
+  assert.ok(html.includes("絞り込みを解除"));
+  assert.ok(html.includes('class="site-header"'));
+  assert.ok(html.includes('class="site-footer"'));
+  assert.ok(html.includes("data-theme-toggle"));
+  // テーマはサイト本体と同じ localStorage キーで初期化する。
+  assert.ok(html.includes('localStorage.getItem("theme")'));
 });
