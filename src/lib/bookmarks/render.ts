@@ -35,7 +35,7 @@ function renderText(text: string): string {
     result += escapeHtml(text.slice(lastIndex, index));
     const [whole, url, mention, hashtag] = match;
     if (url) {
-      result += `<a href="${escapeHtml(url)}" rel="noreferrer noopener">${escapeHtml(url)}</a>`;
+      result += `<a href="${escapeHtml(url)}" rel="noreferrer noopener" target="_blank">${escapeHtml(url)}</a>`;
     } else if (mention) {
       result += `<a href="https://x.com/${escapeHtml(mention)}" rel="noreferrer noopener" target="_blank">@${escapeHtml(mention)}</a>`;
     } else if (hashtag) {

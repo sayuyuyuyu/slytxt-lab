@@ -232,7 +232,7 @@ test("rendering escapes markup, linkifies bare URLs, and hides the page", () => 
   const html = renderHtml(snapshot, RENDER_OPTIONS);
   assert.ok(!html.includes("<script>alert(1)</script>"));
   assert.ok(html.includes("&lt;script&gt;"));
-  assert.ok(html.includes('<a href="https://example.com?a=1&amp;b=2"'));
+  assert.ok(html.includes('<a href="https://example.com?a=1&amp;b=2" rel="noreferrer noopener" target="_blank">'));
   assert.ok(html.includes("Alice &amp; Bob"));
   assert.ok(html.includes('name="robots" content="noindex"'));
   assert.ok(html.includes('<li class="card" data-author="alice">'));
@@ -556,11 +556,11 @@ test("mentions and hashtags are linkified, URLs are left whole", () => {
     ],
   };
   const html = renderHtml(snapshot, RENDER_OPTIONS);
-  assert.ok(html.includes('<a href="https://x.com/alice"'));
-  assert.ok(html.includes('<a href="https://x.com/hashtag/Astro"'));
-  assert.ok(html.includes('<a href="https://x.com/hashtag/日本語タグ"'));
+  assert.ok(html.includes('<a href="https://x.com/alice" rel="noreferrer noopener" target="_blank">'));
+  assert.ok(html.includes('<a href="https://x.com/hashtag/Astro" rel="noreferrer noopener" target="_blank">'));
+  assert.ok(html.includes('<a href="https://x.com/hashtag/日本語タグ" rel="noreferrer noopener" target="_blank">'));
   // URL の中の # はハッシュタグとして拾わない。
-  assert.ok(html.includes('<a href="https://example.com/path#frag"'));
+  assert.ok(html.includes('<a href="https://example.com/path#frag" rel="noreferrer noopener" target="_blank">'));
   assert.ok(!html.includes("hashtag/frag"));
   // メールアドレス風の @ は拾わない。
   const mail = renderHtml(
