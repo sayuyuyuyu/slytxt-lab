@@ -90,7 +90,9 @@ async function handleApi(request, env, url) {
   if (resource === "meta" && method === "GET") {
     // タグ候補は既存の下書きが使っているタグの集合。
     // 公開済み記事のタグ一覧を Worker から辿る手段は無いためこれで代える。
-    const drafts = await store.listDrafts();
+    // 一覧が取れないとき（KV の list 上限など）でもカテゴリは返し、
+    // タグ候補が無いだけで writer の起動を止めない（issue #584）。
+    const drafts = await store.listDrafts().catch(() => []);
     const tags = [...new Set(drafts.flatMap((draft) => draft.tags))].sort();
     return json({
       categories: CATEGORIES,

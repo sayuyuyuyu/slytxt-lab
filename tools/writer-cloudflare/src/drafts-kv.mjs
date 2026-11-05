@@ -11,6 +11,12 @@
  * ため、一覧スキャンは UI 操作時とインデックス再構築時だけに限る。
  * インデックスは下書きの作成・保存・削除に追随して更新され、欠落・
  * 不完全な場合は list スキャンで再構築する（自己修復）。
+ *
+ * 下書き一覧も同じ理由で単一キー `draft-index` に ID 一覧を保持する
+ * （issue #584）。KV の list 日次上限に達すると /api/drafts と
+ * /api/meta が返らず writer 自体が起動しなくなるため、通常の一覧取得は
+ * インデックスからの get だけで済ませ、list スキャンはインデックスの
+ * 欠落・不完全時の再構築だけに限る。
  */
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText, textLength, truncateText } from "./markdown.mjs";
@@ -24,6 +30,8 @@ const ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
 const KEY_PREFIX = "draft:";
 /** 保留中公開ジョブのインデックスキー。値は { ids: string[], complete: boolean }。 */
 const PENDING_KEY = "pending-publishes";
+/** 下書き一覧のインデックスキー。値は { ids: string[], complete: boolean }。 */
+const DRAFT_INDEX_KEY = "draft-index";
 
 export function assertId(id) {
   if (typeof id !== "string" || !ID_PATTERN.test(id) || id.includes("..")) {
@@ -161,7 +169,47 @@ export function createDraftStore(kv) {
     return normalizeDraft(assertId(id), data, body, raw);
   }
 
-  async function listDrafts() {
+  async function readDraftIndex() {
+    const raw = await kv.get(DRAFT_INDEX_KEY).catch(() => null);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.ids)) return null;
+      return {
+        ids: parsed.ids.filter((id) => typeof id === "string" && ID_PATTERN.test(id)),
+        complete: parsed.complete === true
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async function writeDraftIndex(ids, complete) {
+    await kv.put(DRAFT_INDEX_KEY, JSON.stringify({ ids: [...new Set(ids)], complete }));
+  }
+
+  /** 作成・保存に追随して下書き一覧インデックスを更新する。 */
+  async function syncDraftIndex(id) {
+    const index = await readDraftIndex();
+    if (!index) {
+      await writeDraftIndex([id], false);
+      return;
+    }
+    if (!index.ids.includes(id)) {
+      await writeDraftIndex([...index.ids, id], index.complete);
+    }
+  }
+
+  async function dropFromDraftIndex(id) {
+    const index = await readDraftIndex();
+    if (!index || !index.ids.includes(id)) return;
+    await writeDraftIndex(
+      index.ids.filter((entry) => entry !== id),
+      index.complete
+    );
+  }
+
+  async function listDraftsViaScan() {
     const drafts = [];
     let cursor = undefined;
     for (;;) {
@@ -177,6 +225,39 @@ export function createDraftStore(kv) {
       }
       if (page.list_complete) break;
       cursor = page.cursor;
+    }
+    return sortSummaries(drafts);
+  }
+
+  /**
+   * 下書き一覧。インデックスが完全なら get だけで返し、list は呼ばない。
+   * インデックスが欠落・不完全なときだけ list スキャンで再構築する。
+   */
+  async function listDrafts() {
+    const index = await readDraftIndex();
+    if (!index || !index.complete) {
+      const drafts = await listDraftsViaScan();
+      await writeDraftIndex(
+        drafts.map((draft) => draft.id),
+        true
+      ).catch(() => {});
+      return drafts;
+    }
+    const drafts = [];
+    const stale = [];
+    for (const id of index.ids) {
+      try {
+        drafts.push(summarizeDraft(await readDraft(id)));
+      } catch (error) {
+        if (error instanceof DraftNotFound) stale.push(id);
+        // 壊れたレコードは一覧から落とすだけ（インデックスには残す）。
+      }
+    }
+    if (stale.length) {
+      await writeDraftIndex(
+        index.ids.filter((id) => !stale.includes(id)),
+        true
+      ).catch(() => {});
     }
     return sortSummaries(drafts);
   }
@@ -293,6 +374,7 @@ export function createDraftStore(kv) {
       base.extras
     );
     await kv.put(keyOf(id), serializeDraft(next));
+    await syncDraftIndex(next.id).catch(() => {});
     await syncPendingIndex(next);
     return next;
   }
@@ -306,6 +388,7 @@ export function createDraftStore(kv) {
       if ((await kv.get(keyOf(id))) == null) {
         const draft = normalizeDraft(id, { title: title || "無題", category }, "");
         await kv.put(keyOf(id), serializeDraft(draft));
+        await syncDraftIndex(draft.id).catch(() => {});
         return draft;
       }
       id = `${base}-${suffix}`;
@@ -316,6 +399,7 @@ export function createDraftStore(kv) {
   async function deleteDraft(id) {
     if ((await kv.get(keyOf(id))) == null) return false;
     await kv.delete(keyOf(id));
+    await dropFromDraftIndex(id).catch(() => {});
     await dropFromPendingIndex(id);
     return true;
   }
