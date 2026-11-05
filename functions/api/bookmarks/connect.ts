@@ -1,4 +1,5 @@
 import { authorizeUrl, createPkce, STATE_KEY } from "../../../src/lib/bookmarks/oauth.ts";
+import { oauthResultPage } from "../../../src/lib/bookmarks/oauth-page.ts";
 import { matchesSecret, randomToken } from "../../../src/lib/bookmarks/secret.ts";
 import type { PagesEnv, PagesFunction } from "../../../src/lib/bookmarks/types.ts";
 
@@ -10,7 +11,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     return new Response("Not Found", { status: 404 });
   }
   if (!context.env.X_CLIENT_ID) {
-    return new Response("X_CLIENT_ID が設定されていません", { status: 500 });
+    return oauthResultPage("設定が足りません", "<p>X_CLIENT_ID が設定されていません。</p>", 500);
   }
 
   const state = randomToken(16);

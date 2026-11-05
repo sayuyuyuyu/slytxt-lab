@@ -130,6 +130,11 @@ test("connect reports a missing X client id after the admin check", async () => 
     context({ url: "https://slytxt.dev/api/bookmarks/connect?key=admin-token", env }),
   );
   assert.equal(response.status, 500);
+  assert.match(response.headers.get("content-type"), /text\/html/);
+  const html = await response.text();
+  assert.match(html, /設定が足りません/);
+  assert.match(html, /X_CLIENT_ID が設定されていません/);
+  assert.ok(html.includes("skip-link"));
 });
 
 test("connect redirects to the X authorize page and stores the state", async () => {
