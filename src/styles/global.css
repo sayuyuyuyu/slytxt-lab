@@ -1929,7 +1929,9 @@ html.konami-on .site-main {
   .listing-tools,
   .terminal__console,
   .terminal__suggestions,
-  .home-hero__links {
+  .home-hero__links,
+  .breadcrumbs,
+  .link-button {
     display: none !important;
   }
   [data-motion] {
