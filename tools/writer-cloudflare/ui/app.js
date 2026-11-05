@@ -192,11 +192,11 @@ async function api(path, options = {}) {
   return payload;
 }
 
-/** タイトルが空のメモは、本文の書き出しを名前として見せる。 */
+/** タイトルが空の下書きは、本文の書き出しを名前として見せる。 */
 function displayTitle(draft) {
   if (draft.title && draft.title !== "無題") return draft.title;
   const first = String(draft.excerpt ?? "").trim();
-  if (!first) return "新しいメモ";
+  if (!first) return "新しい下書き";
   return Array.from(first).length > 32 ? `${truncateText(first, 32)}…` : first;
 }
 
@@ -2072,7 +2072,7 @@ async function removeDraft(id) {
     (state.current?.id === id ? state.current : null);
   const ok = await confirmAction({
     title: "削除しますか",
-    message: `「${target ? draftName(target) : "このメモ"}」を削除します。元に戻せません。`
+    message: `「${target ? draftName(target) : "この下書き"}」を削除します。元に戻せません。`
   });
   if (!ok) return;
   try {
@@ -2168,7 +2168,7 @@ async function boot() {
   els.editorMenu.addEventListener("click", () => {
     if (!state.current || state.busy) return;
     openMenu(els.editorMenu, [
-      { label: "このメモを削除", danger: true, onSelect: () => removeDraft(state.current.id) }
+      { label: "この下書きを削除", danger: true, onSelect: () => removeDraft(state.current.id) }
     ]);
   });
   els.publishOpen.addEventListener("click", openPublishPanel);
