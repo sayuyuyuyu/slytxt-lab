@@ -29,6 +29,7 @@ let checkedRobotsRules = 0;
 let checkedRedirects = 0;
 let checkedNoindex = 0;
 let checkedStructured = 0;
+let checkedSitemapPages = 0;
 function unescapeXml(value) {
   return value
     .replaceAll("&lt;", "<")
@@ -255,17 +256,33 @@ if (sitemap !== null) {
   if (!sitemap.includes("<urlset")) issues.push("sitemap.xml: missing urlset");
   const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   if (locs.length === 0) issues.push("sitemap.xml: no loc entries");
+  const locUrls = new Set();
   for (const raw of locs) {
     const value = unescapeXml(raw.trim());
     let decoded;
     try {
       decoded = decodeURIComponent(new URL(value).pathname);
+      locUrls.add(new URL(value).href);
     } catch {
       issues.push(`sitemap.xml: invalid loc URL ${value}`);
       continue;
     }
     if (await distFileExists(decoded)) checkedXmlUrls++;
     else issues.push(`sitemap.xml: missing ${value}`);
+  }
+  for (const file of htmlFiles) {
+    const relative = path.relative(root, file);
+    // noindex pages (404 and Search) are intentionally left out of the sitemap.
+    if (relative === "404.html" || relative === "search/index.html") continue;
+    // Listing pages with no entries are also left out on purpose (see the
+    // count-based staticPaths in src/pages/sitemap.xml.ts): they render the
+    // EmptyState component instead of any content.
+    const html = await readFile(file, "utf8");
+    if (html.includes('class="empty-state"')) continue;
+    const route = "/" + relative.replace(/index\.html$/, "");
+    const expected = new URL(route, SITE_ORIGIN).href;
+    if (locUrls.has(expected)) checkedSitemapPages++;
+    else issues.push(`sitemap.xml: public page not listed ${expected}`);
   }
 }
 let rssXml = null;
@@ -391,5 +408,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data.`,
 );
