@@ -328,10 +328,19 @@ test("embed avatar initial is taken by code point, not code unit", () => {
 
 test("bookmark list page wraps its content in a main landmark", () => {
   const html = renderHtml(null, RENDER_OPTIONS);
-  assert.ok(html.includes('<main class="wrap">'));
+  assert.ok(html.includes('<main id="main-content" class="wrap" tabindex="-1">'));
   assert.ok(!html.includes('<div class="wrap">'));
-  assert.ok(html.indexOf('<main class="wrap">') < html.indexOf('<div class="page-head">'));
+  assert.ok(html.indexOf('<main id="main-content" class="wrap" tabindex="-1">') < html.indexOf('<div class="page-head">'));
   assert.ok(html.indexOf("</main>") > html.indexOf("まだXと接続していません"));
+});
+
+test("bookmark list page has a skip link to main content like the site", () => {
+  const html = renderHtml(null, RENDER_OPTIONS);
+  assert.ok(html.includes('<a class="skip-link" href="#main-content">Skip to content</a>'));
+  assert.ok(html.indexOf('class="skip-link"') < html.indexOf('data-theme-toggle'));
+  assert.ok(html.indexOf('class="skip-link"') < html.indexOf('<main id="main-content"'));
+  assert.ok(html.includes('.skip-link{'));
+  assert.ok(html.includes('.wrap:focus{outline:none}'));
 });
 
 test("bookmark list page carries the same favicon links as the site", () => {
