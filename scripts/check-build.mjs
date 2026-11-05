@@ -27,6 +27,7 @@ let checkedXmlUrls = 0;
 let checkedPagefindAssets = 0;
 let checkedRobotsRules = 0;
 let checkedRedirects = 0;
+let checkedHeaders = 0;
 let checkedNoindex = 0;
 let checkedStructured = 0;
 let checkedAriaRefs = 0;
@@ -522,6 +523,28 @@ if (redirectsTxt !== null) {
   if (checkedRedirects === 0)
     issues.push("_redirects: no static redirect targets checked");
 }
+let headersTxt = null;
+try {
+  headersTxt = await readFile(path.join(root, "_headers"), "utf8");
+} catch {
+  issues.push("_headers: missing file");
+}
+if (headersTxt !== null) {
+  const expectedHeaders = [
+    "Strict-Transport-Security: max-age=31536000; includeSubDomains",
+    "X-Content-Type-Options: nosniff",
+    "Referrer-Policy: strict-origin-when-cross-origin",
+  ];
+  if (!headersTxt.split(/\r?\n/).some((line) => line.trim() === "/*"))
+    issues.push("_headers: missing /* rule");
+  for (const expected of expectedHeaders) {
+    const found = headersTxt
+      .split(/\r?\n/)
+      .some((line) => line.trim().toLowerCase() === expected.toLowerCase());
+    if (found) checkedHeaders++;
+    else issues.push(`_headers: missing ${expected}`);
+  }
+}
 for (const asset of [
   "pagefind/pagefind-ui.js",
   "pagefind/pagefind-ui.css",
@@ -551,5 +574,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
 );
