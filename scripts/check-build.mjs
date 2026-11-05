@@ -29,6 +29,7 @@ let checkedRobotsRules = 0;
 let checkedRedirects = 0;
 let checkedNoindex = 0;
 let checkedStructured = 0;
+let checkedAriaRefs = 0;
 let checkedImgAlts = 0;
 let checkedSitemapPages = 0;
 let checkedRssMeta = 0;
@@ -212,6 +213,30 @@ for (const file of htmlFiles) {
         }
       }
       if (breadcrumbOk) checkedStructured++;
+    }
+  }
+  // ids must be unique, and aria / label references must resolve in-page.
+  {
+    const idCounts = new Map();
+    for (const m of html.matchAll(/\bid="([^"]+)"/g)) {
+      idCounts.set(m[1], (idCounts.get(m[1]) ?? 0) + 1);
+    }
+    for (const [id, count] of idCounts) {
+      if (count > 1) issues.push(`${relative}: duplicate id "${id}"`);
+    }
+    const pageIds = await idsIn(file);
+    for (const attr of ["aria-controls", "aria-labelledby", "aria-describedby"]) {
+      for (const m of html.matchAll(new RegExp(`\\b${attr}="([^"]+)"`, "g"))) {
+        for (const ref of m[1].split(/\s+/).filter(Boolean)) {
+          if (pageIds.has(ref)) checkedAriaRefs++;
+          else issues.push(`${relative}: ${attr} references missing id "${ref}"`);
+        }
+      }
+    }
+    for (const m of html.matchAll(/<label\b[^>]*\bfor="([^"]+)"/g)) {
+      const ref = m[1].trim();
+      if (ref && pageIds.has(ref)) checkedAriaRefs++;
+      else if (ref) issues.push(`${relative}: label for references missing id "${ref}"`);
     }
   }
   if (!html.includes('id="main-content"'))
@@ -526,5 +551,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedNoindex} noindex checks and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
 );
