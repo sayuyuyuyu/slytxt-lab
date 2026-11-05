@@ -69,7 +69,8 @@ const crumbs = [
         <slot />
       </div>
 
-      <nav class="article-nav" aria-label="Article navigation" data-pagefind-ignore data-motion>
+      {(previous || next) && (
+        <nav class="article-nav" aria-label="Article navigation" data-pagefind-ignore data-motion>
         {
           previous ? (
             <a href={getEntryPath(previous)}>
@@ -91,6 +92,7 @@ const crumbs = [
           )
         }
       </nav>
+      )}
     </article>
     <TableOfContents headings={headings} />
   </div>
