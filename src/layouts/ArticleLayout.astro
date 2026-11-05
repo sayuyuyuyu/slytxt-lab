@@ -58,7 +58,7 @@ const crumbs = [
         {entry.data.adult && <span role="img" aria-label="Includes an adult content review"> / 🔞</span>}
       </div>
       <TagList tags={entry.data.tags} />
-      {entry.data.cover && <img class="article-cover" src={entry.data.cover} alt="" />}
+      {entry.data.cover && <img class="article-cover" src={entry.data.cover} alt="" fetchpriority="high" />}
     </div>
   </header>
 
