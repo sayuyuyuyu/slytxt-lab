@@ -2,6 +2,9 @@ node_modules
 dist
 .astro
 .pagefind
+
+# Wrangler local state (cache / R2). Regenerated locally; never commit.
+.wrangler/
 .env
 .env.*
 !.env.example
