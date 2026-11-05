@@ -1240,6 +1240,13 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.dialog__count {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  text-align: right;
+}
+
 .dialog__actions {
   display: flex;
   flex-wrap: wrap;
