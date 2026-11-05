@@ -2,7 +2,7 @@
 import AdultGate from "@/components/AdultGate.astro";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import TagList from "@/components/TagList.astro";
-import { getEntryDisplayTitle, getEntryPath, getEntryPreview, getEntrySlug, type ArticleEntry } from "@/lib/content";
+import { getEntryDescription, getEntryDisplayTitle, getEntryPath, getEntrySlug, type ArticleEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { categoryLabels, categoryPaths, site } from "@/lib/site";
 import BaseLayout from "./BaseLayout.astro";
@@ -16,8 +16,7 @@ type Props = {
 const { entry, previous, next } = Astro.props;
 const text = (entry.body ?? "").trim();
 const label = getEntryDisplayTitle(entry);
-const preview = getEntryPreview(entry, 200);
-const description = entry.data.description ?? (preview && preview !== label ? preview : undefined);
+const description = getEntryDescription(entry);
 const ogImage = `/og/${entry.collection}/${getEntrySlug(entry)}.png`;
 
 const navTitle = (target: ArticleEntry) => getEntryDisplayTitle(target);
