@@ -15,7 +15,7 @@
 
 # 執筆
 
-- 執筆は Cloudflare 版のエディタ（https://write.slytxt.dev 、コードは `tools/writer-cloudflare/`）で行う。下書きは Cloudflare KV に保存する。
+- 執筆は Cloudflare 版のエディタ（https://write.slytxt.dev 、コードは `tools/writer-cloudflare/`）で行う。下書きは端末（localStorage）へ即時保存し、Cloudflare KV へ裏で同期する（未同期の間は端末内だけに存在する）。
 - `drafts/` は移行前の下書きの原本で、コミットしない。公開するのは `src/content/<category>/<slug>.md` だけ。
 - 公開は執筆ツールの投稿ボタン（PR 経由）から行う。手で出す場合も `main` へ直接 push しない。
 - 文体の規範は `~/.agents/skills/slytxt-writing/SKILL.md`。サイトの文章を直すときもこれに合わせる。

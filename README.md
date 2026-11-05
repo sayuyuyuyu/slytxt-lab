@@ -90,7 +90,7 @@ X_CLIENT_SECRET         X アプリの Client Secret
 
 編集は端末（ブラウザの localStorage）へ即時に自動保存され、サーバー（Cloudflare KV）への同期は裏で間引いて行われます。未同期の間は下書きが端末内だけに存在します。保存表示は、未同期なら「端末に保存済み」、同期済みなら「保存済み」です。
 
-構成とデプロイ手順は `tools/writer-cloudflare/README.md` を参照してください。旧ローカル版（Mac 上のサーバーを launchd で常駐させる方式）は廃止しました。移行前の下書きファイルは、原本としてリポジトリ直下の `drafts/` に残してあります（`.gitignore` 済み。現在の下書きの正は KV）。
+構成とデプロイ手順は `tools/writer-cloudflare/README.md` を参照してください。旧ローカル版（Mac 上のサーバーを launchd で常駐させる方式）は廃止しました。移行前の下書きファイルは、原本としてリポジトリ直下の `drafts/` に残してあります（`.gitignore` 済み。現在の下書きは端末へ即時保存され、KV へは裏で同期されます。未同期の間は端末内だけに存在します）。
 
 
 ## Content
