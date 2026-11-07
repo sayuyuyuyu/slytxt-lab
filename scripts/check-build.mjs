@@ -17,6 +17,9 @@ const htmlFiles = (await files(root)).filter((name) => name.endsWith(".html"));
 assert.ok(htmlFiles.length > 0, "Build the site before checking output");
 const issues = [];
 let checkedTitles = 0;
+let checkedLangs = 0;
+let checkedCharsets = 0;
+let checkedViewports = 0;
 let checkedCanonicals = 0;
 let checkedDescriptions = 0;
 let checkedSocial = 0;
@@ -90,6 +93,25 @@ for (const file of htmlFiles) {
     )?.[0];
     return tag?.match(/\bcontent="([^"]*)"/)?.[1]?.trim();
   };
+  const lang = html.match(/<html\b[^>]*\blang="([^"]*)"/)?.[1]?.trim();
+  if (lang === "ja") checkedLangs++;
+  else if (!lang) issues.push(`${relative}: missing html lang`);
+  else issues.push(`${relative}: html lang ${lang} does not match ja`);
+  const charset = html
+    .match(/<meta\b[^>]*\bcharset="([^"]*)"/i)?.[1]
+    ?.trim()
+    .toLowerCase();
+  if (charset === "utf-8") checkedCharsets++;
+  else if (!charset) issues.push(`${relative}: missing meta charset`);
+  else
+    issues.push(`${relative}: meta charset ${charset} does not match utf-8`);
+  const viewport = metaContent("name", "viewport");
+  if (viewport === "width=device-width, initial-scale=1") checkedViewports++;
+  else if (!viewport) issues.push(`${relative}: missing viewport meta`);
+  else
+    issues.push(
+      `${relative}: viewport ${viewport} does not match width=device-width, initial-scale=1`,
+    );
   const ogImageUrl = metaContent("property", "og:image");
   let ogImagePath = "";
   try {
@@ -578,5 +600,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
 );
