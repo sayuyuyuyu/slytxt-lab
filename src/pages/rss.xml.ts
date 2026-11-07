@@ -23,7 +23,10 @@ export async function GET(context: APIContext) {
     items: items.map((entry) => ({
       title: getEntryDisplayTitle(entry),
       description: getEntryDescription(entry) ?? site.description,
-      pubDate: entry.data.published,
+      // @astrojs/rss は pubDate を Date から toUTCString() で GMT 表記にしてしまうため、
+      // 時刻そのものは変えずに customData で formatRfc822 の +0900 表記を渡し、
+      // lastBuildDate とブックマーク RSS の表記にそろえる。
+      customData: `<pubDate>${formatRfc822(entry.data.published.toISOString())}</pubDate>`,
       link: getEntryPath(entry),
       categories: [...new Set([categoryLabels[entry.collection], ...entry.data.tags])]
     })),
