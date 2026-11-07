@@ -408,6 +408,8 @@ if (rssXml !== null) {
     if (!lastBuildDate) issues.push("rss.xml: missing lastBuildDate");
     else if (Number.isNaN(Date.parse(lastBuildDate)))
       issues.push(`rss.xml: invalid lastBuildDate ${lastBuildDate}`);
+    else if (!/^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} \+0900$/.test(lastBuildDate))
+      issues.push(`rss.xml: lastBuildDate is not in +0900 format ${lastBuildDate}`);
     else checkedRssMeta++;
   }
   const atomLink = channelHead.match(/<atom:link\b[^>]*>/)?.[0];
@@ -431,6 +433,8 @@ if (rssXml !== null) {
     if (!pubDate) issues.push("rss.xml: item without pubDate");
     else if (Number.isNaN(Date.parse(pubDate)))
       issues.push(`rss.xml: invalid item pubDate ${pubDate}`);
+    else if (!/^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} \+0900$/.test(pubDate))
+      issues.push(`rss.xml: item pubDate is not in +0900 format ${pubDate}`);
     else checkedRssItems++;
     const guid = body.match(/<guid\b[^>]*>([^<]*)<\/guid>/)?.[1]?.trim();
     if (guid) checkedRssItems++;
