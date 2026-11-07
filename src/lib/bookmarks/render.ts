@@ -398,6 +398,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="description" content="Xで保存した投稿の一覧です。">
 <meta name="theme-color" content="#05070f">
 <title>${escapeHtml(title)}</title>
 <script>try{var isLight=localStorage.getItem("theme")==="light";document.documentElement.classList.toggle("light",isLight);document.querySelector('meta[name="theme-color"]').setAttribute("content",isLight?"#eef3fb":"#05070f")}catch(e){}</script>
