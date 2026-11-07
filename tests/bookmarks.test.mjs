@@ -14,6 +14,7 @@ import {
   formatJst,
   formatJstWithWeekday,
   formatRfc822,
+  toJstParts,
 } from "../src/lib/bookmarks/format.ts";
 import { matchesSecret } from "../src/lib/bookmarks/secret.ts";
 import { renderEmbed, renderHtml, renderJson, renderRss } from "../src/lib/bookmarks/render.ts";
@@ -616,6 +617,15 @@ test("list page has keyword and author filters plus a site-like frame", () => {
   assert.ok(html.includes("data-theme-toggle"));
   // テーマはサイト本体と同じ localStorage キーで初期化する。
   assert.ok(html.includes('localStorage.getItem("theme")'));
+});
+
+test("list page footer year uses Asia/Tokyo, not UTC", () => {
+  // JST 2026-01-01 00:30 は UTC では 2025-12-31 15:30。UTC 年だと前年になる境界。
+  assert.equal(toJstParts("2025-12-31T15:30:00.000Z").year, 2026);
+  assert.equal(toJstParts("2025-12-31T14:59:59.000Z").year, 2025);
+  const html = renderHtml(listSnapshot(1), RENDER_OPTIONS);
+  const jstYear = toJstParts(new Date().toISOString()).year;
+  assert.ok(html.includes(`&copy; ${jstYear}`), `footer should contain JST year ${jstYear}`);
 });
 
 test("list page theme toggle mirrors the main site toggle", () => {

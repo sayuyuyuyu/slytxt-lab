@@ -1,4 +1,4 @@
-import { formatJst, formatJstWithWeekday, formatRfc822 } from "./format.ts";
+import { formatJst, formatJstWithWeekday, formatRfc822, toJstParts } from "./format.ts";
 import type { BookmarkItem, BookmarkMedia, BookmarkSnapshot } from "./types.ts";
 import { escapeXml } from "../xml.ts";
 import { site } from "../site.ts";
@@ -348,7 +348,7 @@ h1{margin:0;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:500;line-height:1.4}
 export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOptions): string {
   const items = snapshot?.items ?? [];
   const title = `${options.siteName} のXブックマーク`;
-  const year = new Date().getFullYear();
+  const year = toJstParts(new Date().toISOString()).year;
 
   let body: string;
   let tools = "";
