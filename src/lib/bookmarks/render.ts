@@ -4,8 +4,6 @@ import { escapeXml } from "../xml.ts";
 import { site } from "../site.ts";
 import { escapeHtml } from "../html.ts";
 
-export { escapeXml, escapeHtml };
-
 export type RenderOptions = {
   siteName: string;
   siteUrl: string;

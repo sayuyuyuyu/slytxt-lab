@@ -1,6 +1,6 @@
 import { exchangeCode, fetchUserId, STATE_KEY } from "../../../src/lib/bookmarks/oauth.ts";
 import { SNAPSHOT_KEY } from "../../../src/lib/bookmarks/feed.ts";
-import { escapeHtml } from "../../../src/lib/bookmarks/render.ts";
+import { escapeHtml } from "../../../src/lib/html.ts";
 import { oauthResultPage } from "../../../src/lib/bookmarks/oauth-page.ts";
 import { TOKEN_KEY } from "../../../src/lib/bookmarks/x.ts";
 import type { PagesEnv, PagesFunction } from "../../../src/lib/bookmarks/types.ts";
