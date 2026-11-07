@@ -220,6 +220,19 @@ test("callback page has a skip link to the main content", async () => {
   assert.ok(html.includes(".skip-link{"));
 });
 
+test("callback page has a meta description", async () => {
+  const env = { BOOKMARKS: memoryStore() };
+  const response = await callbackRequest(
+    context({ url: "https://slytxt.dev/api/bookmarks/callback?code=abc&state=x", env }),
+  );
+  const html = await response.text();
+  assert.ok(
+    html.includes(
+      '<meta name="description" content="Xブックマーク連携の認可結果を表示する画面です。">',
+    ),
+  );
+});
+
 test("callback answers 500 when the X client id is missing", async () => {
   const env = { BOOKMARKS: memoryStore() };
   const response = await callbackRequest(

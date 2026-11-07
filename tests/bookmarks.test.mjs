@@ -628,6 +628,11 @@ test("list page footer year uses Asia/Tokyo, not UTC", () => {
   assert.ok(html.includes(`&copy; ${jstYear}`), `footer should contain JST year ${jstYear}`);
 });
 
+test("list page has a meta description", () => {
+  const html = renderHtml(listSnapshot(1), RENDER_OPTIONS);
+  assert.ok(html.includes('<meta name="description" content="Xで保存した投稿の一覧です。">'));
+});
+
 test("list page theme toggle mirrors the main site toggle", () => {
   const html = renderHtml(listSnapshot(1), RENDER_OPTIONS);
   // theme-color starts dark and follows the stored theme, like BaseLayout.

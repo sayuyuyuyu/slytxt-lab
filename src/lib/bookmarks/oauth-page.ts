@@ -6,6 +6,7 @@ export function oauthResultPage(title: string, body: string, status = 200): Resp
     `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="description" content="Xブックマーク連携の認可結果を表示する画面です。">
 <meta name="theme-color" content="#05070f">
 <title>${escapeHtml(title)}</title>
 <script>try{var isLight=localStorage.getItem("theme")==="light";document.documentElement.classList.toggle("light",isLight);document.querySelector('meta[name="theme-color"]').setAttribute("content",isLight?"#eef3fb":"#05070f")}catch(e){}</script>
