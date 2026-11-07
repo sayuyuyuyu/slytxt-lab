@@ -560,6 +560,8 @@ if (headersTxt !== null) {
     "Strict-Transport-Security: max-age=31536000; includeSubDomains",
     "X-Content-Type-Options: nosniff",
     "Referrer-Policy: strict-origin-when-cross-origin",
+    "X-Frame-Options: DENY",
+    "Content-Security-Policy: frame-ancestors 'none'",
   ];
   if (!headersTxt.split(/\r?\n/).some((line) => line.trim() === "/*"))
     issues.push("_headers: missing /* rule");
