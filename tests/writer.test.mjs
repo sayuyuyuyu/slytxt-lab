@@ -23,6 +23,7 @@ import {
   uploadMedia
 } from "../tools/writer-cloudflare/src/media.mjs";
 import { cleanSummary, generateSummary, summaryConfig } from "../tools/writer-cloudflare/src/summary.mjs";
+import { today } from "../tools/writer-cloudflare/src/date.mjs";
 
 /**
  * drafts-kv のテスト用に、Cloudflare KV の最小インターフェースを
@@ -334,6 +335,18 @@ test("drafts: 同じタイトルで作り続けても衝突しない", async () 
 
   assert.equal(new Set(made.map((draft) => draft.id)).size, 3);
   assert.equal((await store.listDrafts()).length, 3);
+});
+
+test("date: today は Asia/Tokyo の日付を返し、UTC の前日にならない", () => {
+  // JST 2026-01-01 00:30 は UTC では 2025-12-31 15:30。toISOString だと前日になる境界。
+  assert.equal(today(new Date("2026-01-01T00:30:00+09:00")), "2026-01-01");
+  assert.equal(today(new Date("2025-12-31T23:30:00+09:00")), "2025-12-31");
+});
+
+test("drafts: 新規作成の id は JST の今日から始まる", async () => {
+  const store = createDraftStore(memoryKv());
+  const draft = await store.createDraft({ title: "日付確認" });
+  assert.ok(draft.id.startsWith(`${today()}-`), `id=${draft.id} today=${today()}`);
 });
 
 test("drafts: 削除した id は再利用できる", async () => {

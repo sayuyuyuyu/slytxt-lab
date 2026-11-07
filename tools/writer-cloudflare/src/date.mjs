@@ -3,6 +3,6 @@
  * 投稿日の生成に使う today を提供する。
  */
 
-export function today() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
+export function today(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(now);
 }

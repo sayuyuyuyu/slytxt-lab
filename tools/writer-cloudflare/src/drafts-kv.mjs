@@ -20,6 +20,7 @@
  */
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText, textLength, truncateText } from "./markdown.mjs";
+import { today } from "./date.mjs";
 
 export const CATEGORIES = ["tech", "journal", "notes"];
 export const CATEGORY_LABELS = { tech: "Tech", journal: "Journal", notes: "Notes" };
@@ -380,7 +381,7 @@ export function createDraftStore(kv) {
   }
 
   async function createDraft({ title = "", category = "notes" } = {}) {
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = today();
     const base = `${stamp}-${slugFragment(title)}`;
     let id = base;
     let suffix = 2;
