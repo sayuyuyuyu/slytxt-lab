@@ -15,6 +15,7 @@ import {
   createDraftStore
 } from "./drafts-kv.mjs";
 import { PublishError, deriveDescription, publishPost, publishStatus } from "./publish.mjs";
+import { listPublished, openPublished } from "./published.mjs";
 import { generateSummary } from "./summary.mjs";
 import { MediaError, mediaStatus, serveDraftMedia, uploadMedia } from "./media.mjs";
 import { drivePendingPublishes, listPublishResults } from "./driver.mjs";
@@ -131,6 +132,23 @@ async function handleApi(request, env, url) {
       return json({ removed }, removed ? 200 : 404);
     }
     return null;
+  }
+
+  // 公開済み記事の一覧（writer で開いて再編集するための導線）。
+  if (resource === "published" && !id && method === "GET") {
+    return json({ articles: await listPublished({ env, store }) });
+  }
+
+  // 公開済み記事を下書きとして開く。対応する下書きがあればそれを返し、
+  // 無ければ記事を取り込んで下書きを作る。
+  if (resource === "published" && id && action && method === "POST") {
+    const { draft, created } = await openPublished({
+      env,
+      store,
+      category: id,
+      slug: action
+    });
+    return json({ draft, created }, created ? 201 : 200);
   }
 
   if (resource === "media" && !id) {

@@ -23,6 +23,7 @@ import {
   uploadMedia
 } from "../tools/writer-cloudflare/src/media.mjs";
 import { cleanSummary, generateSummary, summaryConfig } from "../tools/writer-cloudflare/src/summary.mjs";
+import { listPublished, openPublished } from "../tools/writer-cloudflare/src/published.mjs";
 import writerWorker from "../tools/writer-cloudflare/src/index.mjs";
 import { today } from "../tools/writer-cloudflare/src/date.mjs";
 
@@ -550,6 +551,24 @@ function fakeGitHub() {
         ref === "main"
           ? state.mainFiles.get(file)
           : state.branchFiles.get(`${ref}:${file}`);
+      if (!found && ref === "main") {
+        // ディレクトリ指定は直下のエントリ一覧を返す（実 API の Contents 挙動）。
+        const prefix = `${file}/`;
+        const children = new Map();
+        for (const key of state.mainFiles.keys()) {
+          if (!key.startsWith(prefix)) continue;
+          const rest = key.slice(prefix.length);
+          const [name, ...deeper] = rest.split("/");
+          if (!children.has(name)) {
+            children.set(name, {
+              name,
+              path: `${prefix}${name}`,
+              type: deeper.length ? "dir" : "file"
+            });
+          }
+        }
+        if (children.size > 0) return respond(200, [...children.values()]);
+      }
       return found
         ? respond(200, { sha: `blob-${file}`, path: file, content: stored ?? "" })
         : respond(404, { message: "Not Found" });
@@ -819,6 +838,183 @@ test("publish再編集: 公開済みと同一の下書きは収束し、本文�
     // 公開日は元の記事の日付を引き継ぐ。
     assert.equal(parseFrontmatter(updatedText).data.published, data.published);
     await assert.rejects(() => store.readDraft(edited.id));
+  });
+});
+
+const b64 = (text) => Buffer.from(text).toString("base64");
+
+test("published: 一覧は frontmatter と下書きの有無を返し、下書きフラグ付きを除く", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    gh.state.mainFiles.set(
+      "src/content/journal/2026-01-02-first.md",
+      b64("---\ntitle: 最初の記事\ndescription: 説明です\npublished: 2026-01-02\ntags: [日記]\n---\n\n本文その1\n")
+    );
+    gh.state.mainFiles.set(
+      "src/content/notes/2026-01-03-memo.md",
+      b64('---\ntitle: ""\ndescription: メモの説明\npublished: 2026-01-03\n---\n\nメモ本文\n')
+    );
+    gh.state.mainFiles.set(
+      "src/content/notes/2026-01-04-hidden.md",
+      b64("---\ntitle: 非公開下書き\ndescription: x\npublished: 2026-01-04\ndraft: true\n---\n\n下書き本文\n")
+    );
+    const store = createDraftStore(memoryKv());
+    await store.importDraft(
+      "2026-01-02-first",
+      { title: "最初の記事", category: "journal" },
+      "編集中の本文"
+    );
+    const articles = await listPublished({ env: testEnv, store });
+    assert.equal(articles.length, 2);
+    // 新しい公開日のものから並ぶ。
+    assert.deepEqual(
+      articles.map((article) => article.slug),
+      ["2026-01-03-memo", "2026-01-02-first"]
+    );
+    assert.equal(articles[0].title, "");
+    assert.equal(articles[0].hasDraft, false);
+    assert.equal(articles[0].draftId, null);
+    assert.equal(articles[1].title, "最初の記事");
+    assert.equal(articles[1].published, "2026-01-02");
+    assert.equal(articles[1].hasDraft, true);
+    assert.equal(articles[1].draftId, "2026-01-02-first");
+  });
+});
+
+test("published: 開くと記事が下書きとして取り込まれ、公開日が保持される", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    gh.state.mainFiles.set(
+      "src/content/journal/2026-02-03-import-me.md",
+      b64(
+        '---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1, タグ2]\ncover: "https://media.slytxt.dev/0123456789abcdef0123456789abcdef.jpg"\n---\n\n取り込む本文です。\n'
+      )
+    );
+    const kv = memoryKv();
+    const store = createDraftStore(kv);
+    const { draft, created } = await openPublished({
+      env: testEnv,
+      store,
+      category: "journal",
+      slug: "2026-02-03-import-me"
+    });
+    assert.equal(created, true);
+    assert.equal(draft.id, "2026-02-03-import-me");
+    assert.equal(draft.title, "取り込み対象");
+    assert.equal(draft.description, "説明文です");
+    assert.deepEqual(draft.tags, ["タグ1", "タグ2"]);
+    assert.equal(
+      draft.cover,
+      "https://media.slytxt.dev/0123456789abcdef0123456789abcdef.jpg"
+    );
+    assert.match(draft.body, /取り込む本文です。/);
+    // 公開日は下書きの frontmatter に extras として残る。
+    assert.match(kv.map.get("draft:2026-02-03-import-me"), /published: 2026-02-03/);
+    // 下書き一覧にも載る。
+    assert.deepEqual(
+      (await store.listDrafts()).map((entry) => entry.id),
+      ["2026-02-03-import-me"]
+    );
+  });
+});
+
+test("published: 対応する下書きがあれば作り直さずそれを開く", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    gh.state.mainFiles.set(
+      "src/content/journal/2026-02-03-import-me.md",
+      b64("---\ntitle: 取り込み対象\ndescription: 説明\npublished: 2026-02-03\n---\n\n公開時の本文\n")
+    );
+    const store = createDraftStore(memoryKv());
+    const first = await openPublished({
+      env: testEnv,
+      store,
+      category: "journal",
+      slug: "2026-02-03-import-me"
+    });
+    assert.equal(first.created, true);
+    await store.writeDraft(first.draft.id, { body: "編集中の本文 v2" });
+    const second = await openPublished({
+      env: testEnv,
+      store,
+      category: "journal",
+      slug: "2026-02-03-import-me"
+    });
+    assert.equal(second.created, false);
+    assert.equal(second.draft.id, first.draft.id);
+    assert.match(second.draft.body, /編集中の本文 v2/);
+    assert.equal((await store.listDrafts()).length, 1);
+  });
+});
+
+test("published: 取り込んだ下書きを編集して再投稿すると更新 PR で公開日を引き継ぐ", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const file = "src/content/journal/2026-02-03-import-me.md";
+    gh.state.mainFiles.set(
+      file,
+      b64("---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1]\n---\n\n公開時の本文 v1\n")
+    );
+    const store = createDraftStore(memoryKv());
+    // この記事には writer のブランチ PR 履歴が無い（手でコミットされた想定）。
+    // それでも再編集として更新 PR が作られること。
+    const { draft } = await openPublished({
+      env: testEnv,
+      store,
+      category: "journal",
+      slug: "2026-02-03-import-me"
+    });
+    await store.writeDraft(draft.id, { body: "書き換えた本文 v2" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "merged");
+    const text = Buffer.from(gh.state.mainFiles.get(file), "base64").toString();
+    assert.match(text, /書き換えた本文 v2/);
+    assert.equal(parseFrontmatter(text).data.published, "2026-02-03");
+    await assert.rejects(() => store.readDraft(draft.id));
+  });
+});
+
+test("published: Worker の /api/published と開く導線が往復する", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    gh.state.mainFiles.set(
+      "src/content/journal/2026-02-03-import-me.md",
+      b64("---\ntitle: 取り込み対象\ndescription: 説明\npublished: 2026-02-03\n---\n\n公開時の本文\n")
+    );
+    const env = { GITHUB_TOKEN: "test-token", DRAFTS: memoryKv() };
+    const listRes = await writerWorker.fetch(
+      new Request("https://write.slytxt.dev/api/published"),
+      env
+    );
+    assert.equal(listRes.status, 200);
+    const list = await listRes.json();
+    assert.equal(list.articles.length, 1);
+    assert.equal(list.articles[0].hasDraft, false);
+
+    const openInit = {
+      method: "POST",
+      headers: { "x-slytxt-client": "1" }
+    };
+    const openRes = await writerWorker.fetch(
+      new Request("https://write.slytxt.dev/api/published/journal/2026-02-03-import-me", openInit),
+      env
+    );
+    assert.equal(openRes.status, 201);
+    const opened = await openRes.json();
+    assert.equal(opened.created, true);
+    assert.equal(opened.draft.id, "2026-02-03-import-me");
+
+    const againRes = await writerWorker.fetch(
+      new Request("https://write.slytxt.dev/api/published/journal/2026-02-03-import-me", openInit),
+      env
+    );
+    assert.equal(againRes.status, 200);
+    assert.equal((await againRes.json()).created, false);
   });
 });
 
