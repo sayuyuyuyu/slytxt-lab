@@ -255,6 +255,28 @@ textarea {
   font-size: 0.74rem;
 }
 
+.pane__section {
+  margin: 0;
+  padding: 12px 14px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* 公開済み一覧は下書き一覧の下に控えめに置き、高さは上限付きにする。 */
+.drafts--published {
+  flex: 0 1 auto;
+  max-height: 42%;
+}
+
+/* 公開済み一覧の項目には「…」メニューが無いので、右の余白を詰める。 */
+.drafts__select--plain {
+  padding-right: 12px;
+}
+
 /* ---- 一覧 ---- */
 
 .drafts {

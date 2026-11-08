@@ -29,6 +29,8 @@ const els = {
   saveRetry: $("#saveRetry"),
   drafts: $("#drafts"),
   draftCount: $("#draftCount"),
+  published: $("#published"),
+  publishedCount: $("#publishedCount"),
   newButton: $("#new"),
   themeToggle: $("#themeToggle"),
   themeToggleIcon: $("#themeToggleIcon"),
@@ -102,6 +104,8 @@ const els = {
 const state = {
   meta: null,
   drafts: [],
+  published: [],
+  publishedError: false,
   current: null,
   busy: false,
   tags: [],
@@ -511,6 +515,116 @@ async function loadDrafts() {
   renderList();
 }
 
+/* ---- 公開済み記事（再編集の導線） ---- */
+
+function renderPublished() {
+  els.published.replaceChildren();
+
+  if (state.publishedError) {
+    const empty = document.createElement("li");
+    empty.className = "drafts__empty";
+    empty.textContent = "公開済み記事を取得できませんでした。";
+    els.published.append(empty);
+    els.publishedCount.textContent = "";
+    return;
+  }
+
+  if (state.published.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "drafts__empty";
+    empty.textContent = "まだありません。";
+    els.published.append(empty);
+  }
+
+  for (const article of state.published) {
+    const item = document.createElement("li");
+    item.className = "drafts__item";
+
+    const select = document.createElement("button");
+    select.type = "button";
+    select.className = "drafts__select drafts__select--plain";
+    if (article.hasDraft && state.current?.id === article.draftId) {
+      select.setAttribute("aria-current", "true");
+    }
+
+    const title = document.createElement("span");
+    title.className = "drafts__title";
+    title.textContent = displayTitle(article);
+    select.append(title);
+
+    const excerpt = String(article.excerpt ?? "").trim();
+    if (article.title && excerpt) {
+      const text = document.createElement("span");
+      text.className = "drafts__excerpt";
+      text.textContent = truncateText(excerpt, 90);
+      select.append(text);
+    }
+
+    const meta = document.createElement("span");
+    meta.className = "drafts__meta";
+
+    const where = document.createElement("span");
+    where.textContent = state.meta?.categoryLabels?.[article.category] ?? article.category;
+    meta.append(where);
+
+    if (article.published) {
+      const when = document.createElement("span");
+      when.textContent = `${article.published} 公開`;
+      meta.append(when);
+    }
+
+    if (article.hasDraft) {
+      const note = document.createElement("span");
+      note.textContent = "下書きあり";
+      meta.append(note);
+    }
+
+    select.append(meta);
+    select.addEventListener("click", () => openPublishedArticle(article));
+    item.append(select);
+
+    els.published.append(item);
+  }
+
+  els.publishedCount.textContent = `${state.published.length}件`;
+}
+
+async function loadPublished() {
+  try {
+    const payload = await api("/api/published");
+    state.published = Array.isArray(payload.articles) ? payload.articles : [];
+    state.publishedError = false;
+  } catch {
+    // 公開済み一覧は再編集のための補助的な導線なので、取得できなくても
+    // 編集は止めない（一覧の場所に失敗だけを表示する）。
+    state.published = [];
+    state.publishedError = true;
+  }
+  renderPublished();
+}
+
+/**
+ * 公開済み記事を開く。対応する下書きがあればそれを開き、無ければ
+ * サーバー側で記事を取り込んで下書きを作ってから開く。
+ */
+async function openPublishedArticle(article) {
+  if (article.hasDraft && article.draftId) {
+    await selectDraft(article.draftId);
+    return;
+  }
+  try {
+    const { draft } = await api(
+      `/api/published/${encodeURIComponent(article.category)}/${encodeURIComponent(article.slug)}`,
+      { method: "POST" }
+    );
+    await loadDrafts();
+    void loadPublished();
+    await selectDraft(draft.id);
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
 /* ---- エディタ ---- */
 
 function fillSelect(select, values, labels) {
@@ -793,6 +907,7 @@ function resumePublishCheck(draft) {
         toast("前回の投稿が公開されました。");
         if (state.current?.id === id) state.current = null;
         await loadDrafts();
+        void loadPublished();
         if (!state.current) {
           if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
           else clearEditor();
@@ -2016,7 +2131,7 @@ async function runPublish() {
     finishTask();
     showResult([
       { label: result.file },
-      { href: result.prUrl, label: "PR" },
+      ...(result.prUrl ? [{ href: result.prUrl, label: "PR" }] : []),
       ...(result.url
         ? [
             { href: result.url, label: "公開ページ" },
@@ -2029,6 +2144,7 @@ async function runPublish() {
     removeLocal(state.current.id);
     state.current = null;
     await loadDrafts();
+    void loadPublished();
     if (state.drafts.length > 0) await selectDraft(state.drafts[0].id);
     else clearEditor();
   } catch (error) {
@@ -2102,6 +2218,7 @@ async function removeDraft(id) {
       renderList();
     }
     await loadDrafts();
+    void loadPublished();
     toast("削除しました。");
   } catch (error) {
     toast(error.message, "error");
@@ -2144,6 +2261,8 @@ async function boot() {
   setBusy(false);
   // 閉じている間に完了した公開があれば知らせる（待たせない）。
   void showPendingPublishResults();
+  // 公開済み記事の一覧（再編集の導線）。取得は待たせない。
+  void loadPublished();
   // 狭い画面では一覧から始める（編集は下書きを選んだときに開く）。
   if (window.matchMedia("(max-width: 1000px)").matches) setView("list");
 

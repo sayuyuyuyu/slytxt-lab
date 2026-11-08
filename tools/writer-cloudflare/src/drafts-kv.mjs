@@ -397,6 +397,21 @@ export function createDraftStore(kv) {
     }
   }
 
+  /**
+   * 公開済み記事の取り込み用: ID を指定して下書きを作る。
+   * 既に同じ ID の下書きがあれば作り直さず既存を返す（冪等）。
+   * data / body / raw の形は normalizeDraft と同じで、管理対象外の
+   * frontmatter 行（公開日など）は raw 経由で extras に保持される。
+   */
+  async function importDraft(id, data, body, raw = []) {
+    assertId(id);
+    if ((await kv.get(keyOf(id))) != null) return readDraft(id);
+    const draft = normalizeDraft(id, data, body, raw);
+    await kv.put(keyOf(id), serializeDraft(draft));
+    await syncDraftIndex(draft.id).catch(() => {});
+    return draft;
+  }
+
   async function deleteDraft(id) {
     if ((await kv.get(keyOf(id))) == null) return false;
     await kv.delete(keyOf(id));
@@ -405,5 +420,13 @@ export function createDraftStore(kv) {
     return true;
   }
 
-  return { listDrafts, listPendingDrafts, readDraft, writeDraft, createDraft, deleteDraft };
+  return {
+    listDrafts,
+    listPendingDrafts,
+    readDraft,
+    writeDraft,
+    createDraft,
+    importDraft,
+    deleteDraft
+  };
 }

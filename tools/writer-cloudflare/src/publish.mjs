@@ -13,7 +13,9 @@
  *   再実行・再試行はまずブランチから PR の実状態を引き、既存があれば
  *   続きから進める（新規作成は既存が無い場合だけ）。公開済みだった場合は
  *   中身が同一な場合だけ成功として収束させ、中身が変わっていれば
- *   再編集として更新 PR を作る。詳細は publishStatus 側のコメントを参照。
+ *   再編集として更新 PR を作る。PR の履歴から辿れない公開済みファイル
+ *   （手でコミットされた記事など）を読み直した下書きも同じ扱いにし、
+ *   詳細は publishStatus 側と publishPostInner のコメントを参照。
  */
 import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText, truncateText } from "./markdown.mjs";
@@ -139,7 +141,7 @@ async function resolveDescription({ env, store, id, draft, title, body, onLog })
 }
 
 /** GitHub Contents API の base64 中身をテキストに戻す。失敗時は null。 */
-function decodeContentText(entry) {
+export function decodeContentText(entry) {
   if (typeof entry?.content !== "string" || !entry.content) return null;
   try {
     const binary = atob(entry.content.replace(/\s+/g, ""));
@@ -169,6 +171,78 @@ function reeditVerdict(existing, next) {
     String(data.cover ?? "") === next.cover &&
     body.trim() === next.body.trim();
   return same ? "same" : "changed";
+}
+
+/**
+ * 再編集の更新 PR を作る。公開済みファイルの sha を渡して更新として書き、
+ * 公開日は元の記事の日付を引き継ぐ（再編集で進めない）。
+ * 呼び出し側で「内容が変わっている」こと（reeditVerdict が "changed"）を
+ * 確認してから呼ぶ。
+ */
+async function createReeditPull({
+  gh,
+  store,
+  id,
+  draft,
+  file,
+  branch,
+  slug,
+  title,
+  description,
+  tags,
+  publicCover,
+  publicBody,
+  existing,
+  published,
+  commitMessage,
+  onLog
+}) {
+  const { data: existingData } = parseFrontmatter(decodeContentText(existing) ?? "");
+  const content = stringifyFrontmatter(
+    {
+      title,
+      description,
+      published: existingData.published || published,
+      tags,
+      cover: publicCover || undefined
+    },
+    publicBody,
+    title === "" ? ['title: ""'] : []
+  );
+  const baseSha = await gh.getMainSha();
+  if (await gh.getBranch(branch)) {
+    // PR の無い残りブランチは作り直す。
+    onLog(`残っていたブランチ ${branch} を消して作り直します`);
+    await gh.deleteBranch(branch);
+  }
+  await gh.createBranch(branch, baseSha);
+  onLog(`ブランチ ${branch} を作成しました`);
+  await gh.putContent({
+    path: file,
+    content,
+    message: commitMessage,
+    branch,
+    sha: existing.sha
+  });
+  onLog(`書き出しました: ${file}`);
+  const pr = await gh.createPull({
+    title: title || commitMessage,
+    head: branch,
+    base: "main",
+    body: "執筆ツール（write.slytxt.dev）から投稿。"
+  });
+  onLog(`PR を作成しました: ${pr.html_url}`);
+  onLog("CI が終わり次第、自動で公開されます。画面を閉じても大丈夫です。");
+  await store.writeDraft(id, { pr: pr.html_url });
+  return {
+    branch,
+    file,
+    prUrl: pr.html_url,
+    url: publicUrl(draft.category, slug),
+    slug,
+    title,
+    state: "waiting"
+  };
 }
 
 async function publishPostInner({ env, store, id, onLog }) {
@@ -218,6 +292,8 @@ async function publishPostInner({ env, store, id, onLog }) {
     title === "" ? ['title: ""'] : []
   );
   const commitMessage = `${note ? "note" : "post"}: ${title || slug}`;
+  // 公開済みファイルとの突き合わせ（再編集かどうか）の材料。
+  const generated = { title, description, tags, cover: publicCover, body: publicBody };
 
   const gh = createGitHubClient(env);
 
@@ -232,64 +308,27 @@ async function publishPostInner({ env, store, id, onLog }) {
     const detail = await gh.getPull(latest.number).catch(() => null);
     const existing = detail?.merged ? await gh.getContent(file, "main") : null;
     if (existing) {
-      const verdict = reeditVerdict(existing, {
-        title,
-        description,
-        tags,
-        cover: publicCover,
-        body: publicBody
-      });
+      const verdict = reeditVerdict(existing, generated);
       if (verdict === "changed") {
-        // 再編集: 公開日は元の記事の日付を引き継ぎ（再編集で進めない）、
-        // ファイルは既存ファイルの sha を渡して更新として書く。
-        const { data: existingData } = parseFrontmatter(
-          decodeContentText(existing) ?? ""
-        );
-        const republishContent = stringifyFrontmatter(
-          {
-            title,
-            description,
-            published: existingData.published || published,
-            tags,
-            cover: publicCover || undefined
-          },
-          publicBody,
-          title === "" ? ['title: ""'] : []
-        );
-        const baseSha = await gh.getMainSha();
-        if (await gh.getBranch(branch)) {
-          // PR の無い残りブランチは作り直す。
-          onLog(`残っていたブランチ ${branch} を消して作り直します`);
-          await gh.deleteBranch(branch);
-        }
-        await gh.createBranch(branch, baseSha);
-        onLog(`ブランチ ${branch} を作成しました`);
-        await gh.putContent({
-          path: file,
-          content: republishContent,
-          message: commitMessage,
-          branch,
-          sha: existing.sha
-        });
-        onLog(`書き出しました: ${file}`);
-        const pr = await gh.createPull({
-          title: title || commitMessage,
-          head: branch,
-          base: "main",
-          body: "執筆ツール（write.slytxt.dev）から投稿。"
-        });
-        onLog(`PR を作成しました: ${pr.html_url}`);
-        onLog("CI が終わり次第、自動で公開されます。画面を閉じても大丈夫です。");
-        await store.writeDraft(id, { pr: pr.html_url });
-        return {
-          branch,
+        // 再編集として更新 PR を作る。
+        return createReeditPull({
+          gh,
+          store,
+          id,
+          draft,
           file,
-          prUrl: pr.html_url,
-          url: publicUrl(draft.category, slug),
+          branch,
           slug,
           title,
-          state: "waiting"
-        };
+          description,
+          tags,
+          publicCover,
+          publicBody,
+          existing,
+          published,
+          commitMessage,
+          onLog
+        });
       }
       onLog("この下書きは既に公開されています。後片付けだけ行います。");
       await gh.deleteBranch(branch).catch(() => false);
@@ -336,7 +375,46 @@ async function publishPostInner({ env, store, id, onLog }) {
     };
   }
 
-  if (await gh.getContent(file, "main")) {
+  const existingFile = await gh.getContent(file, "main");
+  if (existingFile) {
+    // PR の履歴から辿れない公開済みファイル（手でコミットされた記事など）を
+    // 読み直した下書きも、再編集として扱う。中身が同一なら収束させ、
+    // 判定できないときは従来どおり止める。
+    const verdict = reeditVerdict(existingFile, generated);
+    if (verdict === "changed") {
+      return createReeditPull({
+        gh,
+        store,
+        id,
+        draft,
+        file,
+        branch,
+        slug,
+        title,
+        description,
+        tags,
+        publicCover,
+        publicBody,
+        existing: existingFile,
+        published,
+        commitMessage,
+        onLog
+      });
+    }
+    if (verdict === "same") {
+      onLog("この下書きは既に公開されています。後片付けだけ行います。");
+      await store.deleteDraft(id);
+      return {
+        branch,
+        file,
+        prUrl: "",
+        url: publicUrl(draft.category, slug),
+        slug,
+        title,
+        state: "merged",
+        merged: true
+      };
+    }
     throw new PublishError(`${file} は既にあります。`);
   }
 
