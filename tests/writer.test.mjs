@@ -546,8 +546,12 @@ function fakeGitHub() {
         ref === "main"
           ? state.mainFiles.has(file)
           : state.branchFiles.has(`${ref}:${file}`);
+      const stored =
+        ref === "main"
+          ? state.mainFiles.get(file)
+          : state.branchFiles.get(`${ref}:${file}`);
       return found
-        ? respond(200, { sha: `blob-${file}`, path: file })
+        ? respond(200, { sha: `blob-${file}`, path: file, content: stored ?? "" })
         : respond(404, { message: "Not Found" });
     }
     if (path.startsWith("/contents/") && method === "PUT") {
@@ -756,6 +760,65 @@ test("publish冪等: 既にマージ済みなら再マージせず成功とし�
     assert.equal(again.state, "merged");
     assert.equal(gh.state.pulls.length, 2);
     await assert.rejects(() => store.readDraft(draft2.id));
+  });
+});
+
+test("publish再編集: 公開済みと同一の下書きは収束し、本文を変えると更新 PR を作る", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "再編集テスト", category: "journal" });
+    await store.writeDraft(draft.id, { body: "本文 v1 です。" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.state, "waiting");
+    const pr1 = gh.state.pulls[0];
+    gh.state.checks.set(pr1.headSha, "success");
+    const mergedStep = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(mergedStep.state, "merged");
+    await assert.rejects(() => store.readDraft(draft.id));
+    const file = `src/content/journal/${draft.id}.md`;
+    const publishedText = Buffer.from(gh.state.mainFiles.get(file), "base64").toString();
+    assert.match(publishedText, /本文 v1 です。/);
+    const { data, body } = parseFrontmatter(publishedText);
+
+    // 公開済み記事を読み直した下書き（同じ id・公開時の中身のまま）を
+    // 再現して再投稿すると、新しい PR は作らず成功に収束する。
+    const same = await store.createDraft({ title: "再編集テスト", category: "journal" });
+    assert.equal(same.id, draft.id);
+    await store.writeDraft(same.id, {
+      body,
+      description: data.description,
+      tags: data.tags ?? []
+    });
+    const converged = await publishPost({ env: testEnv, store, id: same.id });
+    assert.equal(converged.state, "merged");
+    assert.equal(gh.state.pulls.length, 1);
+    await assert.rejects(() => store.readDraft(same.id));
+
+    // 同じ読み直しから本文を変えて再投稿すると、再編集として更新 PR を
+    // 作り、下書きは残る。マージまで進めると main の本文が v2 になる。
+    const edited = await store.createDraft({ title: "再編集テスト", category: "journal" });
+    assert.equal(edited.id, draft.id);
+    await store.writeDraft(edited.id, {
+      body,
+      description: data.description,
+      tags: data.tags ?? []
+    });
+    await store.writeDraft(edited.id, { body: "本文 v2 です。" });
+    const reposted = await publishPost({ env: testEnv, store, id: edited.id });
+    assert.equal(reposted.state, "waiting");
+    assert.equal(gh.state.pulls.length, 2);
+    assert.notEqual(reposted.prUrl, posted.prUrl);
+    assert.equal((await store.readDraft(edited.id)).pr, reposted.prUrl);
+    const pr2 = gh.state.pulls[1];
+    gh.state.checks.set(pr2.headSha, "success");
+    const step = await publishStatus({ env: testEnv, store, id: edited.id });
+    assert.equal(step.state, "merged");
+    const updatedText = Buffer.from(gh.state.mainFiles.get(file), "base64").toString();
+    assert.match(updatedText, /本文 v2 です。/);
+    // 公開日は元の記事の日付を引き継ぐ。
+    assert.equal(parseFrontmatter(updatedText).data.published, data.published);
+    await assert.rejects(() => store.readDraft(edited.id));
   });
 });
 

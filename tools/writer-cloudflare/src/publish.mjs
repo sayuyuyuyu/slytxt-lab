@@ -12,9 +12,10 @@
  * - 冪等性: 投稿 PR の同一性は「下書き ID から決まるブランチ名」で担保する。
  *   再実行・再試行はまずブランチから PR の実状態を引き、既存があれば
  *   続きから進める（新規作成は既存が無い場合だけ）。公開済みだった場合は
- *   成功として収束させる。詳細は publishStatus 側のコメントを参照。
+ *   中身が同一な場合だけ成功として収束させ、中身が変わっていれば
+ *   再編集として更新 PR を作る。詳細は publishStatus 側のコメントを参照。
  */
-import { stringifyFrontmatter } from "./frontmatter.mjs";
+import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText, truncateText } from "./markdown.mjs";
 import { generateSummary } from "./summary.mjs";
 import { today } from "./date.mjs";
@@ -137,6 +138,39 @@ async function resolveDescription({ env, store, id, draft, title, body, onLog })
   return deriveDescription(body) || title;
 }
 
+/** GitHub Contents API の base64 中身をテキストに戻す。失敗時は null。 */
+function decodeContentText(entry) {
+  if (typeof entry?.content !== "string" || !entry.content) return null;
+  try {
+    const binary = atob(entry.content.replace(/\s+/g, ""));
+    const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 公開済みファイルと今回の生成内容が実質同一かを判定する。
+ * - "same": 同一。後片付けだけの収束でよい。
+ * - "changed": 内容が変わっている。再編集として更新 PR が必要。
+ * - "unknown": 中身が取れず判定できない。従来どおり収束させる
+ *   （Contents API はこのサイズのテキストでは中身を必ず返すため、
+ *   通常はここに来ない）。
+ */
+function reeditVerdict(existing, next) {
+  const text = decodeContentText(existing);
+  if (text == null) return "unknown";
+  const { data, body } = parseFrontmatter(text);
+  const same =
+    String(data.title ?? "") === next.title &&
+    String(data.description ?? "") === next.description &&
+    JSON.stringify(data.tags ?? []) === JSON.stringify(next.tags) &&
+    String(data.cover ?? "") === next.cover &&
+    body.trim() === next.body.trim();
+  return same ? "same" : "changed";
+}
+
 async function publishPostInner({ env, store, id, onLog }) {
   if (!env.GITHUB_TOKEN) {
     throw new PublishError(
@@ -189,12 +223,74 @@ async function publishPostInner({ env, store, id, onLog }) {
 
   // この下書きの PR はブランチ名で一意に引ける。再実行時はまず実状態を
   // 確認し、既に公開まで終わっていたら成功として収束させる（前回の実行が
-  // 後片付けの前に落ちていた場合）。
+  // 後片付けの前に落ちていた場合）。ただし公開済みの記事を読み直した
+  // 下書き（再編集）は中身が変わっているので、収束させずに更新 PR を作る。
+  // 同一かは公開済みファイルの中身との突き合わせで判定する。
   const history = await gh.findPulls(branch);
   const latest = history[0] ?? null;
   if (latest && latest.state === "closed") {
     const detail = await gh.getPull(latest.number).catch(() => null);
-    if (detail?.merged && (await gh.getContent(file, "main"))) {
+    const existing = detail?.merged ? await gh.getContent(file, "main") : null;
+    if (existing) {
+      const verdict = reeditVerdict(existing, {
+        title,
+        description,
+        tags,
+        cover: publicCover,
+        body: publicBody
+      });
+      if (verdict === "changed") {
+        // 再編集: 公開日は元の記事の日付を引き継ぎ（再編集で進めない）、
+        // ファイルは既存ファイルの sha を渡して更新として書く。
+        const { data: existingData } = parseFrontmatter(
+          decodeContentText(existing) ?? ""
+        );
+        const republishContent = stringifyFrontmatter(
+          {
+            title,
+            description,
+            published: existingData.published || published,
+            tags,
+            cover: publicCover || undefined
+          },
+          publicBody,
+          title === "" ? ['title: ""'] : []
+        );
+        const baseSha = await gh.getMainSha();
+        if (await gh.getBranch(branch)) {
+          // PR の無い残りブランチは作り直す。
+          onLog(`残っていたブランチ ${branch} を消して作り直します`);
+          await gh.deleteBranch(branch);
+        }
+        await gh.createBranch(branch, baseSha);
+        onLog(`ブランチ ${branch} を作成しました`);
+        await gh.putContent({
+          path: file,
+          content: republishContent,
+          message: commitMessage,
+          branch,
+          sha: existing.sha
+        });
+        onLog(`書き出しました: ${file}`);
+        const pr = await gh.createPull({
+          title: title || commitMessage,
+          head: branch,
+          base: "main",
+          body: "執筆ツール（write.slytxt.dev）から投稿。"
+        });
+        onLog(`PR を作成しました: ${pr.html_url}`);
+        onLog("CI が終わり次第、自動で公開されます。画面を閉じても大丈夫です。");
+        await store.writeDraft(id, { pr: pr.html_url });
+        return {
+          branch,
+          file,
+          prUrl: pr.html_url,
+          url: publicUrl(draft.category, slug),
+          slug,
+          title,
+          state: "waiting"
+        };
+      }
       onLog("この下書きは既に公開されています。後片付けだけ行います。");
       await gh.deleteBranch(branch).catch(() => false);
       await store.deleteDraft(id);
