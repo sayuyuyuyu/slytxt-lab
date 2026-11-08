@@ -15,6 +15,18 @@ const KEY = "latest";
 const MAX_BODY_BYTES = 16_384;
 const ALLOWED_ORIGIN = "https://slytxt.dev";
 
+/** 秘密文字列の照合。長さと内容の両方を見て、早期 return を避ける（bookmarks 側 matchesSecret と同じ形）。 */
+function matchesSecret(candidate, expected) {
+  if (!expected) return false;
+  if (!candidate) return false;
+  if (candidate.length !== expected.length) return false;
+  let diff = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    diff |= candidate.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  return diff === 0;
+}
+
 function json(payload, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -47,7 +59,7 @@ export default {
     if (request.method === "POST") {
       if (!env.STATUS_POST_TOKEN) return json({ error: "not_configured" }, 500);
       const auth = request.headers.get("authorization") ?? "";
-      if (auth !== `Bearer ${env.STATUS_POST_TOKEN}`) {
+      if (!matchesSecret(auth, `Bearer ${env.STATUS_POST_TOKEN}`)) {
         return json({ error: "unauthorized" }, 401);
       }
       const text = await request.text();
