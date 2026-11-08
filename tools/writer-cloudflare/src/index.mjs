@@ -201,7 +201,17 @@ export default {
       // （tools/media-cloudflare）が担う。
       const mediaMatch = /^\/media\/(.+)$/.exec(url.pathname);
       if (mediaMatch && (request.method === "GET" || request.method === "HEAD")) {
-        const served = await serveDraftMedia(env, decodeURIComponent(mediaMatch[1]));
+        let mediaKey;
+        try {
+          mediaKey = decodeURIComponent(mediaMatch[1]);
+        } catch {
+          // Invalid percent-encoding is just another malformed key.
+          return new Response("not found", {
+            status: 404,
+            headers: { "content-type": "text/plain; charset=utf-8" }
+          });
+        }
+        const served = await serveDraftMedia(env, mediaKey);
         if (served) return served;
         return new Response("not found", {
           status: 404,
