@@ -23,6 +23,7 @@ import {
   uploadMedia
 } from "../tools/writer-cloudflare/src/media.mjs";
 import { cleanSummary, generateSummary, summaryConfig } from "../tools/writer-cloudflare/src/summary.mjs";
+import writerWorker from "../tools/writer-cloudflare/src/index.mjs";
 import { today } from "../tools/writer-cloudflare/src/date.mjs";
 
 /**
@@ -1282,4 +1283,23 @@ test("drafts: 下書き一覧インデックスの無い既存データは初回
   const index = JSON.parse(kv.map.get("draft-index"));
   assert.equal(index.complete, true);
   assert.deepEqual(index.ids, [draft.id]);
+});
+
+test("writer media: invalid percent-encoding returns 404 without touching R2", async () => {
+  const media = memoryR2();
+  let r2Calls = 0;
+  const countingMedia = {
+    map: media.map,
+    async get(key) { r2Calls += 1; return media.get(key); },
+    async head(key) { r2Calls += 1; return media.head(key); },
+    async put(key, bytes, options) { r2Calls += 1; return media.put(key, bytes, options); },
+    async delete(key) { r2Calls += 1; return media.delete(key); }
+  };
+  const env = { MEDIA: countingMedia, DRAFTS: memoryKv() };
+  for (const path of ["/media/%E0%A4%A", "/media/%zz.jpg", "/media/%"]) {
+    const res = await writerWorker.fetch(new Request(`https://write.slytxt.dev${path}`), env);
+    assert.equal(res.status, 404, path);
+    assert.equal(await res.text(), "not found", path);
+  }
+  assert.equal(r2Calls, 0);
 });
