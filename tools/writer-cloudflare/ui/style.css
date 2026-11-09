@@ -71,7 +71,10 @@ textarea {
 }
 
 .bar__label {
+  margin: 0;
   font-size: 0.95rem;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .bar__cursor {
