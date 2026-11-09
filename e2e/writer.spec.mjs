@@ -57,13 +57,22 @@ test("writer: 作成→編集→自動保存→カテゴリ切替→タイトル
   await page.locator("#title").fill("E2E テスト記事");
   await expectSaved(page);
 
+  // 編集画面の見出しはヘッダーの「執筆」が h1。
+  expect(await page.locator("#barLabel").evaluate((el) => el.tagName)).toBe("H1");
+
   // プレビュー: 見出しと Spotify プレイヤーが描画される。
   await page.locator("#previewOpen").click();
   await expect(page.locator("#previewBody h2")).toHaveText("見出しテスト");
   await expect(
     page.locator('#previewBody iframe[src*="open.spotify.com/embed/track/"]')
   ).toHaveCount(1);
+  // プレビュー中は記事タイトルが唯一の h1 で、ヘッダー側は span に下がっている。
+  await expect(page.locator("h1")).toHaveCount(1);
+  await expect(page.locator("#previewTitle")).toHaveText("E2E テスト記事");
+  expect(await page.locator("#barLabel").evaluate((el) => el.tagName)).toBe("SPAN");
   await page.locator("#previewClose").click();
+  // 閉じたらヘッダーの「執筆」が h1 に戻る。
+  expect(await page.locator("#barLabel").evaluate((el) => el.tagName)).toBe("H1");
 
   // 公開パネル（実際の公開はしない）: タイトルとカテゴリの表示確認まで。
   await page.locator("#publishOpen").click();

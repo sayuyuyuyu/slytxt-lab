@@ -1066,6 +1066,22 @@ function loadXWidgets(root) {
   });
 }
 
+// 編集画面の h1 はヘッダーの「執筆」（#barLabel）が持つ。
+// 記事プレビューを開いた間はプレビュー側の記事タイトル（#previewTitle の h1）が
+// 主見出しになるよう、ヘッダー側を span に差し替えて h1 が二重にならないようにする。
+// notes のプレビューでは記事タイトルを出さないため、ヘッダー側を h1 のままにする。
+function setBarLabelHeading(isHeading) {
+  const current = document.querySelector('#barLabel');
+  if (!current) return;
+  const want = isHeading ? 'H1' : 'SPAN';
+  if (current.tagName === want) return;
+  const next = document.createElement(want.toLowerCase());
+  next.id = 'barLabel';
+  next.className = 'bar__label';
+  next.textContent = current.textContent;
+  current.replaceWith(next);
+}
+
 function openPreview() {
   if (!state.current || state.busy) return;
   const data = collect();
@@ -1081,6 +1097,7 @@ function openPreview() {
     body: data.body
   });
   els.previewTitle.hidden = isNote;
+  setBarLabelHeading(isNote);
   els.previewLead.textContent = data.description;
   els.previewLead.hidden = isNote || !data.description;
 
@@ -1134,6 +1151,7 @@ function openPreview() {
 // iframe の再生を止めるため、中身は捨てる。
 function hidePreview() {
   if (els.preview.hidden) return;
+  setBarLabelHeading(true);
   els.preview.hidden = true;
   els.previewBody.replaceChildren();
   els.previewOpen.setAttribute("aria-pressed", "false");
