@@ -24,6 +24,10 @@ import {
 } from "../tools/writer-cloudflare/src/media.mjs";
 import { cleanSummary, generateSummary, summaryConfig } from "../tools/writer-cloudflare/src/summary.mjs";
 import { listPublished, openPublished } from "../tools/writer-cloudflare/src/published.mjs";
+import {
+  drivePendingPublishes,
+  listPublishResults
+} from "../tools/writer-cloudflare/src/driver.mjs";
 import writerWorker from "../tools/writer-cloudflare/src/index.mjs";
 import { today } from "../tools/writer-cloudflare/src/date.mjs";
 
@@ -1561,4 +1565,172 @@ test("writer media: invalid percent-encoding returns 404 without touching R2", a
     assert.equal(await res.text(), "not found", path);
   }
   assert.equal(r2Calls, 0);
+});
+
+/* ---- driver（Cron 見届け） ---- */
+
+/** put のオプション（TTL など）も記録する KV。結果レコードの検証用。 */
+function recordingKv() {
+  const kv = memoryKv();
+  const puts = [];
+  const basePut = kv.put.bind(kv);
+  kv.put = async (key, value, options) => {
+    puts.push({ key, options });
+    return basePut(key, value);
+  };
+  return { kv, puts };
+}
+
+/** pr 付きの下書きを作る（見届け対象）。 */
+async function seedPendingDraft(store, title, pr) {
+  const draft = await store.createDraft({ title, category: "journal" });
+  return store.writeDraft(draft.id, { pr, body: "本文。" });
+}
+
+test("driver: pr のある下書きだけを駆動し、merged の結果を TTL 7日で KV に残す", async () => {
+  const { kv, puts } = recordingKv();
+  const store = createDraftStore(kv);
+  const pending = await seedPendingDraft(
+    store,
+    "driver merged target",
+    "https://github.com/sayuyuyuyu/slytxt-lab/pull/901"
+  );
+  await store.createDraft({ title: "driver no pr draft" });
+
+  const calls = [];
+  await drivePendingPublishes(
+    { DRAFTS: kv },
+    {
+      publishStatus: async ({ id }) => {
+        calls.push(id);
+        return {
+          state: "merged",
+          title: "公開された記事",
+          url: "https://slytxt.dev/articles/journal/driver-merged-target/",
+          prUrl: "https://github.com/sayuyuyuyu/slytxt-lab/pull/901",
+          message: ""
+        };
+      }
+    }
+  );
+
+  assert.deepEqual(calls, [pending.id]);
+  const raw = kv.map.get(`publish-result:${pending.id}`);
+  assert.ok(raw, "結果レコードが残る");
+  const record = JSON.parse(raw);
+  assert.equal(record.id, pending.id);
+  assert.equal(record.state, "merged");
+  assert.equal(record.title, "公開された記事");
+  assert.equal(record.url, "https://slytxt.dev/articles/journal/driver-merged-target/");
+  assert.equal(record.prUrl, "https://github.com/sayuyuyuyu/slytxt-lab/pull/901");
+  const resultPut = puts.find((entry) => entry.key === `publish-result:${pending.id}`);
+  assert.equal(resultPut.options?.expirationTtl, 7 * 24 * 60 * 60);
+});
+
+test("driver: merged / failed 以外（waiting）では結果を残さない", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  await seedPendingDraft(
+    store,
+    "driver waiting target",
+    "https://github.com/sayuyuyuyu/slytxt-lab/pull/902"
+  );
+
+  await drivePendingPublishes(
+    { DRAFTS: kv },
+    { publishStatus: async () => ({ state: "waiting" }) }
+  );
+
+  assert.deepEqual(await listPublishResults({ DRAFTS: kv }), []);
+});
+
+test("driver: 個別の失敗でも次を続け、failed は結果に残す", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  const failing = await seedPendingDraft(
+    store,
+    "driver failing target",
+    "https://github.com/sayuyuyuyu/slytxt-lab/pull/903"
+  );
+  const failed = await seedPendingDraft(
+    store,
+    "driver failed target",
+    "https://github.com/sayuyuyuyu/slytxt-lab/pull/904"
+  );
+
+  const calls = [];
+  await drivePendingPublishes(
+    { DRAFTS: kv },
+    {
+      publishStatus: async ({ id }) => {
+        calls.push(id);
+        if (id === failing.id) throw new Error("一時的な失敗");
+        return { state: "failed", message: "CI が失敗しました" };
+      }
+    }
+  );
+
+  assert.deepEqual([...calls].sort(), [failing.id, failed.id].sort());
+  const results = await listPublishResults({ DRAFTS: kv });
+  assert.equal(results.length, 1);
+  assert.equal(results[0].id, failed.id);
+  assert.equal(results[0].state, "failed");
+  assert.equal(results[0].message, "CI が失敗しました");
+});
+
+test("driver: 1回の tick で駆動するのは上限 10 件まで", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  for (let i = 1; i <= 12; i += 1) {
+    await seedPendingDraft(
+      store,
+      `driver cap target ${String(i).padStart(2, "0")}`,
+      `https://github.com/sayuyuyuyu/slytxt-lab/pull/${910 + i}`
+    );
+  }
+
+  let calls = 0;
+  await drivePendingPublishes(
+    { DRAFTS: kv },
+    {
+      publishStatus: async () => {
+        calls += 1;
+        return { state: "waiting" };
+      }
+    }
+  );
+
+  assert.equal(calls, 10);
+});
+
+test("driver: listPublishResults は壊れたレコードを落として新しい順に返す", async () => {
+  const kv = memoryKv();
+  kv.map.set(
+    "publish-result:old",
+    JSON.stringify({ id: "old", state: "merged", at: "2026-11-01T00:00:00.000Z" })
+  );
+  kv.map.set(
+    "publish-result:new",
+    JSON.stringify({ id: "new", state: "failed", at: "2026-11-03T00:00:00.000Z" })
+  );
+  kv.map.set("publish-result:broken", "{oops");
+  kv.map.set("draft:unrelated", "---\ntitle: x\n---\n\n本文\n");
+
+  const results = await listPublishResults({ DRAFTS: kv });
+  assert.deepEqual(
+    results.map((result) => result.id),
+    ["new", "old"]
+  );
+});
+
+test("driver: scheduled ハンドラは見届けを waitUntil に渡して最後まで待てる", async () => {
+  let captured = null;
+  const ctx = {
+    waitUntil(promise) {
+      captured = promise;
+    }
+  };
+  await writerWorker.scheduled({}, { DRAFTS: memoryKv() }, ctx);
+  assert.ok(captured instanceof Promise, "waitUntil に Promise が渡る");
+  await captured;
 });
