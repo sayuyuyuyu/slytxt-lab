@@ -71,8 +71,10 @@ export async function listPublishResults(env) {
  * 保留中の投稿を1ステップずつ進める。scheduled ハンドラから呼ばれる。
  * 個別の失敗は握って次の tick で再試行する（publishStatus が
  * 冪等なので、途中からやり直しても同じ結果に収束する）。
+ * deps.publishStatus はテスト用の差し替え口（通常は publish.mjs の実装）。
  */
-export async function drivePendingPublishes(env) {
+export async function drivePendingPublishes(env, deps = {}) {
+  const publishStatusImpl = deps.publishStatus ?? publishStatus;
   const store = createDraftStore(env.DRAFTS);
 
   const drafts = await store.listPendingDrafts().catch((error) => {
@@ -86,7 +88,7 @@ export async function drivePendingPublishes(env) {
     if (!draft.pr) continue;
     driven += 1;
     try {
-      const result = await publishStatus({ env, store, id: draft.id });
+      const result = await publishStatusImpl({ env, store, id: draft.id });
       // 見届けの成否は Workers のログで追えるようにする（以前は例外を
       // 握り潰すだけで、本番で何が起きているか分からなかった）。
       console.log(`driver: publish ${draft.id} -> ${result.state}`);
