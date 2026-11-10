@@ -376,7 +376,7 @@ export function createDraftStore(kv) {
     );
     await kv.put(keyOf(id), serializeDraft(next));
     await syncDraftIndex(next.id).catch(() => {});
-    await syncPendingIndex(next);
+    await syncPendingIndex(next).catch(() => {});
     return next;
   }
 
@@ -416,7 +416,7 @@ export function createDraftStore(kv) {
     if ((await kv.get(keyOf(id))) == null) return false;
     await kv.delete(keyOf(id));
     await dropFromDraftIndex(id).catch(() => {});
-    await dropFromPendingIndex(id);
+    await dropFromPendingIndex(id).catch(() => {});
     return true;
   }
 

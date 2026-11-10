@@ -1480,6 +1480,41 @@ test("drafts: 保留中インデックスは pr の解除と削除に追随す�
   assert.deepEqual(await store.listPendingDrafts(), []);
 });
 
+test("drafts: 保留中インデックスの同期失敗でも writeDraft は成功する", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  const draft = await store.createDraft({ title: "公開待ち" });
+  const basePut = kv.put;
+  kv.put = async (key, value) => {
+    if (key === "pending-publishes") throw new Error("KV put failed");
+    return basePut(key, value);
+  };
+
+  await store.writeDraft(draft.id, {
+    body: "本文。",
+    pr: "https://github.com/sayuyuyuyu/slytxt-lab/pull/9"
+  });
+  assert.equal((await store.readDraft(draft.id)).body.trim(), "本文。");
+});
+
+test("drafts: 保留中インデックスの同期失敗でも deleteDraft は成功する", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  const draft = await store.createDraft({ title: "消える下書き" });
+  await store.writeDraft(draft.id, {
+    body: "本文。",
+    pr: "https://github.com/sayuyuyuyu/slytxt-lab/pull/10"
+  });
+  const basePut = kv.put;
+  kv.put = async (key, value) => {
+    if (key === "pending-publishes") throw new Error("KV put failed");
+    return basePut(key, value);
+  };
+
+  assert.equal(await store.deleteDraft(draft.id), true);
+  assert.equal(kv.map.has(`draft:${draft.id}`), false);
+});
+
 test("drafts: インデックスの無い既存データは初回アクセスで再構築される", async () => {
   const kv = memoryKv();
   const store = createDraftStore(kv);
