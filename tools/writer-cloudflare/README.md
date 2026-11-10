@@ -10,6 +10,9 @@
 - 下書きは端末（ブラウザの localStorage）へ即時保存され、サーバー側は Cloudflare KV（バインディング `DRAFTS`）で、同期は裏で間引いて行う（未同期の間は端末内だけに存在する）。キー `draft:<id>`、値は移行前のファイル保存版が `drafts/<id>.md` に書いていたテキストそのまま。直列化・正規化の規則はファイル保存版から変えていない（`src/drafts-kv.mjs`）。
 - 純粋モジュール（`frontmatter.mjs` / `markdown.mjs` と、日付の `date.mjs`）は `src/` に同梱している（旧ローカル版から引き継いだもの）。
 - 投稿は GitHub REST API（`src/github.mjs` / `src/publish.mjs`）。ブランチ作成 → ファイル作成 → PR 作成までを投稿リクエストの中で行い、CI 待ちと merge は UI のポーリング（`GET /api/publish/:id/status`）と Cron の見届け（`src/driver.mjs`、毎分）の両方が駆動して完了させる。どちらが先に merge しても冪等に収束し、タブを閉じても公開が完了する。結果は KV に `publish-result:<下書きID>` として残り、次回 writer を開いたときに UI が `GET /api/publish-results` で取得して知らせる。ローカルの `pnpm run check` は持たず、PR の CI（チェック名 `ci`）が門番で、成功したら merge する。Cloudflare Pages の結果はマージ条件に入れない（2026-11-04 本人決定。投稿の待ちを CI だけにするため）。
+- 公開済み記事の一覧と開く導線（`GET /api/published`、`src/published.mjs`）。一覧は GitHub の main にある `src/content/<カテゴリ>/<slug>.md` を読み、開くと対応する下書きを開く（下書きが無ければ記事を取り込んで下書き ID = slug で作る）。
+- 公開済み記事を開いて再編集・投稿すると、同じファイルへの更新 PR になり、公開日は元の記事から引き継がれる（`src/publish.mjs` の再編集フロー）。
+- 公開完了画面と公開済み一覧には「Xに投稿」ボタンがあり、X の投稿インテントを開いて記事タイトルと公開 URL を埋める。
 - 投稿は下書きの本文をそのまま使う。誤字チェック pass（Anthropic API）は 2026-11-04 に廃止した。
 - 認証は Cloudflare Access が担う（`write.slytxt.dev` は本人のメールアドレスのみ許可。後述）。Worker 側にトークン認証は無い。`x-slytxt-client` による書き込み防御（認証とは別の層）は Worker 側に残してある。入口はカスタムドメインのみで、`workers_dev = false` で workers.dev 側を閉じてある（workers.dev は Access の外にあるため）。
 - UI はこのディレクトリの `ui/` が正（`index.html` / `style.css` / `app.js`）。note 風のレイアウト（編集画面のヘッダー、公開確認パネル、一覧の「…」メニュー）は Cloudflare 版だけの差分として `ui/` 側に持つ。`markdown.mjs` は `src/markdown.mjs` をデプロイ準備のときに `public/` へコピーする。`/theme.css` は `src/styles/global.css` の `:root` 変数ブロックから静的に生成する（サイト側の変数を変えたら再生成と再デプロイが要る）。
