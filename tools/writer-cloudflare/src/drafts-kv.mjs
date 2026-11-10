@@ -191,13 +191,20 @@ export function createDraftStore(kv) {
 
   /** 作成・保存に追随して下書き一覧インデックスを更新する。 */
   async function syncDraftIndex(id) {
-    const index = await readDraftIndex();
-    if (!index) {
-      await writeDraftIndex([id], false);
-      return;
-    }
-    if (!index.ids.includes(id)) {
-      await writeDraftIndex([...index.ids, id], index.complete);
+    try {
+      const index = await readDraftIndex();
+      if (!index) {
+        await writeDraftIndex([id], false);
+        return;
+      }
+      if (!index.ids.includes(id)) {
+        await writeDraftIndex([...index.ids, id], index.complete);
+      }
+    } catch {
+      // 更新に失敗したらインデックスを捨て、次回の一覧取得を
+      // list スキャンからの再構築に落とす。complete=true のまま
+      // 対象 ID を欠いたインデックスを残さない。
+      await kv.delete(DRAFT_INDEX_KEY).catch(() => {});
     }
   }
 
@@ -289,21 +296,28 @@ export function createDraftStore(kv) {
 
   /** 保存・削除に追随して保留中インデックスを更新する。 */
   async function syncPendingIndex(draft) {
-    const index = await readPendingIndex();
-    if (!index) {
-      // インデックスが無い間は、保留中の下書きが現れたときだけ
-      // 部分インデックスを作る（残りは再構築で埋まる）。
-      if (draft.pr) await writePendingIndex([draft.id], false);
-      return;
-    }
-    const has = index.ids.includes(draft.id);
-    if (draft.pr && !has) {
-      await writePendingIndex([...index.ids, draft.id], index.complete);
-    } else if (!draft.pr && has) {
-      await writePendingIndex(
-        index.ids.filter((id) => id !== draft.id),
-        index.complete
-      );
+    try {
+      const index = await readPendingIndex();
+      if (!index) {
+        // インデックスが無い間は、保留中の下書きが現れたときだけ
+        // 部分インデックスを作る（残りは再構築で埋まる）。
+        if (draft.pr) await writePendingIndex([draft.id], false);
+        return;
+      }
+      const has = index.ids.includes(draft.id);
+      if (draft.pr && !has) {
+        await writePendingIndex([...index.ids, draft.id], index.complete);
+      } else if (!draft.pr && has) {
+        await writePendingIndex(
+          index.ids.filter((id) => id !== draft.id),
+          index.complete
+        );
+      }
+    } catch {
+      // 更新に失敗したらインデックスを捨て、次回の一覧取得を
+      // list スキャンからの再構築に落とす。complete=true のまま
+      // 見届け対象を見逃すインデックスを残さない。
+      await kv.delete(PENDING_KEY).catch(() => {});
     }
   }
 
