@@ -196,11 +196,11 @@ async function api(path, options = {}) {
   return payload;
 }
 
-/** タイトルが空の下書きは、本文の書き出しを名前として見せる。 */
-function displayTitle(draft) {
+/** タイトルが空の項目は、本文の書き出しを名前として見せる。書き出しも無ければ空タイトル用の表示に落とす。 */
+function displayTitle(draft, emptyTitleFallback = "新しい下書き") {
   if (draft.title && draft.title !== "無題") return draft.title;
   const first = String(draft.excerpt ?? "").trim();
-  if (!first) return "新しい下書き";
+  if (!first) return emptyTitleFallback;
   return Array.from(first).length > 32 ? `${truncateText(first, 32)}…` : first;
 }
 
@@ -566,7 +566,7 @@ function renderPublished() {
 
     const title = document.createElement("span");
     title.className = "drafts__title";
-    title.textContent = displayTitle(article);
+    title.textContent = displayTitle(article, "（無題）");
     select.append(title);
 
     const excerpt = String(article.excerpt ?? "").trim();

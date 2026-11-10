@@ -112,6 +112,59 @@ test("writer: 公開済み記事の行からX投稿リンクを開ける", async
   await expect(share).toHaveAttribute("rel", "noopener");
 });
 
+test("writer: 公開済み一覧はタイトル無し・埋め込みのみの記事を（無題）と表示する", async ({
+  page
+}) => {
+  const emptyDraft = {
+    id: "empty-draft",
+    title: "無題",
+    category: "notes",
+    tags: [],
+    updated: "2026-01-04T00:00:00Z",
+    pr: "",
+    excerpt: "",
+    chars: 0
+  };
+  const article = {
+    category: "notes",
+    slug: "2026-01-04-embed-only",
+    url: "https://slytxt.dev/notes/2026-01-04-embed-only/",
+    title: "",
+    published: "2026-01-04",
+    excerpt: "",
+    hasDraft: false,
+    draftId: null
+  };
+  await page.route("**/api/drafts/*", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        draft: { ...emptyDraft, body: "", description: "", cover: "", created: emptyDraft.updated, slug: "" }
+      })
+    });
+  });
+  await page.route("**/api/drafts", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ drafts: [emptyDraft] })
+    });
+  });
+  await page.route("**/api/published", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ articles: [article] })
+    });
+  });
+
+  await page.goto(`${WRITER_URL}/`);
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+
+  // 下書き側は従来どおり、空の下書きを「新しい下書き」と表示する。
+  await expect(page.locator(".drafts__select", { hasText: "新しい下書き" })).toHaveCount(1);
+  // 公開済み側は、タイトルが無く本文が埋め込みだけの記事を「（無題）」と表示する。
+  await expect(page.locator(".drafts--published .drafts__title")).toHaveText("（無題）");
+});
+
 test("writer: 公開完了の表示にX投稿リンクが出る", async ({ page }) => {
   const articleUrl = "https://slytxt.dev/articles/journal/2026-01-03-x-share-done/";
   await page.route("**/api/published", async (route) => {
