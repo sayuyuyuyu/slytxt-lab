@@ -22,15 +22,6 @@ function encodeBase64(text) {
   return btoa(binary);
 }
 
-function encodeBase64Bytes(bytes) {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let offset = 0; offset < bytes.length; offset += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk));
-  }
-  return btoa(binary);
-}
-
 const FAILED_CONCLUSIONS = new Set([
   "failure",
   "cancelled",
@@ -135,42 +126,12 @@ export function createGitHubClient(env) {
       return must(`/contents/${filePath}`, { method: "PUT", body }, `${filePath} の書き込み`);
     },
 
-    /** バイナリ（画像など）を raw bytes の base64 で書き込む。 */
-    async putBinaryContent({ path: filePath, bytes, message, branch, sha }) {
-      const body = { message, content: encodeBase64Bytes(bytes), branch };
-      if (sha) body.sha = sha;
-      return must(`/contents/${filePath}`, { method: "PUT", body }, `${filePath} の書き込み`);
-    },
-
     async createPull({ title, head, base, body }) {
       return must(
         "/pulls",
         { method: "POST", body: { title, head, base, body } },
         "PR の作成"
       );
-    },
-
-    async findOpenPull(branch) {
-      const query = new URLSearchParams({ state: "open", head: `${owner}:${branch}` });
-      const data = await must(`/pulls?${query}`, {}, "PR の検索");
-      return Array.isArray(data) && data.length > 0 ? data[0] : null;
-    },
-
-    /** open な PR をすべて返す（Cron の見届けが media/* を拾うために使う）。 */
-    async listOpenPulls() {
-      const query = new URLSearchParams({ state: "open", per_page: "100" });
-      const data = await must(`/pulls?${query}`, {}, "PR 一覧の取得");
-      return Array.isArray(data) ? data : [];
-    },
-
-    /** PR の変更ファイル一覧（filename を含む）。 */
-    async getPullFiles(number) {
-      const data = await must(
-        `/pulls/${number}/files?per_page=100`,
-        {},
-        `PR #${number} のファイル取得`
-      );
-      return Array.isArray(data) ? data : [];
     },
 
     /**
