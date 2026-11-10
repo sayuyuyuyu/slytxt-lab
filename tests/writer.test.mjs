@@ -862,6 +862,12 @@ test("published: 一覧は frontmatter と下書きの有無を返し、下書�
       "src/content/notes/2026-01-04-hidden.md",
       b64("---\ntitle: 非公開下書き\ndescription: x\npublished: 2026-01-04\ndraft: true\n---\n\n下書き本文\n")
     );
+    gh.state.mainFiles.set(
+      "src/content/notes/2026-01-04-embed-only.md",
+      b64(
+        "---\ntitle: \"\"\npublished: 2026-01-04\n---\n\nhttps://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw\n"
+      )
+    );
     const store = createDraftStore(memoryKv());
     await store.importDraft(
       "2026-01-02-first",
@@ -869,22 +875,29 @@ test("published: 一覧は frontmatter と下書きの有無を返し、下書�
       "編集中の本文"
     );
     const articles = await listPublished({ env: testEnv, store });
-    assert.equal(articles.length, 2);
+    assert.equal(articles.length, 3);
     // 新しい公開日のものから並ぶ。
     assert.deepEqual(
       articles.map((article) => article.slug),
-      ["2026-01-03-memo", "2026-01-02-first"]
+      ["2026-01-04-embed-only", "2026-01-03-memo", "2026-01-02-first"]
     );
+    // タイトルが無く本文が埋め込みだけの note は excerpt が空になる。
+    const embedOnly = articles.find((article) => article.slug === "2026-01-04-embed-only");
+    assert.equal(embedOnly.title, "");
+    assert.equal(embedOnly.excerpt, "");
     assert.equal(articles[0].title, "");
     assert.equal(articles[0].hasDraft, false);
     assert.equal(articles[0].draftId, null);
-    assert.equal(articles[0].url, "https://slytxt.dev/notes/2026-01-03-memo/");
-    assert.equal(articles[1].title, "最初の記事");
-    assert.equal(articles[1].published, "2026-01-02");
-    assert.equal(articles[1].hasDraft, true);
-    assert.equal(articles[1].draftId, "2026-01-02-first");
+    assert.equal(articles[0].url, "https://slytxt.dev/notes/2026-01-04-embed-only/");
+    assert.equal(articles[1].title, "");
+    assert.equal(articles[1].published, "2026-01-03");
+    assert.equal(articles[1].url, "https://slytxt.dev/notes/2026-01-03-memo/");
+    assert.equal(articles[2].title, "最初の記事");
+    assert.equal(articles[2].published, "2026-01-02");
+    assert.equal(articles[2].hasDraft, true);
+    assert.equal(articles[2].draftId, "2026-01-02-first");
     assert.equal(
-      articles[1].url,
+      articles[2].url,
       "https://slytxt.dev/articles/journal/2026-01-02-first/"
     );
   });
