@@ -16,7 +16,7 @@
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { plainText, truncateText } from "./markdown.mjs";
 import { createGitHubClient } from "./github.mjs";
-import { PublishError, decodeContentText, normalizeSlug } from "./publish.mjs";
+import { PublishError, decodeContentText, normalizeSlug, publicUrl } from "./publish.mjs";
 import { CATEGORIES, assertId } from "./drafts-kv.mjs";
 
 function requireGitHub(env) {
@@ -62,6 +62,7 @@ export async function listPublished({ env, store }) {
       articles.push({
         category,
         slug,
+        url: publicUrl(category, slug),
         title: typeof data.title === "string" ? data.title : "",
         published: typeof data.published === "string" ? data.published : "",
         excerpt: truncateText(plainText(body), 120),

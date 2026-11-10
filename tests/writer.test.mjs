@@ -878,10 +878,15 @@ test("published: 一覧は frontmatter と下書きの有無を返し、下書�
     assert.equal(articles[0].title, "");
     assert.equal(articles[0].hasDraft, false);
     assert.equal(articles[0].draftId, null);
+    assert.equal(articles[0].url, "https://slytxt.dev/notes/2026-01-03-memo/");
     assert.equal(articles[1].title, "最初の記事");
     assert.equal(articles[1].published, "2026-01-02");
     assert.equal(articles[1].hasDraft, true);
     assert.equal(articles[1].draftId, "2026-01-02-first");
+    assert.equal(
+      articles[1].url,
+      "https://slytxt.dev/articles/journal/2026-01-02-first/"
+    );
   });
 });
 
@@ -999,6 +1004,10 @@ test("published: Worker の /api/published と開く導線が往復する", asyn
     const list = await listRes.json();
     assert.equal(list.articles.length, 1);
     assert.equal(list.articles[0].hasDraft, false);
+    assert.equal(
+      list.articles[0].url,
+      "https://slytxt.dev/articles/journal/2026-02-03-import-me/"
+    );
 
     const openInit = {
       method: "POST",
