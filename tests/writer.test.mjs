@@ -1528,6 +1528,64 @@ test("drafts: 保留中インデックスの同期失敗でも deleteDraft は�
   assert.equal(kv.map.has(`draft:${draft.id}`), false);
 });
 
+test("drafts: 保留中インデックスの更新失敗後は再構築で欠落を補う", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+
+  const first = await store.createDraft({ title: "1件目の公開待ち" });
+  await store.writeDraft(first.id, {
+    body: "1件目の本文。",
+    pr: "https://github.com/sayuyuyuyu/slytxt-lab/pull/11"
+  });
+  // 完全な保留中インデックスを残しておく。
+  assert.equal((await store.listPendingDrafts()).length, 1);
+  assert.equal(JSON.parse(kv.map.get("pending-publishes")).complete, true);
+
+  const second = await store.createDraft({ title: "2件目の公開待ち" });
+  // 保留中インデックスへの put だけを失敗させる。
+  const basePut = kv.put;
+  kv.put = async (key, value) => {
+    if (key === "pending-publishes") throw new Error("KV put failed");
+    return basePut(key, value);
+  };
+  await store.writeDraft(second.id, {
+    body: "2件目の本文。",
+    pr: "https://github.com/sayuyuyuyu/slytxt-lab/pull/12"
+  });
+  kv.put = basePut;
+
+  const pending = await store.listPendingDrafts();
+  assert.deepEqual(
+    pending.map((draft) => draft.id).sort(),
+    [first.id, second.id].sort()
+  );
+});
+
+test("drafts: 下書き一覧インデックスの更新失敗後は再構築で欠落を補う", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+
+  const first = await store.createDraft({ title: "1件目の下書き" });
+  await store.writeDraft(first.id, { body: "1件目の本文。" });
+  // 完全な下書き一覧インデックスを残しておく。
+  assert.equal((await store.listDrafts()).length, 1);
+
+  // 下書き一覧インデックスへの put だけを失敗させる。
+  const basePut = kv.put;
+  kv.put = async (key, value) => {
+    if (key === "draft-index") throw new Error("KV put failed");
+    return basePut(key, value);
+  };
+  const second = await store.createDraft({ title: "2件目の下書き" });
+  kv.put = basePut;
+
+  const drafts = await store.listDrafts();
+  assert.deepEqual(
+    drafts.map((draft) => draft.id).sort(),
+    [first.id, second.id].sort()
+  );
+});
+
 test("drafts: インデックスの無い既存データは初回アクセスで再構築される", async () => {
   const kv = memoryKv();
   const store = createDraftStore(kv);
