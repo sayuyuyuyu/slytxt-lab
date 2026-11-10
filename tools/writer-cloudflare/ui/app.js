@@ -2167,15 +2167,16 @@ async function runPublish() {
   }
   setBusy(true);
   const id = encodeURIComponent(state.current.id);
-  // notes はタイトルを持たないので、公開時の X 投稿文にも入れない。
-  const shareTitle =
-    state.current.category === "notes" ? "" : els.titleInput.value.trim();
   try {
     let result = await streamTask(`/api/publish/${id}`, "投稿");
     if (result?.state === "waiting") {
       appendLog("PR を作成しました。CI の完了を待っています…");
       result = await pollPublishStatus(state.current.id, result);
     }
+    // 公開時に確定したタイトル（本文から補ったものを含む）を投稿文に使う。
+    // notes はタイトルを持たないので、公開時の X 投稿文にも入れない。
+    const shareTitle =
+      state.current.category === "notes" ? "" : String(result.title ?? "").trim();
     finishTask();
     showResult([
       { label: result.file },

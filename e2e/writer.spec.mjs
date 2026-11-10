@@ -181,6 +181,7 @@ test("writer: 公開完了の表示にX投稿リンクが出る", async ({ page 
         result: {
           file: "src/content/journal/2026-01-03-x-share-done.md",
           url: articleUrl,
+          title: "公開後の X 投稿",
           state: "merged",
           merged: true
         }
@@ -207,6 +208,58 @@ test("writer: 公開完了の表示にX投稿リンクが出る", async ({ page 
   await expect(share).toHaveAttribute(
     "href",
     `https://twitter.com/intent/tweet?text=${encodeURIComponent("公開後の X 投稿")}&url=${encodeURIComponent(articleUrl)}`
+  );
+  await expect(share).toHaveAttribute("target", "_blank");
+  await expect(share).toHaveAttribute("rel", "noopener");
+});
+
+test("writer: タイトル欄が空の tech / journal 記事は公開完了時のX投稿文に補ったタイトルが入る", async ({
+  page
+}) => {
+  const articleUrl = "https://slytxt.dev/articles/journal/2026-01-05-x-share-derived/";
+  await page.route("**/api/published", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ articles: [] })
+    });
+  });
+  await page.route(/\/api\/publish\/[^/]+$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify({
+        type: "done",
+        result: {
+          file: "src/content/journal/2026-01-05-x-share-derived.md",
+          url: articleUrl,
+          title: "本文から補ったタイトル",
+          state: "merged",
+          merged: true
+        }
+      })}\n`
+    });
+  });
+
+  await page.goto(`${WRITER_URL}/`);
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+  await page.locator("#new").click();
+  await expect(page.locator("#category")).toHaveValue("notes");
+  await page.locator("#category").selectOption("journal");
+  await expect(page.locator("#title")).toHaveValue("");
+  const editor = page.locator('#editorRoot [contenteditable="true"]');
+  await editor.click();
+  await page.keyboard.type("本文から補ったタイトル");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("タイトル欄を空にした投稿本文です。");
+  await expectSaved(page);
+
+  await page.locator("#publishOpen").click();
+  await page.locator("#publishConfirm").click();
+
+  const share = page.locator("#taskResult .x-share");
+  await expect(share).toHaveText("Xに投稿");
+  await expect(share).toHaveAttribute(
+    "href",
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent("本文から補ったタイトル")}&url=${encodeURIComponent(articleUrl)}`
   );
   await expect(share).toHaveAttribute("target", "_blank");
   await expect(share).toHaveAttribute("rel", "noopener");
