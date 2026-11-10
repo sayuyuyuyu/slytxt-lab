@@ -25,3 +25,10 @@
 
 - UI またはコンテンツを変更したら、可能な範囲で `pnpm check` と `pnpm run verify` を実行する。
 - Cloudflare Pages の Pull Request プレビューが利用できる場合は、主要ページの表示も確認する。
+
+# Issue ループ
+
+- キューは `muse-overnight` ラベルの Issue。1 Issue = 1 PR。
+- 検証は `pnpm verify`。UI を変えたら `pnpm test:e2e` も実行する。
+- `ci` が通ったら squash merge してよい。手順は `~/.agents/skills/issue-loop/SKILL.md` に従う。
+- 記事本文を書くときは `~/.agents/skills/slytxt-writing/SKILL.md` に従う。
