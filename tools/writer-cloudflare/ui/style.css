@@ -71,7 +71,10 @@ textarea {
 }
 
 .bar__label {
+  margin: 0;
   font-size: 0.95rem;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .bar__cursor {
@@ -275,6 +278,21 @@ textarea {
 /* 公開済み一覧の項目には「…」メニューが無いので、右の余白を詰める。 */
 .drafts__select--plain {
   padding-right: 12px;
+}
+
+/* 公開済み記事では右上に X 投稿ボタンを置く。 */
+.drafts__select--shared {
+  padding-right: 96px;
+}
+
+.drafts__share {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  padding: 4px 9px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  text-decoration: none;
 }
 
 /* ---- 一覧 ---- */
@@ -1094,6 +1112,10 @@ textarea {
   color: var(--text-muted);
   font-size: 0.74rem;
   overflow-wrap: anywhere;
+}
+
+.x-share {
+  text-decoration: none;
 }
 
 .task__log {

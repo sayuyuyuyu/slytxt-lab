@@ -57,13 +57,22 @@ test("writer: 作成→編集→自動保存→カテゴリ切替→タイトル
   await page.locator("#title").fill("E2E テスト記事");
   await expectSaved(page);
 
+  // 編集画面の見出しはヘッダーの「執筆」が h1。
+  expect(await page.locator("#barLabel").evaluate((el) => el.tagName)).toBe("H1");
+
   // プレビュー: 見出しと Spotify プレイヤーが描画される。
   await page.locator("#previewOpen").click();
   await expect(page.locator("#previewBody h2")).toHaveText("見出しテスト");
   await expect(
     page.locator('#previewBody iframe[src*="open.spotify.com/embed/track/"]')
   ).toHaveCount(1);
+  // プレビュー中は記事タイトルが唯一の h1 で、ヘッダー側は span に下がっている。
+  await expect(page.locator("h1")).toHaveCount(1);
+  await expect(page.locator("#previewTitle")).toHaveText("E2E テスト記事");
+  expect(await page.locator("#barLabel").evaluate((el) => el.tagName)).toBe("SPAN");
   await page.locator("#previewClose").click();
+  // 閉じたらヘッダーの「執筆」が h1 に戻る。
+  expect(await page.locator("#barLabel").evaluate((el) => el.tagName)).toBe("H1");
 
   // 公開パネル（実際の公開はしない）: タイトルとカテゴリの表示確認まで。
   await page.locator("#publishOpen").click();
@@ -71,6 +80,83 @@ test("writer: 作成→編集→自動保存→カテゴリ切替→タイトル
   await expect(page.locator("#publishTitleRow")).toBeVisible();
   await expect(page.locator("#publishTitle")).toHaveText("E2E テスト記事");
   await expect(page.locator("#publishCategory")).toHaveText("Journal");
+});
+
+test("writer: 公開済み記事の行からX投稿リンクを開ける", async ({ page }) => {
+  const article = {
+    category: "journal",
+    slug: "2026-01-02-x-share",
+    url: "https://slytxt.dev/articles/journal/2026-01-02-x-share/",
+    title: "X 投稿のテスト",
+    published: "2026-01-02",
+    excerpt: "公開済み記事の説明です。",
+    hasDraft: false,
+    draftId: null
+  };
+  await page.route("**/api/published", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ articles: [article] })
+    });
+  });
+  await page.goto(`${WRITER_URL}/`);
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+
+  const share = page.locator(".drafts--published .drafts__share");
+  await expect(share).toHaveText("Xに投稿");
+  await expect(share).toHaveAttribute(
+    "href",
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${encodeURIComponent(article.url)}`
+  );
+  await expect(share).toHaveAttribute("target", "_blank");
+  await expect(share).toHaveAttribute("rel", "noopener");
+});
+
+test("writer: 公開完了の表示にX投稿リンクが出る", async ({ page }) => {
+  const articleUrl = "https://slytxt.dev/articles/journal/2026-01-03-x-share-done/";
+  await page.route("**/api/published", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ articles: [] })
+    });
+  });
+  await page.route(/\/api\/publish\/[^/]+$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify({
+        type: "done",
+        result: {
+          file: "src/content/journal/2026-01-03-x-share-done.md",
+          url: articleUrl,
+          state: "merged",
+          merged: true
+        }
+      })}\n`
+    });
+  });
+
+  await page.goto(`${WRITER_URL}/`);
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+  await page.locator("#new").click();
+  await expect(page.locator("#category")).toHaveValue("notes");
+  await page.locator("#category").selectOption("journal");
+  await page.locator("#title").fill("公開後の X 投稿");
+  const editor = page.locator('#editorRoot [contenteditable="true"]');
+  await editor.click();
+  await page.keyboard.type("公開後の投稿本文です。");
+  await expectSaved(page);
+
+  await page.locator("#publishOpen").click();
+  await page.locator("#publishConfirm").click();
+
+  const share = page.locator("#taskResult .x-share");
+  await expect(share).toHaveText("Xに投稿");
+  await expect(share).toHaveAttribute(
+    "href",
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent("公開後の X 投稿")}&url=${encodeURIComponent(articleUrl)}`
+  );
+  await expect(share).toHaveAttribute("target", "_blank");
+  await expect(share).toHaveAttribute("rel", "noopener");
 });
 
 /** computed style と要素幅をまとめて取る（比較は px の端数を許容する）。 */

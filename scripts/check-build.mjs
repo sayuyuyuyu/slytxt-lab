@@ -23,6 +23,7 @@ let checkedViewports = 0;
 let checkedCanonicals = 0;
 let checkedDescriptions = 0;
 let checkedSocial = 0;
+let checkedArticleTimes = 0;
 let checkedLinks = 0;
 let checkedFragments = 0;
 let checkedImages = 0;
@@ -32,6 +33,7 @@ let checkedRobotsRules = 0;
 let checkedRedirects = 0;
 let checkedHeaders = 0;
 let checkedNoindex = 0;
+let checkedSkipLinks = 0;
 let checkedStructured = 0;
 let checkedAriaRefs = 0;
 let checkedImgAlts = 0;
@@ -138,6 +140,32 @@ for (const file of htmlFiles) {
     else if (expected && value !== expected)
       issues.push(`${relative}: ${name} does not match ${expected}`);
     else checkedSocial++;
+  }
+  // article:* の日時メタは BaseLayout が og:type=article のときだけ出す。
+  // 欠落・破損と、article でないページへの混入の両方を検出する。
+  const isArticle = metaContent("property", "og:type") === "article";
+  const publishedTime = metaContent("property", "article:published_time");
+  const modifiedTime = metaContent("property", "article:modified_time");
+  const isIsoTime = (value) =>
+    value !== undefined &&
+    !Number.isNaN(Date.parse(value)) &&
+    new Date(value).toISOString() === value;
+  if (isArticle) {
+    if (!publishedTime)
+      issues.push(`${relative}: missing article:published_time`);
+    else if (!isIsoTime(publishedTime))
+      issues.push(`${relative}: article:published_time is not an ISO time: ${publishedTime}`);
+    else checkedArticleTimes++;
+    if (modifiedTime !== undefined) {
+      if (!isIsoTime(modifiedTime))
+        issues.push(`${relative}: article:modified_time is not an ISO time: ${modifiedTime}`);
+      else checkedArticleTimes++;
+    }
+  } else {
+    if (publishedTime !== undefined)
+      issues.push(`${relative}: article:published_time on non-article page`);
+    if (modifiedTime !== undefined)
+      issues.push(`${relative}: article:modified_time on non-article page`);
   }
   const jsonLdItems = [];
   for (const match of html.matchAll(/<script\b[^>]*\btype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
@@ -265,6 +293,9 @@ for (const file of htmlFiles) {
   }
   if (!html.includes('id="main-content"'))
     issues.push(`${relative}: missing skip-link target`);
+  if (/<a\b[^>]*\bhref="#main-content"[^>]*>/.test(html))
+    checkedSkipLinks++;
+  else issues.push(`${relative}: missing skip link`);
   const robotsContent = metaContent("name", "robots");
   const expectsNoindex = relative === "404.html" || relative === "search/index.html";
   if (expectsNoindex) {
@@ -609,5 +640,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedSocial} social metas, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
 );

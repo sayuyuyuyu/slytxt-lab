@@ -204,6 +204,22 @@ function displayTitle(draft) {
   return Array.from(first).length > 32 ? `${truncateText(first, 32)}…` : first;
 }
 
+/** X の投稿インテント。投稿文は記事タイトルだけにする。 */
+function xShareUrl(title, url) {
+  const text = encodeURIComponent(String(title ?? ""));
+  return `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(url)}`;
+}
+
+function createXShareLink(title, url, className = "button") {
+  const link = document.createElement("a");
+  link.className = className;
+  link.href = xShareUrl(title, url);
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.textContent = "Xに投稿";
+  return link;
+}
+
 /** 本文を持つ下書き（編集中の1件）の表示名。本文の書き出しから作る。 */
 function draftName(draft) {
   if (draft.title && draft.title !== "無題") return draft.title;
@@ -543,6 +559,7 @@ function renderPublished() {
     const select = document.createElement("button");
     select.type = "button";
     select.className = "drafts__select drafts__select--plain";
+    if (article.url) select.classList.add("drafts__select--shared");
     if (article.hasDraft && state.current?.id === article.draftId) {
       select.setAttribute("aria-current", "true");
     }
@@ -582,6 +599,12 @@ function renderPublished() {
     select.append(meta);
     select.addEventListener("click", () => openPublishedArticle(article));
     item.append(select);
+
+    if (article.url) {
+      item.append(
+        createXShareLink(String(article.title ?? "").trim(), article.url, "button drafts__share")
+      );
+    }
 
     els.published.append(item);
   }
@@ -1066,6 +1089,22 @@ function loadXWidgets(root) {
   });
 }
 
+// 編集画面の h1 はヘッダーの「執筆」（#barLabel）が持つ。
+// 記事プレビューを開いた間はプレビュー側の記事タイトル（#previewTitle の h1）が
+// 主見出しになるよう、ヘッダー側を span に差し替えて h1 が二重にならないようにする。
+// notes のプレビューでは記事タイトルを出さないため、ヘッダー側を h1 のままにする。
+function setBarLabelHeading(isHeading) {
+  const current = document.querySelector('#barLabel');
+  if (!current) return;
+  const want = isHeading ? 'H1' : 'SPAN';
+  if (current.tagName === want) return;
+  const next = document.createElement(want.toLowerCase());
+  next.id = 'barLabel';
+  next.className = 'bar__label';
+  next.textContent = current.textContent;
+  current.replaceWith(next);
+}
+
 function openPreview() {
   if (!state.current || state.busy) return;
   const data = collect();
@@ -1081,6 +1120,7 @@ function openPreview() {
     body: data.body
   });
   els.previewTitle.hidden = isNote;
+  setBarLabelHeading(isNote);
   els.previewLead.textContent = data.description;
   els.previewLead.hidden = isNote || !data.description;
 
@@ -1134,6 +1174,7 @@ function openPreview() {
 // iframe の再生を止めるため、中身は捨てる。
 function hidePreview() {
   if (els.preview.hidden) return;
+  setBarLabelHeading(true);
   els.preview.hidden = true;
   els.previewBody.replaceChildren();
   els.previewOpen.setAttribute("aria-pressed", "false");
@@ -1190,7 +1231,11 @@ function showResult(parts, isError = false) {
   els.taskResult.setAttribute("aria-live", isError ? "assertive" : "polite");
   els.taskResult.replaceChildren();
   for (const part of parts) {
-    if (part.href) {
+    if (part.share) {
+      els.taskResult.append(
+        createXShareLink(part.share.title, part.share.url, "button x-share")
+      );
+    } else if (part.href) {
       const link = document.createElement("a");
       link.className = "button button--primary";
       link.href = part.href;
@@ -2122,6 +2167,9 @@ async function runPublish() {
   }
   setBusy(true);
   const id = encodeURIComponent(state.current.id);
+  // notes はタイトルを持たないので、公開時の X 投稿文にも入れない。
+  const shareTitle =
+    state.current.category === "notes" ? "" : els.titleInput.value.trim();
   try {
     let result = await streamTask(`/api/publish/${id}`, "投稿");
     if (result?.state === "waiting") {
@@ -2135,6 +2183,7 @@ async function runPublish() {
       ...(result.url
         ? [
             { href: result.url, label: "公開ページ" },
+            { share: { title: shareTitle, url: result.url } },
             { label: "公開ページはデプロイの反映まで数十秒かかることがあります" }
           ]
         : [])
