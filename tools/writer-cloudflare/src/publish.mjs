@@ -363,6 +363,14 @@ async function publishPostInner({ env, store, id, onLog }) {
       sha: current?.sha
     });
     onLog(`書き出しました: ${file}`);
+    // タイトル無しの記事は本文の書き出しをタイトルにするため、本文を直して
+    // 再投稿すると確定タイトルが変わる。PR タイトルも同じ値に揃え、マージ後の
+    // X 投稿文（publishStatus が pr.title を参照する）が古いタイトルのままにならないようにする。
+    const prTitle = title || commitMessage;
+    if (existingPr.title !== prTitle) {
+      await gh.updatePull({ number: existingPr.number, title: prTitle });
+      onLog(`PR タイトルを更新しました: ${prTitle}`);
+    }
     await store.writeDraft(id, { pr: existingPr.html_url });
     return {
       branch,

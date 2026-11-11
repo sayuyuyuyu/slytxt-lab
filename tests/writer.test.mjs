@@ -611,6 +611,12 @@ function fakeGitHub() {
       const pr = state.pulls.find((entry) => entry.number === Number(pullMatch[1]));
       return pr ? respond(200, prView(pr)) : respond(404, { message: "Not Found" });
     }
+    if (pullMatch && method === "PATCH") {
+      const pr = state.pulls.find((entry) => entry.number === Number(pullMatch[1]));
+      if (!pr) return respond(404, { message: "Not Found" });
+      if (body.title !== undefined) pr.title = body.title;
+      return respond(200, prView(pr));
+    }
     const updateMatch = path.match(/^\/pulls\/(\d+)\/update-branch$/);
     if (updateMatch && method === "PUT") {
       if (state.updateBranchFails) {
@@ -1431,6 +1437,36 @@ test("publish: 記事はタイトルが無ければ本文の書き出しをタ�
     assert.equal(posted.title, "書き出しが題になる。");
     const content = Buffer.from([...gh.state.branchFiles.values()][0], "base64").toString("utf8");
     assert.match(content, /^title: 書き出しが題になる。$/m);
+  });
+});
+
+test("publish: タイトル無しの記事を本文を直して再投稿すると PR タイトルも確定タイトルに揃う", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ category: "journal" });
+    await store.writeDraft(draft.id, { body: "最初の書き出し。\n本文です。" });
+    const first = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(first.state, "waiting");
+    assert.equal(gh.state.pulls[0].title, "最初の書き出し。");
+
+    // 本文の1行目を変えて再投稿すると、同じ PR のファイル更新とあわせて
+    // PR タイトルも新しい確定タイトルへ更新される。
+    await store.writeDraft(draft.id, { body: "直した書き出し。\n本文です。" });
+    const reposted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(reposted.state, "waiting");
+    assert.equal(reposted.prUrl, first.prUrl);
+    assert.equal(reposted.title, "直した書き出し。");
+    assert.equal(gh.state.pulls.length, 1);
+    assert.equal(gh.state.pulls[0].title, "直した書き出し。");
+
+    // マージまで進めると、publishStatus が返すタイトル（X 投稿文に使う値）も
+    // 新しい確定タイトルになる。
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "merged");
+    assert.equal(step.title, "直した書き出し。");
   });
 });
 
