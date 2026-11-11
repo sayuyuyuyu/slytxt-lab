@@ -156,6 +156,15 @@ export function createGitHubClient(env) {
       return must(`/pulls/${number}`, {}, `PR #${number} の取得`);
     },
 
+    /** PR のタイトルを更新する（再投稿で確定タイトルが変わったときに使う）。 */
+    async updatePull({ number, title }) {
+      return must(
+        `/pulls/${number}`,
+        { method: "PATCH", body: { title } },
+        `PR #${number} のタイトル更新`
+      );
+    },
+
     /**
      * head コミットに付いたチェックの総合判定。
      * 門番は CI（チェックラン名 ci）だけ（2026-11-04 本人決定）:
