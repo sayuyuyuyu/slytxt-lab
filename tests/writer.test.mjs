@@ -1105,6 +1105,57 @@ test("published: カテゴリ移動の公開待ち中に再投稿しても PR �
   });
 });
 
+test("published: カテゴリ移動の PR が開いている間に別カテゴリへ変えても複製が残らない", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const sourceFile = "src/content/notes/2026-02-03-import-me.md";
+    const firstMoveFile = "src/content/tech/2026-02-03-import-me.md";
+    const finalFile = "src/content/journal/2026-02-03-import-me.md";
+    gh.state.mainFiles.set(
+      sourceFile,
+      b64(
+        "---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1]\n---\n\n公開時の本文 v1\n"
+      )
+    );
+    const store = createDraftStore(memoryKv());
+    const { draft } = await openPublished({
+      env: testEnv,
+      store,
+      category: "notes",
+      slug: "2026-02-03-import-me"
+    });
+
+    // notes → tech の移動 PR を開く。
+    await store.writeDraft(draft.id, { category: "tech", body: "書き換えた本文 v2" });
+    const first = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(first.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+
+    // マージ前に tech → journal へ変えて再投稿する。
+    await store.writeDraft(draft.id, { category: "journal", body: "書き換えた本文 v3" });
+    const second = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(second.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+    assert.equal(second.prUrl, first.prUrl);
+
+    // ブランチには最後のカテゴリのファイルだけが残り、途中のカテゴリは消える。
+    assert.ok(gh.state.branchFiles.has(`write/${draft.id}:${finalFile}`));
+    assert.equal(gh.state.branchFiles.has(`write/${draft.id}:${firstMoveFile}`), false);
+    assert.equal(gh.state.branchFiles.has(`write/${draft.id}:${sourceFile}`), false);
+    assert.ok(gh.state.deletes.has(`write/${draft.id}:${firstMoveFile}`));
+    assert.ok(gh.state.deletes.has(`write/${draft.id}:${sourceFile}`));
+
+    // マージ後も複製が残らない。
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "merged");
+    assert.equal(gh.state.mainFiles.has(sourceFile), false);
+    assert.equal(gh.state.mainFiles.has(firstMoveFile), false);
+    assert.ok(gh.state.mainFiles.has(finalFile));
+  });
+});
+
 test("published: Worker の /api/published と開く導線が往復する", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
