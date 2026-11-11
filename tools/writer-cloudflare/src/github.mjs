@@ -126,6 +126,15 @@ export function createGitHubClient(env) {
       return must(`/contents/${filePath}`, { method: "PUT", body }, `${filePath} の書き込み`);
     },
 
+    /** ファイルをブランチから削除する（カテゴリ移動の再編集で元ファイルを消す）。 */
+    async deleteContent({ path: filePath, message, branch, sha }) {
+      return must(
+        `/contents/${filePath}`,
+        { method: "DELETE", body: { message, branch, sha } },
+        `${filePath} の削除`
+      );
+    },
+
     async createPull({ title, head, base, body }) {
       return must(
         "/pulls",

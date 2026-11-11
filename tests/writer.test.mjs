@@ -492,6 +492,7 @@ function fakeGitHub() {
     mainFiles: new Map(),
     branches: new Map(),
     branchFiles: new Map(),
+    deletes: new Map(),
     pulls: [],
     checks: new Map(),
     calls: [],
@@ -582,6 +583,12 @@ function fakeGitHub() {
       state.branchFiles.set(`${body.branch}:${file}`, body.content);
       return respond(201, { content: { sha: `blob-${file}` } });
     }
+    if (path.startsWith("/contents/") && method === "DELETE") {
+      const file = decodeURIComponent(path.slice("/contents/".length));
+      state.branchFiles.delete(`${body.branch}:${file}`);
+      state.deletes.set(`${body.branch}:${file}`, true);
+      return respond(200, { commit: { sha: "delete-sha" } });
+    }
     if (path === "/pulls" && method === "POST") {
       const pr = {
         number: state.nextPr,
@@ -646,6 +653,12 @@ function fakeGitHub() {
         if (key.startsWith(`${pr.headRef}:`)) {
           state.mainFiles.set(key.slice(pr.headRef.length + 1), state.branchFiles.get(key));
           state.branchFiles.delete(key);
+        }
+      }
+      for (const key of [...state.deletes.keys()]) {
+        if (key.startsWith(`${pr.headRef}:`)) {
+          state.mainFiles.delete(key.slice(pr.headRef.length + 1));
+          state.deletes.delete(key);
         }
       }
       return respond(200, { merged: true, sha: state.mainSha });
@@ -1011,6 +1024,45 @@ test("published: 取り込んだ下書きを編集して再投稿すると更新
     assert.equal(parseFrontmatter(text).data.memo, "あとで読む");
     // published は明示的に書く値と extras の両方から二重に書かない。
     assert.equal((text.match(/^published:/gm) ?? []).length, 1);
+    await assert.rejects(() => store.readDraft(draft.id));
+  });
+});
+
+test("published: カテゴリを変えて再投稿すると元ファイルを消して移動する", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const sourceFile = "src/content/tech/2026-02-03-import-me.md";
+    const movedFile = "src/content/journal/2026-02-03-import-me.md";
+    gh.state.mainFiles.set(
+      sourceFile,
+      b64(
+        "---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\nupdated: 2026-03-01\ntags: [タグ1]\n---\n\n公開時の本文 v1\n"
+      )
+    );
+    const store = createDraftStore(memoryKv());
+    const { draft } = await openPublished({
+      env: testEnv,
+      store,
+      category: "tech",
+      slug: "2026-02-03-import-me"
+    });
+    // 編集画面の select で tech → journal に変えた状態を再現する。
+    await store.writeDraft(draft.id, { category: "journal", body: "書き換えた本文 v2" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.state, "waiting");
+    assert.equal(posted.file, movedFile);
+
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "merged");
+
+    // 元カテゴリのファイルは消え、新しいカテゴリのファイルだけが残る。
+    assert.equal(gh.state.mainFiles.has(sourceFile), false);
+    const moved = Buffer.from(gh.state.mainFiles.get(movedFile), "base64").toString();
+    assert.match(moved, /書き換えた本文 v2/);
+    assert.equal(parseFrontmatter(moved).data.published, "2026-02-03");
+    assert.equal(parseFrontmatter(moved).data.updated, "2026-03-01");
     await assert.rejects(() => store.readDraft(draft.id));
   });
 });
