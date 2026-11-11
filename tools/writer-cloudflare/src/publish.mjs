@@ -219,6 +219,7 @@ async function createReeditPull({
       title,
       description,
       published: existingData.published || published,
+      updated: existingData.updated,
       tags,
       cover: publicCover || undefined
     },
