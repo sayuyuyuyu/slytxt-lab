@@ -264,6 +264,35 @@ async function createReeditPull({
 }
 
 /**
+ * カテゴリ移動の公開ファイル中身。公開日は元の記事から引き継ぎ、
+ * updated は再編集日（today()）にする（createReeditPull と同じ）。
+ */
+function categoryMoveContent({
+  draft,
+  source,
+  title,
+  description,
+  published,
+  tags,
+  publicCover,
+  publicBody
+}) {
+  const { data: existingData } = parseFrontmatter(decodeContentText(source) ?? "");
+  return stringifyFrontmatter(
+    {
+      title,
+      description,
+      published: existingData.published || published,
+      updated: today(),
+      tags,
+      cover: publicCover || undefined
+    },
+    publicBody,
+    extrasForPublished(draft, title === "" ? ['title: ""'] : [])
+  );
+}
+
+/**
  * 公開済み記事の取り込みからカテゴリだけを変えた再投稿を検出する。
  * 下書きの extras に published が残っている（= 公開済み記事から取り込んだ）
  * 場合だけ、同じ slug の公開済みファイルを他カテゴリに探す。見つかれば
@@ -287,7 +316,7 @@ async function findCategoryMove(gh, draft, slug) {
 /**
  * カテゴリ変更を伴う再編集の更新 PR を作る。新しいカテゴリのファイルを
  * 書き、元カテゴリのファイルを同じ PR で削除する（複製ではなく移動にする）。
- * 公開日は元の記事の日付を引き継ぐ。
+ * 公開日は元の記事の日付を引き継ぐ。updated は再編集日（today()）にする。
  */
 async function createCategoryMovePull({
   gh,
@@ -308,19 +337,16 @@ async function createCategoryMovePull({
   commitMessage,
   onLog
 }) {
-  const { data: existingData } = parseFrontmatter(decodeContentText(source) ?? "");
-  const content = stringifyFrontmatter(
-    {
-      title,
-      description,
-      published: existingData.published || published,
-      updated: existingData.updated,
-      tags,
-      cover: publicCover || undefined
-    },
-    publicBody,
-    extrasForPublished(draft, title === "" ? ['title: ""'] : [])
-  );
+  const content = categoryMoveContent({
+    draft,
+    source,
+    title,
+    description,
+    published,
+    tags,
+    publicCover,
+    publicBody
+  });
   const baseSha = await gh.getMainSha();
   if (await gh.getBranch(branch)) {
     // PR の無い残りブランチは作り直す。
@@ -351,6 +377,78 @@ async function createCategoryMovePull({
     branch,
     file,
     prUrl: pr.html_url,
+    url: publicUrl(draft.category, slug),
+    slug,
+    title,
+    state: "waiting"
+  };
+}
+
+/**
+ * カテゴリ移動の open PR を再利用して更新する。新しい PR は作らず、
+ * 同じブランチへ新しいカテゴリのファイルを書き、元カテゴリのファイルが
+ * まだ残っていれば削除する（再実行を同じ PR に収束させる）。
+ */
+async function updateCategoryMovePull({
+  gh,
+  store,
+  id,
+  draft,
+  file,
+  branch,
+  slug,
+  title,
+  description,
+  tags,
+  publicCover,
+  publicBody,
+  source,
+  sourcePath,
+  published,
+  commitMessage,
+  onLog,
+  existingPr
+}) {
+  onLog(`既存の PR を更新します: ${existingPr.html_url}`);
+  const content = categoryMoveContent({
+    draft,
+    source,
+    title,
+    description,
+    published,
+    tags,
+    publicCover,
+    publicBody
+  });
+  const current = await gh.getContent(file, branch);
+  await gh.putContent({
+    path: file,
+    content,
+    message: commitMessage,
+    branch,
+    sha: current?.sha
+  });
+  onLog(`書き出しました: ${file}`);
+  const sourceOnBranch = await gh.getContent(sourcePath, branch);
+  if (sourceOnBranch) {
+    await gh.deleteContent({
+      path: sourcePath,
+      message: commitMessage,
+      branch,
+      sha: sourceOnBranch.sha
+    });
+    onLog(`移動元を削除しました: ${sourcePath}`);
+  }
+  const prTitle = title || commitMessage;
+  if (existingPr.title !== prTitle) {
+    await gh.updatePull({ number: existingPr.number, title: prTitle });
+    onLog(`PR タイトルを更新しました: ${prTitle}`);
+  }
+  await store.writeDraft(id, { pr: existingPr.html_url });
+  return {
+    branch,
+    file,
+    prUrl: existingPr.html_url,
     url: publicUrl(draft.category, slug),
     slug,
     title,
@@ -410,31 +508,6 @@ async function publishPostInner({ env, store, id, onLog }) {
 
   const gh = createGitHubClient(env);
 
-  // 公開済み記事を取り込んだ下書きでカテゴリだけを変えた再投稿は、複製ではなく
-  // 移動（新しいカテゴリへの書き出し + 元カテゴリの削除）として更新 PR を作る。
-  const categoryMove = await findCategoryMove(gh, draft, slug);
-  if (categoryMove) {
-    return createCategoryMovePull({
-      gh,
-      store,
-      id,
-      draft,
-      file,
-      branch,
-      slug,
-      title,
-      description,
-      tags,
-      publicCover,
-      publicBody,
-      source: categoryMove.file,
-      sourcePath: categoryMove.path,
-      published,
-      commitMessage,
-      onLog
-    });
-  }
-
   // この下書きの PR はブランチ名で一意に引ける。再実行時はまず実状態を
   // 確認し、既に公開まで終わっていたら成功として収束させる（前回の実行が
   // 後片付けの前に落ちていた場合）。ただし公開済みの記事を読み直した
@@ -487,10 +560,35 @@ async function publishPostInner({ env, store, id, onLog }) {
     // 下の処理で消してから作り直す）。
   }
 
+  // カテゴリ移動の検出。history の確認より後に行い、open PR の再利用判定に使う。
+  const categoryMove = await findCategoryMove(gh, draft, slug);
+
   // 再投稿: 同じブランチの open PR が残っていたら、ファイルを更新して
   // 同じ PR で CI を回し直す。
   const existingPr = history.find((entry) => entry.state === "open") ?? null;
   if (existingPr) {
+    if (categoryMove) {
+      return updateCategoryMovePull({
+        gh,
+        store,
+        id,
+        draft,
+        file,
+        branch,
+        slug,
+        title,
+        description,
+        tags,
+        publicCover,
+        publicBody,
+        source: categoryMove.file,
+        sourcePath: categoryMove.path,
+        published,
+        commitMessage,
+        onLog,
+        existingPr
+      });
+    }
     onLog(`既存の PR を更新します: ${existingPr.html_url}`);
     const current = await gh.getContent(file, branch);
     await gh.putContent({
@@ -562,6 +660,28 @@ async function publishPostInner({ env, store, id, onLog }) {
       };
     }
     throw new PublishError(`${file} は既にあります。`);
+  }
+
+  if (categoryMove) {
+    return createCategoryMovePull({
+      gh,
+      store,
+      id,
+      draft,
+      file,
+      branch,
+      slug,
+      title,
+      description,
+      tags,
+      publicCover,
+      publicBody,
+      source: categoryMove.file,
+      sourcePath: categoryMove.path,
+      published,
+      commitMessage,
+      onLog
+    });
   }
 
   const mainSha = await gh.getMainSha();

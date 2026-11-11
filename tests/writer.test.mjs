@@ -1062,8 +1062,46 @@ test("published: カテゴリを変えて再投稿すると元ファイルを消
     const moved = Buffer.from(gh.state.mainFiles.get(movedFile), "base64").toString();
     assert.match(moved, /書き換えた本文 v2/);
     assert.equal(parseFrontmatter(moved).data.published, "2026-02-03");
-    assert.equal(parseFrontmatter(moved).data.updated, "2026-03-01");
+    // updated は元の値を引き継がず、再編集日（today()）になる。
+    assert.equal(parseFrontmatter(moved).data.updated, today());
     await assert.rejects(() => store.readDraft(draft.id));
+  });
+});
+
+test("published: カテゴリ移動の公開待ち中に再投稿しても PR は増えない", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const sourceFile = "src/content/tech/2026-02-03-import-me.md";
+    const movedFile = "src/content/journal/2026-02-03-import-me.md";
+    gh.state.mainFiles.set(
+      sourceFile,
+      b64(
+        "---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1]\n---\n\n公開時の本文 v1\n"
+      )
+    );
+    const store = createDraftStore(memoryKv());
+    const { draft } = await openPublished({
+      env: testEnv,
+      store,
+      category: "tech",
+      slug: "2026-02-03-import-me"
+    });
+    await store.writeDraft(draft.id, { category: "journal", body: "書き換えた本文 v2" });
+
+    const first = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(first.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+
+    // 公開待ち（PR 未マージ）の間に再投稿しても、同じ PR を更新するだけで増えない。
+    const again = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(again.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+    assert.equal(again.prUrl, first.prUrl);
+
+    // ブランチには新しいカテゴリのファイルだけが書かれ、元カテゴリは削除済み。
+    assert.ok(gh.state.branchFiles.has(`write/${draft.id}:${movedFile}`));
+    assert.equal(gh.state.branchFiles.has(`write/${draft.id}:${sourceFile}`), false);
+    assert.ok(gh.state.deletes.has(`write/${draft.id}:${sourceFile}`));
   });
 });
 
