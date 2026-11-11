@@ -403,7 +403,6 @@ async function updateCategoryMovePull({
   publicCover,
   publicBody,
   source,
-  sourcePath,
   published,
   commitMessage,
   onLog,
@@ -429,15 +428,23 @@ async function updateCategoryMovePull({
     sha: current?.sha
   });
   onLog(`書き出しました: ${file}`);
-  const sourceOnBranch = await gh.getContent(sourcePath, branch);
-  if (sourceOnBranch) {
-    await gh.deleteContent({
-      path: sourcePath,
-      message: commitMessage,
-      branch,
-      sha: sourceOnBranch.sha
-    });
-    onLog(`移動元を削除しました: ${sourcePath}`);
+  // 移動 PR が開いている間にさらに別カテゴリへ変えて再投稿した場合、
+  // 途中のカテゴリのファイルがブランチに残っている。移動元が main の
+  // どこにあるかとは無関係に、この slug の他カテゴリのファイルを
+  // ブランチからすべて消し、最後のカテゴリだけを残す。
+  for (const category of Object.keys(PUBLIC_BASE)) {
+    if (category === draft.category) continue;
+    const path = `src/content/${category}/${slug}.md`;
+    const onBranch = await gh.getContent(path, branch);
+    if (onBranch) {
+      await gh.deleteContent({
+        path,
+        message: commitMessage,
+        branch,
+        sha: onBranch.sha
+      });
+      onLog(`移動元を削除しました: ${path}`);
+    }
   }
   const prTitle = title || commitMessage;
   if (existingPr.title !== prTitle) {
@@ -582,7 +589,6 @@ async function publishPostInner({ env, store, id, onLog }) {
         publicCover,
         publicBody,
         source: categoryMove.file,
-        sourcePath: categoryMove.path,
         published,
         commitMessage,
         onLog,
