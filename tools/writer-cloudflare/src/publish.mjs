@@ -192,6 +192,7 @@ function reeditVerdict(existing, next) {
 /**
  * 再編集の更新 PR を作る。公開済みファイルの sha を渡して更新として書き、
  * 公開日は元の記事の日付を引き継ぐ（再編集で進めない）。
+ * updated は再編集日（today()）に更新する。updated が無かった記事にも付く。
  * 呼び出し側で「内容が変わっている」こと（reeditVerdict が "changed"）を
  * 確認してから呼ぶ。
  */
@@ -219,7 +220,7 @@ async function createReeditPull({
       title,
       description,
       published: existingData.published || published,
-      updated: existingData.updated,
+      updated: today(),
       tags,
       cover: publicCover || undefined
     },

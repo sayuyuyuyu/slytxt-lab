@@ -845,8 +845,9 @@ test("publish再編集: 公開済みと同一の下書きは収束し、本文�
     assert.equal(step.state, "merged");
     const updatedText = Buffer.from(gh.state.mainFiles.get(file), "base64").toString();
     assert.match(updatedText, /本文 v2 です。/);
-    // 公開日は元の記事の日付を引き継ぐ。
+    // 公開日は元の記事の日付を引き継ぐ。updated は再編集日（today()）になる。
     assert.equal(parseFrontmatter(updatedText).data.published, data.published);
+    assert.equal(parseFrontmatter(updatedText).data.updated, today());
     await assert.rejects(() => store.readDraft(edited.id));
   });
 });
@@ -1003,7 +1004,8 @@ test("published: 取り込んだ下書きを編集して再投稿すると更新
     const text = Buffer.from(gh.state.mainFiles.get(file), "base64").toString();
     assert.match(text, /書き換えた本文 v2/);
     assert.equal(parseFrontmatter(text).data.published, "2026-02-03");
-    assert.equal(parseFrontmatter(text).data.updated, "2026-03-01");
+    // updated は元の値を引き継がず、再編集日（today()）になる。
+    assert.equal(parseFrontmatter(text).data.updated, today());
     // 下書きが管理しないキー（adult や未知のキー）は再投稿でも落とさない。
     assert.equal(parseFrontmatter(text).data.adult, true);
     assert.equal(parseFrontmatter(text).data.memo, "あとで読む");
