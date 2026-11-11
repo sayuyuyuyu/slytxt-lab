@@ -83,7 +83,7 @@ refresh token が失効すると、取得が失敗し続けます。症状は、
 図のソースは `docs/diagrams/publish-flow.mmd`（Mermaid 記法）です。手順は次のとおりです。
 
 1. 書く — 本文は localStorage へ即時保存され、KV へ裏で同期されます。
-2. 投稿 — writer が GitHub REST API で作業ブランチを作り、記事ファイルを `src/content/<カテゴリ>/<slug>.md` として作成して Pull Request を開きます。公開済み記事の一覧から開いて再編集した場合は、同じファイルへの更新 PR になり、公開日は元の記事から引き継がれます。このとき画像は R2 の `draft/` から `pub/` へ移され、本文中の URL は media.slytxt.dev へ付け替えられます。
+2. 投稿 — writer が GitHub REST API で作業ブランチを作り、記事ファイルを `src/content/<カテゴリ>/<slug>.md` として作成して Pull Request を開きます。公開済み記事の一覧から開いて再編集した場合は、同じカテゴリなら同じファイルへの更新 PR になります。カテゴリを変えた場合は、新しいカテゴリへの書き出しと元カテゴリの削除を同じ PR で行う移動になります。どちらも公開日は元の記事から引き継がれ、更新日は再編集日に更新されます。このとき画像は R2 の `draft/` から `pub/` へ移され、本文中の URL は media.slytxt.dev へ付け替えられます。
 3. CI — Pull Request の CI（チェック名 `ci`）が成功することだけがマージの条件です。Cloudflare Pages のプレビュー結果は条件に入りません。
 4. マージと見届け — CI の成功後、マージと後片付けは UI のポーリングと Cron の見届け（毎分）の両方が駆動し、どちらが先に進めても冪等に収束します。結果は KV に `publish-result:` キーで残り、次回 writer を開いたときに通知され、公開できた下書きは一覧から消えます。
 5. 公開 — main へのマージで Cloudflare Pages がビルドし、slytxt.dev に反映されます。
