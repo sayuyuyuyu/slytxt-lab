@@ -93,6 +93,22 @@ function deriveTitle(draft, body) {
   return truncateText(text || "無題", 40);
 }
 
+/** 公開ファイルに明示的に書く frontmatter キー。extras からは二重に書かない。 */
+const PUBLISHED_KEYS = new Set(["title", "description", "published", "tags", "cover"]);
+
+/**
+ * 下書きが持ち回る未知の frontmatter 行（adult など）を公開ファイルへ引き継ぐ。
+ * 公開時に明示的に書くキーは二重に書かないよう除く。prefix は key 行より前に
+ * 置く（notes の title: "" 明示など）。
+ */
+function extrasForPublished(draft, prefix = []) {
+  const carried = (draft.extras ?? []).filter((line) => {
+    const key = String(line).match(/^([A-Za-z0-9_-]+):/)?.[1];
+    return key ? !PUBLISHED_KEYS.has(key) : true;
+  });
+  return [...prefix, ...carried];
+}
+
 function publishTarget(draft) {
   const slug = normalizeSlug(draft.id) || draft.id;
   return {
@@ -207,7 +223,7 @@ async function createReeditPull({
       cover: publicCover || undefined
     },
     publicBody,
-    title === "" ? ['title: ""'] : []
+    extrasForPublished(draft, title === "" ? ['title: ""'] : [])
   );
   const baseSha = await gh.getMainSha();
   if (await gh.getBranch(branch)) {
@@ -289,7 +305,7 @@ async function publishPostInner({ env, store, id, onLog }) {
   const content = stringifyFrontmatter(
     { title, description, published, tags, cover: publicCover || undefined },
     publicBody,
-    title === "" ? ['title: ""'] : []
+    extrasForPublished(draft, title === "" ? ['title: ""'] : [])
   );
   const commitMessage = `${note ? "note" : "post"}: ${title || slug}`;
   // 公開済みファイルとの突き合わせ（再編集かどうか）の材料。
