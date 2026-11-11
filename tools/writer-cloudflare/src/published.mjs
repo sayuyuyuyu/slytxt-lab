@@ -12,6 +12,7 @@
  * - 記事の frontmatter のうち下書きが管理しないキー（published 等）は、
  *   下書きの extras としてそのまま保持される（drafts-kv の carriedLines）。
  *   公開日そのものは再投稿時に publish 側が公開済みファイルから引き継ぐ。
+ *   それ以外のキー（adult など）は再投稿時に更新 PR へそのまま書き戻す。
  */
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { plainText, truncateText } from "./markdown.mjs";
