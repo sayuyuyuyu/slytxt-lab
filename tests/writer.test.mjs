@@ -981,7 +981,7 @@ test("published: 取り込んだ下書きを編集して再投稿すると更新
     const file = "src/content/journal/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       file,
-      b64("---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1]\n---\n\n公開時の本文 v1\n")
+      b64("---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1]\nadult: true\nmemo: あとで読む\n---\n\n公開時の本文 v1\n")
     );
     const store = createDraftStore(memoryKv());
     // この記事には writer のブランチ PR 履歴が無い（手でコミットされた想定）。
@@ -1003,6 +1003,11 @@ test("published: 取り込んだ下書きを編集して再投稿すると更新
     const text = Buffer.from(gh.state.mainFiles.get(file), "base64").toString();
     assert.match(text, /書き換えた本文 v2/);
     assert.equal(parseFrontmatter(text).data.published, "2026-02-03");
+    // 下書きが管理しないキー（adult や未知のキー）は再投稿でも落とさない。
+    assert.equal(parseFrontmatter(text).data.adult, true);
+    assert.equal(parseFrontmatter(text).data.memo, "あとで読む");
+    // published は明示的に書く値と extras の両方から二重に書かない。
+    assert.equal((text.match(/^published:/gm) ?? []).length, 1);
     await assert.rejects(() => store.readDraft(draft.id));
   });
 });
