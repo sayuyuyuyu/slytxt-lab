@@ -13,6 +13,11 @@ async function files(directory) {
   }
   return result;
 }
+/** ISO 8601（toISOString と同じ表記）の日時か。 */
+const isIsoTime = (value) =>
+  value !== undefined &&
+  !Number.isNaN(Date.parse(value)) &&
+  new Date(value).toISOString() === value;
 const htmlFiles = (await files(root)).filter((name) => name.endsWith(".html"));
 assert.ok(htmlFiles.length > 0, "Build the site before checking output");
 const issues = [];
@@ -40,6 +45,7 @@ let checkedStructured = 0;
 let checkedAriaRefs = 0;
 let checkedImgAlts = 0;
 let checkedSitemapPages = 0;
+let checkedSitemapLastmods = 0;
 let checkedSitemapExclusions = 0;
 let checkedRssMeta = 0;
 let checkedRssItems = 0;
@@ -167,10 +173,6 @@ for (const file of htmlFiles) {
   // ページを「article でないページ」として素通りさせないため。
   const publishedTime = metaContent("property", "article:published_time");
   const modifiedTime = metaContent("property", "article:modified_time");
-  const isIsoTime = (value) =>
-    value !== undefined &&
-    !Number.isNaN(Date.parse(value)) &&
-    new Date(value).toISOString() === value;
   if (isArticle) {
     if (!publishedTime)
       issues.push(`${relative}: missing article:published_time`);
@@ -447,6 +449,16 @@ try {
 if (sitemap !== null) {
   if (!sitemap.includes("<urlset")) issues.push("sitemap.xml: missing urlset");
   const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  // <url> ごとに lastmod を引けるようにする（未指定は undefined）。
+  const lastmods = new Map();
+  for (const block of sitemap.matchAll(/<url>([\s\S]*?)<\/url>/g)) {
+    const loc = block[1].match(/<loc>([^<]+)<\/loc>/)?.[1];
+    if (!loc) continue;
+    const lastmod = block[1].match(/<lastmod>([^<]*)<\/lastmod>/)?.[1];
+    try {
+      lastmods.set(new URL(unescapeXml(loc.trim())).href, lastmod);
+    } catch {}
+  }
   if (locs.length === 0) issues.push("sitemap.xml: no loc entries");
   const locUrls = new Set();
   for (const raw of locs) {
@@ -481,6 +493,21 @@ if (sitemap !== null) {
     }
     if (locUrls.has(expected)) checkedSitemapPages++;
     else issues.push(`sitemap.xml: public page not listed ${expected}`);
+    // lastmod は記事・メモ・Projects の詳細ページだけに付く（生成側の
+    // urlNode が getEntryDate を渡す URL）。一覧やタグには付けない。
+    const isDetail =
+      /^(?:articles\/(?:tech|journal)|notes|projects)\/[^/]+\/index\.html$/.test(
+        relative,
+      );
+    const lastmod = lastmods.get(expected);
+    if (isDetail) {
+      if (!lastmod) issues.push(`sitemap.xml: missing lastmod ${expected}`);
+      else if (!isIsoTime(lastmod))
+        issues.push(`sitemap.xml: lastmod is not an ISO time ${expected}: ${lastmod}`);
+      else checkedSitemapLastmods++;
+    } else if (lastmod !== undefined) {
+      issues.push(`sitemap.xml: unexpected lastmod ${expected}`);
+    } else checkedSitemapLastmods++;
   }
 }
 let rssXml = null;
@@ -677,5 +704,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedThemeColors} theme colors, ${checkedHeadLinks} head links, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedThemeColors} theme colors, ${checkedHeadLinks} head links, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapLastmods} sitemap lastmods, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
 );
