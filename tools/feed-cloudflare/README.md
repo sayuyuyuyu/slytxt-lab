@@ -17,8 +17,7 @@
 1. D1 のテーブルを適用する（データベース `slytxt-feed` は作成済みで、ID は `wrangler.toml` に設定済み）。リポジトリのルートで実行する。
 
    ```sh
-   cd ~/works/slytxt-lab
-   npx wrangler@latest d1 execute slytxt-feed --remote --file db/feed/0001_init.sql
+   ./scripts/feed.sh db
    ```
 
 2. 作り直した場合だけ、`wrangler.toml` の `database_id` を新しい ID に差し替える。バインディング名は `FEED` のまま（コードが `env.FEED` を読む）。
@@ -26,7 +25,7 @@
 4. デプロイする。
 
    ```sh
-   npx wrangler deploy -c tools/feed-cloudflare/wrangler.toml
+   ./scripts/feed.sh deploy
    ```
 
 画像は writer と同じ R2 バケット `slytxt-writer-media` の `pub/` に置かれ、`https://media.slytxt.dev/<key>` で配信されます（`tools/media-cloudflare`）。フィードの画像は最初から `pub/` に置くので、writer の draft→pub の移動は通りません。
