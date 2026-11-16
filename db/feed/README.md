@@ -26,10 +26,11 @@
 D1 データベースを作り、テーブルを適用します。作成済みの `slytxt-feed` の ID は `570b8c9d-6ef3-4733-9de3-cf4b70f67c4f` で、`tools/feed-cloudflare/wrangler.toml` に設定済みです（作り直した場合だけ差し替える）。
 
 ```sh
-# リポジトリのルートで実行する（db/feed/0001_init.sql からの相対パス）
-cd ~/works/slytxt-lab
-npx wrangler@latest d1 execute slytxt-feed --remote --file db/feed/0001_init.sql
+# リポジトリのルートで実行する
+./scripts/feed.sh db
 ```
+
+`scripts/feed.sh` は D1 とワーカーの操作をまとめたラッパーです（`db` / `sql` / `tables` / `deploy` / `local-db`）。生のコマンドを使う場合は `npx wrangler@latest d1 execute slytxt-feed -c tools/feed-cloudflare/wrangler.toml --remote --file db/feed/0001_init.sql`。
 
 Pages プロジェクト（slytxt.dev）に D1 バインディングを追加します。Git 連携でデプロイしているため、Cloudflare のダッシュボードで **Settings → Bindings → Add → D1 database** を開き、変数名 `FEED`（`slytxt_feed` ではない。コードが `env.FEED` を読む）、データベース `slytxt-feed` を選びます（Production と Preview の両方）。バインディングが無い場合、`/feed/` は空の一覧を返します。バインディングはあるがテーブルが無い場合は、空の一覧に見せかけず 503 と理由を返します（設定の誤りに気づけるように）。
 
