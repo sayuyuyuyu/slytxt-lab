@@ -1,0 +1,10 @@
+{
+  "name": "slytxt feed",
+  "short_name": "feed",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#05070f",
+  "theme_color": "#05070f",
+  "lang": "ja"
+}

@@ -1,0 +1,216 @@
+/* 投稿画面。サイト本体とは別ドメインなので、同じ配色だけ持たせる。 */
+:root {
+  color-scheme: dark;
+  --bg: #05070f;
+  --surface: #0b1220;
+  --border: #1b2942;
+  --border-strong: #2f4a72;
+  --text: #d9e6f7;
+  --text-muted: #7d8bab;
+  --accent: #4cc9f0;
+  --on-accent: #04121c;
+  --danger: #ff7b8a;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.7 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  padding: 0 16px 48px;
+}
+h1,
+h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+a {
+  color: var(--accent);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+.bar__note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+main {
+  display: grid;
+  gap: 28px;
+  padding-top: 20px;
+  max-width: 680px;
+  margin-inline: auto;
+}
+.composer {
+  display: grid;
+  gap: 12px;
+}
+.field {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: inherit;
+}
+.field:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--border-strong);
+}
+.composer__body {
+  min-height: 120px;
+  resize: vertical;
+}
+.count {
+  margin: -4px 0 0;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+.attach {
+  display: flex;
+  gap: 10px;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.button:hover,
+.button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.button--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.attachments {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.attachment {
+  display: grid;
+  grid-template-columns: 88px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.attachment img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.attachment input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+}
+.attachment button {
+  min-height: 36px;
+  padding: 6px 12px;
+}
+.attachment__state {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.status[data-state="error"] {
+  color: var(--danger);
+}
+.recent__list {
+  display: grid;
+  gap: 14px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.recent__item {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.recent__time {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+.recent__body {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .attachment {
+    grid-template-columns: 72px 1fr;
+  }
+  .attachment img {
+    width: 72px;
+    height: 72px;
+  }
+  .attachment button {
+    grid-column: 1 / -1;
+  }
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

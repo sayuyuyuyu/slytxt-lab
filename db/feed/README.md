@@ -5,10 +5,10 @@
 | 役割 | 場所 |
 | --- | --- |
 | テーブル定義 | `db/feed/0001_init.sql` |
-| 読み取り（型・SQL・HTML） | `src/lib/feed/` |
+| 読み取り（型・SQL・HTML）と投稿 API の処理 | `src/lib/feed/` |
 | 公開一覧 `GET /feed/` | `functions/feed/index.ts` → `src/lib/feed/page.ts` |
 | ページの外枠 | `src/pages/feed/index.astro`（静的ビルド） |
-| 投稿画面（PWA） | `tools/feed-cloudflare/`（別 PR） |
+| 投稿画面（PWA）と投稿 API | `tools/feed-cloudflare/` |
 | 本文のスタイル | `src/styles/global.css` の `.feed-*` |
 
 ## 公開ページの組み立て

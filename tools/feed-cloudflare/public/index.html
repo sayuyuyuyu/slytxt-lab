@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#05070f" />
+    <meta name="robots" content="noindex" />
+    <title>Feed - 投稿</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <h1>Feed</h1>
+      <p class="bar__note">短文の置き場。<a href="https://slytxt.dev/feed/">公開ページ</a></p>
+    </header>
+
+    <main>
+      <form id="composer" class="composer" novalidate>
+        <label class="sr-only" for="body">本文</label>
+        <textarea
+          id="body"
+          class="field composer__body"
+          rows="4"
+          maxlength="2000"
+          placeholder="いまのことを短く。URL を貼るとリンクカードになります。"
+          required
+        ></textarea>
+        <p id="count" class="count">0 / 2000</p>
+
+        <div class="attach">
+          <label class="button" for="file">画像を選ぶ</label>
+          <input id="file" class="sr-only" type="file" accept="image/jpeg,image/png,image/gif,image/webp" />
+        </div>
+        <ul id="attachments" class="attachments"></ul>
+
+        <div class="actions">
+          <p id="status" class="status" role="status" aria-live="polite"></p>
+          <button id="submit" class="button button--primary" type="submit">投稿する</button>
+        </div>
+      </form>
+
+      <section class="recent" aria-labelledby="recent-title">
+        <h2 id="recent-title">最近の投稿</h2>
+        <ol id="recent" class="recent__list"></ol>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
