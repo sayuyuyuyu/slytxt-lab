@@ -499,6 +499,9 @@ async function publishPostInner({ env, store, id, onLog }) {
   const note = draft.category === "notes";
   const file = `src/content/${draft.category}/${slug}.md`;
   const branch = `${note ? "note" : "write"}/${slug}`;
+  // ブランチ接頭辞は notes だけ note/、他は write/。カテゴリ移動で接頭辞を
+  // またぐと PR のブランチも変わるので、開いている PR の探索は両方で行う。
+  const siblingBranch = `${note ? "write" : "note"}/${slug}`;
   // タイトル無しの notes は title: "" を明示して書く。stringifyFrontmatter は
   // 空文字列のキーを落とすが、サイト側のスキーマは title キーが必須なので、
   // extras で行そのものを足す。
@@ -569,10 +572,16 @@ async function publishPostInner({ env, store, id, onLog }) {
   const categoryMove = await findCategoryMove(gh, draft, slug);
 
   // 再投稿: 同じブランチの open PR が残っていたら、ファイルを更新して
-  // 同じ PR で CI を回し直す。
+  // 同じ PR で CI を回し直す。今のカテゴリのブランチに無いときは、接頭辞を
+  // またぐ移動 PR（notes↔tech/journal）が開いている可能性があるので、
+  // もう一方の接頭辞の PR も探して同じように再利用する。
   const existingPr = history.find((entry) => entry.state === "open") ?? null;
-  if (existingPr) {
-    if (categoryMove) {
+  const siblingHistory = existingPr ? [] : await gh.findPulls(siblingBranch);
+  const siblingPr = siblingHistory.find((entry) => entry.state === "open") ?? null;
+  const openPr = existingPr ?? siblingPr;
+  const openBranch = existingPr ? branch : siblingBranch;
+  if (openPr) {
+    if (existingPr && categoryMove) {
       return updateCategoryMovePull({
         gh,
         store,
@@ -593,7 +602,7 @@ async function publishPostInner({ env, store, id, onLog }) {
         existingPr
       });
     }
-    onLog(`既存の PR を更新します: ${existingPr.html_url}`);
+    onLog(`既存の PR を更新します: ${openPr.html_url}`);
     // 公開済みファイルがある（＝再編集）なら、PR が開いている間の再投稿でも
     // 再編集の規約で書き直す。通常投稿用の content をそのまま書くと、
     // 公開日が再投稿日に変わり updated が消える。
@@ -610,28 +619,45 @@ async function publishPostInner({ env, store, id, onLog }) {
           publicBody
         })
       : content;
-    const current = await gh.getContent(file, branch);
+    const current = await gh.getContent(file, openBranch);
     await gh.putContent({
       path: file,
       content: branchContent,
       message: commitMessage,
-      branch,
+      branch: openBranch,
       sha: current?.sha
     });
     onLog(`書き出しました: ${file}`);
+    // 移動 PR が開いている間に元のカテゴリへ戻して再投稿した場合、
+    // ブランチには移動先カテゴリのファイルが残っている。この slug の
+    // 他カテゴリのファイルをブランチから消し、最後のカテゴリだけを残す。
+    for (const category of Object.keys(PUBLIC_BASE)) {
+      if (category === draft.category) continue;
+      const movedPath = `src/content/${category}/${slug}.md`;
+      const onBranch = await gh.getContent(movedPath, openBranch);
+      if (onBranch) {
+        await gh.deleteContent({
+          path: movedPath,
+          message: commitMessage,
+          branch: openBranch,
+          sha: onBranch.sha
+        });
+        onLog(`移動元を削除しました: ${movedPath}`);
+      }
+    }
     // タイトル無しの記事は本文の書き出しをタイトルにするため、本文を直して
     // 再投稿すると確定タイトルが変わる。PR タイトルも同じ値に揃え、マージ後の
     // X 投稿文（publishStatus が pr.title を参照する）が古いタイトルのままにならないようにする。
     const prTitle = title || commitMessage;
-    if (existingPr.title !== prTitle) {
-      await gh.updatePull({ number: existingPr.number, title: prTitle });
+    if (openPr.title !== prTitle) {
+      await gh.updatePull({ number: openPr.number, title: prTitle });
       onLog(`PR タイトルを更新しました: ${prTitle}`);
     }
-    await store.writeDraft(id, { pr: existingPr.html_url });
+    await store.writeDraft(id, { pr: openPr.html_url });
     return {
-      branch,
+      branch: openBranch,
       file,
-      prUrl: existingPr.html_url,
+      prUrl: openPr.html_url,
       url: publicUrl(draft.category, slug),
       slug,
       title,
