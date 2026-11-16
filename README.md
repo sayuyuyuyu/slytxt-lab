@@ -4,7 +4,7 @@
 [![Last commit](https://img.shields.io/github/last-commit/sayuyuyuyu/slytxt-lab)](https://github.com/sayuyuyuyu/slytxt-lab/commits/main)
 [![Website](https://img.shields.io/badge/website-slytxt.dev-blue)](https://slytxt.dev/)
 
-個人のメモと制作物を置くサイト [slytxt.dev](https://slytxt.dev/) のソースです。Astro / TypeScript / Tailwind CSS / Pagefind で作り、Cloudflare Pages で配信しています（`slytxt.pages.dev` も同じものを返します）。
+個人のメモと制作物を置くサイト [slytxt.dev](https://slytxt.dev/) のソースです。Astro / TypeScript / Pagefind で作り、Cloudflare Pages で配信しています（`slytxt.pages.dev` も同じものを返します）。CSS は `src/styles/global.css` に手で書き、ブラウザ間の差異を埋めるリセット（Tailwind の preflight）だけを Tailwind から借りています。スタイルは Tailwind のユーティリティではなく独自クラスで当てます。
 
 コンテンツは `src/content/` に置きます（技術記事は `tech/`、それ以外の記事は `journal/`、短いメモは `notes/`、制作物は `projects/`）。
 
