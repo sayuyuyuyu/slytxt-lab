@@ -499,7 +499,8 @@ function fakeGitHub() {
     nextPr: 1,
     updateCount: 0,
     updateBranchFails: false,
-    mergeSabotageBehindOnce: false
+    mergeSabotageBehindOnce: false,
+    mergeInProgressOnce: false
   };
   const respond = (status, body) =>
     status === 204
@@ -647,6 +648,11 @@ function fakeGitHub() {
         pr.mergeable_state = "behind";
         return respond(405, { message: "Pull Request is not mergeable" });
       }
+      if (state.mergeInProgressOnce) {
+        // 別の主体（Cron の見届け）が同じ PR をマージしている最中の応答。
+        state.mergeInProgressOnce = false;
+        return respond(405, { message: "Merge already in progress" });
+      }
       if (pr.mergeable_state === "behind" || pr.mergeable_state === "dirty") {
         return respond(405, { message: "Pull Request is not mergeable" });
       }
@@ -732,6 +738,31 @@ test("publish冪等: BEHIND はブランチ更新で回復し、次の確認で�
     assert.equal(step2.state, "merged");
     assert.equal(pr.merged, true);
     // 後片付けで下書きが消えている。
+    await assert.rejects(() => store.readDraft(draft.id));
+  });
+});
+
+test("publish冪等: 別の主体がマージ中（405 Merge already in progress）なら失敗にせず待つ", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const store = createDraftStore(memoryKv());
+    const draft = await store.createDraft({ title: "競合テスト", category: "notes" });
+    await store.writeDraft(draft.id, { body: "本文です。" });
+    await publishPost({ env: testEnv, store, id: draft.id });
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+
+    // Cron の見届けが同じ PR のマージを実行中だと 405 が返る。
+    // ここで失敗を返すと、実際には成功した公開が失敗として表示される。
+    gh.state.mergeInProgressOnce = true;
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "waiting");
+    assert.equal(pr.merged, false);
+
+    // 次の確認でマージまで収束する。
+    const merged = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(merged.state, "merged");
+    assert.equal(pr.merged, true);
     await assert.rejects(() => store.readDraft(draft.id));
   });
 });

@@ -879,6 +879,16 @@ async function publishStatusInner({ env, store, id }) {
   try {
     await gh.mergePull(pr.number, pr.title ?? base.title);
   } catch (error) {
+    // 同じ PR の merge を別の主体（毎分動く Cron の見届け）が実行している
+    // 最中だと、GitHub は 405 "Merge already in progress" を返す。merge は
+    // 進んでいるので失敗ではなく待ちにし、次の確認で merged を拾う。
+    if (
+      error instanceof GitHubError &&
+      error.status === 405 &&
+      /already in progress/i.test(error.message)
+    ) {
+      return { ...withPr, state: "waiting" };
+    }
     // マージを試みた時点で状態が変わっていることがある（main が進んで
     // BEHIND になった等）。実状態を取り直してから判断し直す。
     const after = await gh.getPull(pr.number).catch(() => null);
