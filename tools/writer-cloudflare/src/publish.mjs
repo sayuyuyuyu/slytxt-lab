@@ -214,19 +214,16 @@ async function createReeditPull({
   commitMessage,
   onLog
 }) {
-  const { data: existingData } = parseFrontmatter(decodeContentText(existing) ?? "");
-  const content = stringifyFrontmatter(
-    {
-      title,
-      description,
-      published: existingData.published || published,
-      updated: today(),
-      tags,
-      cover: publicCover || undefined
-    },
-    publicBody,
-    extrasForPublished(draft, title === "" ? ['title: ""'] : [])
-  );
+  const content = reeditContent({
+    draft,
+    source: existing,
+    title,
+    description,
+    published,
+    tags,
+    publicCover,
+    publicBody
+  });
   const baseSha = await gh.getMainSha();
   if (await gh.getBranch(branch)) {
     // PR の無い残りブランチは作り直す。
@@ -264,10 +261,11 @@ async function createReeditPull({
 }
 
 /**
- * カテゴリ移動の公開ファイル中身。公開日は元の記事から引き継ぎ、
- * updated は再編集日（today()）にする（createReeditPull と同じ）。
+ * 再編集の公開ファイル中身。公開日は元の記事から引き継ぎ、
+ * updated は再編集日（today()）にする。
+ * createReeditPull とカテゴリ移動の両方から使う共通ヘルパー。
  */
-function categoryMoveContent({
+function reeditContent({
   draft,
   source,
   title,
@@ -337,7 +335,7 @@ async function createCategoryMovePull({
   commitMessage,
   onLog
 }) {
-  const content = categoryMoveContent({
+  const content = reeditContent({
     draft,
     source,
     title,
@@ -409,7 +407,7 @@ async function updateCategoryMovePull({
   existingPr
 }) {
   onLog(`既存の PR を更新します: ${existingPr.html_url}`);
-  const content = categoryMoveContent({
+  const content = reeditContent({
     draft,
     source,
     title,
