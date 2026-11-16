@@ -580,7 +580,11 @@ function fakeGitHub() {
     }
     if (path.startsWith("/contents/") && method === "PUT") {
       const file = decodeURIComponent(path.slice("/contents/".length));
-      state.branchFiles.set(`${body.branch}:${file}`, body.content);
+      const key = `${body.branch}:${file}`;
+      state.branchFiles.set(key, body.content);
+      // 同じブランチで削除したファイルを書き戻したら、削除の記録も消える
+      // （実 API と同じく、マージ時に消してしまうことがない）。
+      state.deletes.delete(key);
       return respond(201, { content: { sha: `blob-${file}` } });
     }
     if (path.startsWith("/contents/") && method === "DELETE") {
@@ -1273,6 +1277,58 @@ test("published: 再編集の PR が開いている間に再投稿しても公�
     assert.match(body, /再編集の本文 v3/);
     assert.equal(data.published, "2026-02-03");
     assert.equal(data.updated, today());
+  });
+});
+
+test("published: 移動 PR が開いている間に元のカテゴリへ戻しても複製が残らない", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const sourceFile = "src/content/notes/2026-02-03-import-me.md";
+    const movedFile = "src/content/tech/2026-02-03-import-me.md";
+    gh.state.mainFiles.set(
+      sourceFile,
+      b64(
+        "---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1]\n---\n\n公開時の本文 v1\n"
+      )
+    );
+    const store = createDraftStore(memoryKv());
+    const { draft } = await openPublished({
+      env: testEnv,
+      store,
+      category: "notes",
+      slug: "2026-02-03-import-me"
+    });
+
+    // notes → tech の移動 PR を開く（接頭辞が note/ から write/ に変わる）。
+    await store.writeDraft(draft.id, { category: "tech", body: "書き換えた本文 v2" });
+    const first = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(first.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+
+    // マージ前に元の notes へ戻して再投稿する。
+    await store.writeDraft(draft.id, { category: "notes", body: "書き換えた本文 v3" });
+    const second = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(second.state, "waiting");
+
+    // 新しい PR は作らず、開いている移動 PR のブランチを使い続ける。
+    assert.equal(gh.state.pulls.length, 1);
+    assert.equal(second.prUrl, first.prUrl);
+
+    // ブランチに残るのは最後に選んだ notes のファイルだけ。
+    assert.ok(gh.state.branchFiles.has(`write/${draft.id}:${sourceFile}`));
+    assert.equal(gh.state.branchFiles.has(`write/${draft.id}:${movedFile}`), false);
+    assert.ok(gh.state.deletes.has(`write/${draft.id}:${movedFile}`));
+
+    // マージ後も tech 側に複製が残らない。
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "merged");
+    assert.equal(gh.state.mainFiles.has(movedFile), false);
+    const merged = Buffer.from(gh.state.mainFiles.get(sourceFile), "base64").toString();
+    const { data, body } = parseFrontmatter(merged);
+    assert.match(body, /書き換えた本文 v3/);
+    assert.equal(data.published, "2026-02-03");
   });
 });
 
