@@ -14,14 +14,14 @@
 
 ## 準備
 
-1. D1 を作る（サイト側と同じデータベース）。
+1. D1 のテーブルを適用する（データベース `slytxt-feed` は作成済みで、ID は `wrangler.toml` に設定済み）。リポジトリのルートで実行する。
 
    ```sh
-   npx wrangler d1 create slytxt-feed
-   npx wrangler d1 execute slytxt-feed --remote --file db/feed/0001_init.sql
+   cd ~/works/slytxt-lab
+   npx wrangler@latest d1 execute slytxt-feed --remote --file db/feed/0001_init.sql
    ```
 
-2. `wrangler.toml` の `database_id` を、1 で返った ID に差し替える。
+2. 作り直した場合だけ、`wrangler.toml` の `database_id` を新しい ID に差し替える。バインディング名は `FEED` のまま（コードが `env.FEED` を読む）。
 3. Cloudflare Access で `feed.slytxt.dev` にアプリケーションを作り、本人のメールアドレスだけを許可する（writer と同じ設定）。
 4. デプロイする。
 
