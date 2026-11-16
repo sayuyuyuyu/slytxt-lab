@@ -35,6 +35,7 @@ let checkedRedirects = 0;
 let checkedHeaders = 0;
 let checkedNoindex = 0;
 let checkedSkipLinks = 0;
+let checkedHeadLinks = 0;
 let checkedStructured = 0;
 let checkedAriaRefs = 0;
 let checkedImgAlts = 0;
@@ -316,6 +317,22 @@ for (const file of htmlFiles) {
   if (/<a\b[^>]*\bhref="#main-content"[^>]*>/.test(html))
     checkedSkipLinks++;
   else issues.push(`${relative}: missing skip link`);
+  // head の link 要素は、href 自体が消えると本文のリンク走査では検出できない。
+  // RSS の自動検出と favicon 3点は 404 を含む全ページで出す前提で見る。
+  const headLinks = [...html.matchAll(/<link\b[^>]*>/g)].map((match) => match[0]);
+  const hasHeadLink = (rel, href) =>
+    headLinks.some(
+      (tag) => tag.includes(`rel="${rel}"`) && tag.includes(`href="${href}"`),
+    );
+  for (const [rel, href] of [
+    ["alternate", "/rss.xml"],
+    ["icon", "/favicon.svg"],
+    ["icon", "/favicon.ico"],
+    ["apple-touch-icon", "/apple-touch-icon.png"],
+  ]) {
+    if (hasHeadLink(rel, href)) checkedHeadLinks++;
+    else issues.push(`${relative}: missing <link rel="${rel}" href="${href}">`);
+  }
   const robotsContent = metaContent("name", "robots");
   const expectsNoindex = relative === "404.html" || relative === "search/index.html";
   if (expectsNoindex) {
@@ -660,5 +677,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedThemeColors} theme colors, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedThemeColors} theme colors, ${checkedHeadLinks} head links, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
 );
