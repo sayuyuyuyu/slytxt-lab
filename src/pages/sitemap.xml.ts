@@ -64,6 +64,9 @@ export async function GET(context: APIContext) {
       ? [{ path: "/articles/journal/", lastmod: latestDate(journal) }]
       : []),
     ...(notes.length > 0 ? [{ path: "/notes/", lastmod: latestDate(notes) }] : []),
+    // /feed/ の中身は D1 からリクエスト時に読むので、ビルド時には最終更新日を
+    // 知る手立てが無い。lastmod は付けない（About と同じ扱い）。
+    { path: "/feed/" },
     ...(projects.length > 0 ? [{ path: "/projects/", lastmod: latestDate(projects) }] : []),
     ...(tags.size > 0 ? [{ path: "/tags/", lastmod: allLatest }] : []),
     { path: "/about/" }

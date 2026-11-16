@@ -1,0 +1,20 @@
+---
+import PageHeader from "@/components/PageHeader.astro";
+import { site } from "@/lib/site";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+// このページは静的ビルドの雛形で、投稿一覧は Pages Functions
+// （functions/feed/index.ts）が D1 から読んで差し込む。
+// 差し込み位置は <!--feed:start--> と <!--feed:end--> の間。
+// 目印を消すと本番で一覧が出なくなるので、check-build で存在を検証している。
+---
+<BaseLayout title={`Feed - ${site.name}`} description="短文のフィード。記事にするほどではないメモや写真を置いています。">
+  <PageHeader eyebrow="feed" title="Feed" />
+  <section class="listing" aria-label="Feed">
+    <div class="container">
+      <div class="feed" data-pagefind-ignore>
+        <!--feed:start--><p class="feed-empty">まだ投稿がありません。</p><!--feed:end-->
+      </div>
+    </div>
+  </section>
+</BaseLayout>
