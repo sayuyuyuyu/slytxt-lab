@@ -594,10 +594,26 @@ async function publishPostInner({ env, store, id, onLog }) {
       });
     }
     onLog(`既存の PR を更新します: ${existingPr.html_url}`);
+    // 公開済みファイルがある（＝再編集）なら、PR が開いている間の再投稿でも
+    // 再編集の規約で書き直す。通常投稿用の content をそのまま書くと、
+    // 公開日が再投稿日に変わり updated が消える。
+    const publishedFile = await gh.getContent(file, "main");
+    const branchContent = publishedFile
+      ? reeditContent({
+          draft,
+          source: publishedFile,
+          title,
+          description,
+          published,
+          tags,
+          publicCover,
+          publicBody
+        })
+      : content;
     const current = await gh.getContent(file, branch);
     await gh.putContent({
       path: file,
-      content,
+      content: branchContent,
       message: commitMessage,
       branch,
       sha: current?.sha

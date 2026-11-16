@@ -1234,6 +1234,48 @@ test("published: カテゴリ移動の PR が開いている間に別カテゴ�
   });
 });
 
+test("published: 再編集の PR が開いている間に再投稿しても公開日と updated を保つ", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const file = "src/content/journal/2026-02-03-import-me.md";
+    gh.state.mainFiles.set(
+      file,
+      b64(
+        "---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1]\n---\n\n公開時の本文 v1\n"
+      )
+    );
+    const store = createDraftStore(memoryKv());
+    const { draft } = await openPublished({
+      env: testEnv,
+      store,
+      category: "journal",
+      slug: "2026-02-03-import-me"
+    });
+
+    await store.writeDraft(draft.id, { body: "再編集の本文 v2" });
+    const first = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(first.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+
+    // PR が開いている間にさらに直して再投稿する。
+    await store.writeDraft(draft.id, { body: "再編集の本文 v3" });
+    const again = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(again.state, "waiting");
+    assert.equal(gh.state.pulls.length, 1);
+    assert.equal(again.prUrl, first.prUrl);
+
+    // ブランチ上でも公開日は元の記事の日付のまま、updated は再編集日になる。
+    const text = Buffer.from(
+      gh.state.branchFiles.get(`write/${draft.id}:${file}`),
+      "base64"
+    ).toString();
+    const { data, body } = parseFrontmatter(text);
+    assert.match(body, /再編集の本文 v3/);
+    assert.equal(data.published, "2026-02-03");
+    assert.equal(data.updated, today());
+  });
+});
+
 test("published: Worker の /api/published と開く導線が往復する", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
