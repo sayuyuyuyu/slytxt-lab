@@ -2200,13 +2200,14 @@ test("driver: listPublishResults は壊れたレコードを落として新し�
 });
 
 test("driver: scheduled ハンドラは見届けを waitUntil に渡して最後まで待てる", async () => {
-  let captured = null;
+  /** @type {Promise<unknown>[]} */
+  const captured = [];
   const ctx = {
     waitUntil(promise) {
-      captured = promise;
+      captured.push(promise);
     }
   };
   await writerWorker.scheduled({}, { DRAFTS: memoryKv() }, ctx);
-  assert.ok(captured instanceof Promise, "waitUntil に Promise が渡る");
-  await captured;
+  assert.equal(captured.length, 1, "waitUntil に Promise が渡る");
+  await captured[0];
 });
