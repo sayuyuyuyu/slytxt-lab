@@ -1,0 +1,16 @@
+# ローカルで D1 を触るための設定。本番のバインディングは Cloudflare の
+# ダッシュボード（Pages → Settings → Bindings）で設定するので、この
+# ファイルはデプロイには使わない。
+#
+#   npx wrangler d1 execute slytxt-feed --local --config db/feed/wrangler.local.toml \
+#     --file db/feed/0001_init.sql
+#
+# 状態は db/feed/.wrangler/state に置かれる（.gitignore 済み）。
+name = "slytxt-feed-local"
+compatibility_date = "2025-06-01"
+
+[[d1_databases]]
+binding = "FEED"
+database_name = "slytxt-feed"
+# ローカル専用のダミー ID。本番の ID とは関係ない。
+database_id = "00000000-0000-0000-0000-000000000000"

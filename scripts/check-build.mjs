@@ -41,6 +41,7 @@ let checkedHeaders = 0;
 let checkedNoindex = 0;
 let checkedSkipLinks = 0;
 let checkedHeadLinks = 0;
+let checkedFeedMarkers = 0;
 let checkedStructured = 0;
 let checkedAriaRefs = 0;
 let checkedImgAlts = 0;
@@ -314,6 +315,12 @@ for (const file of htmlFiles) {
       else if (ref) issues.push(`${relative}: label for references missing id "${ref}"`);
     }
   }
+  // /feed/ は静的ビルドの雛形で、一覧は Pages Functions が目印の間に差し込む。
+  if (relative === "feed/index.html") {
+    for (const marker of ["<!--feed:start-->", "<!--feed:end-->"])
+      if (html.includes(marker)) checkedFeedMarkers++;
+      else issues.push(`${relative}: missing ${marker}`);
+  }
   if (!html.includes('id="main-content"'))
     issues.push(`${relative}: missing skip-link target`);
   if (/<a\b[^>]*\bhref="#main-content"[^>]*>/.test(html))
@@ -497,7 +504,10 @@ if (sitemap !== null) {
     // 一覧・タグ・ページ送りは載っているエントリの最新日、トップとタグ一覧は
     // サイト全体の最新日。About は本文がページファイル内の静的な文章なので
     // 更新日を持たず、付けない（生成側 src/pages/sitemap.xml.ts の説明と対応）。
-    const skipsLastmod = expected === new URL("/about/", SITE_ORIGIN).href;
+    // About と Feed はビルド時に更新日を知る手立てが無いので lastmod を付けない。
+    const skipsLastmod = ["/about/", "/feed/"].some(
+      (path) => expected === new URL(path, SITE_ORIGIN).href,
+    );
     const lastmod = lastmods.get(expected);
     if (skipsLastmod) {
       if (lastmod !== undefined)
@@ -704,5 +714,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedThemeColors} theme colors, ${checkedHeadLinks} head links, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapLastmods} sitemap lastmods, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedThemeColors} theme colors, ${checkedHeadLinks} head links, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapLastmods} sitemap lastmods, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links, ${checkedFeedMarkers} feed markers and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
 );

@@ -107,7 +107,8 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
           { href: "/articles/journal/", label: categoryLabels.journal }
         ]
       },
-      { href: "/notes/", label: categoryLabels.notes }
+      { href: "/notes/", label: categoryLabels.notes },
+      { href: "/feed/", label: "Feed" }
     ]
   },
   {
