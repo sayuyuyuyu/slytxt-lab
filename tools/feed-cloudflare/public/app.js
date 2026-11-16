@@ -155,6 +155,13 @@ async function loadRecent() {
         body.className = "recent__body";
         body.textContent = post.body;
         li.append(time, body);
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "button recent__remove";
+        remove.textContent = "削除";
+        remove.addEventListener("click", () => void removePost(post, remove));
+        li.append(remove);
         return li;
       })
     );
@@ -166,6 +173,25 @@ async function loadRecent() {
     }
   } catch {
     els.recent.replaceChildren();
+  }
+}
+
+/** 論理削除。画像の実体は R2 に残るので、必要なら手で消す（README 参照）。 */
+async function removePost(post, button) {
+  if (!confirm("この投稿を削除しますか？（公開一覧から外れます）")) return;
+  button.disabled = true;
+  try {
+    const response = await fetch(`/api/posts/${encodeURIComponent(post.id)}`, {
+      method: "DELETE",
+      headers: { "x-slytxt-client": "1" }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error ?? `削除に失敗しました (${response.status})`);
+    setStatus("削除しました。");
+    void loadRecent();
+  } catch (error) {
+    button.disabled = false;
+    setStatus(error.message, "error");
   }
 }
 

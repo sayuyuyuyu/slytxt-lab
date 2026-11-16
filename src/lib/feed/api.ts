@@ -8,7 +8,7 @@
  * 書き込みは writer と同じ作法で、独自ヘッダ x-slytxt-client と同一オリジン
  * だけを許可する（Cloudflare Access が入口を守る前提の二重の防御）。
  */
-import { createFeedPost, readFeedPage } from "./store.ts";
+import { createFeedPost, deleteFeedPost, readFeedPage } from "./store.ts";
 import {
   IMAGE_TYPES,
   MAX_BODY_LENGTH,
@@ -171,6 +171,16 @@ async function listPosts(request: Request, env: FeedApiEnv): Promise<Response> {
   return json({ posts, nextBefore });
 }
 
+const POST_ID = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+
+async function deletePost(request: Request, env: FeedApiEnv, id: string): Promise<Response> {
+  if (!env.FEED) return error("フィードのデータベース（D1）が未設定です。", 500);
+  if (!POST_ID.test(id)) return error("投稿 ID が不正です。", 400);
+  const removed = await deleteFeedPost(env.FEED, id, new Date().toISOString());
+  if (!removed) return error("投稿が見つかりません。", 404);
+  return json({ id, deleted: true });
+}
+
 export async function handleFeedApi({ request, env }: FeedApiContext): Promise<Response> {
   const { pathname } = new URL(request.url);
   const method = request.method ?? "GET";
@@ -178,6 +188,9 @@ export async function handleFeedApi({ request, env }: FeedApiContext): Promise<R
   if (STATE_CHANGING.has(method) && !writeAllowed(request)) {
     return error("別のオリジンからの書き込みは受け付けません。", 403);
   }
+
+  const post = pathname.match(/^\/api\/posts\/([^/]+)$/);
+  if (post && method === "DELETE") return deletePost(request, env, post[1]);
 
   if (pathname === "/api/posts" && method === "GET") return listPosts(request, env);
   if (pathname === "/api/posts" && method === "POST") return createPost(request, env);
