@@ -1,5 +1,5 @@
 import type { APIContext } from "astro";
-import { pageCount } from "@/lib/pagination";
+import { PAGE_SIZE, pageCount, paginateEntries } from "@/lib/pagination";
 import {
   getAllArticles,
   getAllEntries,
@@ -10,12 +10,35 @@ import {
   getNotes,
   getProjects
 } from "@/lib/content";
-import { collectTags, tagPath } from "@/lib/tags";
+import type { SiteEntry } from "@/lib/content";
+import { collectTags, slugifyTag, tagPath } from "@/lib/tags";
 import { escapeXml } from "@/lib/xml";
 
 function urlNode(site: URL, path: string, lastmod?: Date): string {
   const loc = new URL(path, site).href;
   return `<url><loc>${escapeXml(loc)}</loc>${lastmod ? `<lastmod>${lastmod.toISOString()}</lastmod>` : ""}</url>`;
+}
+
+/** 一覧に載るエントリの最新日。中身が入れ替われば変わるので lastmod に使う。 */
+function latestDate(entries: SiteEntry[]): Date | undefined {
+  let latest: Date | undefined;
+  for (const entry of entries) {
+    const date = getEntryDate(entry);
+    if (!latest || date.getTime() > latest.getTime()) latest = date;
+  }
+  return latest;
+}
+
+/** ページ送り（2ページ目以降）の URL と、そのページに載るエントリの最新日。 */
+function pagedUrls(entries: SiteEntry[], basePath: string) {
+  return Array.from(
+    { length: Math.max(0, pageCount(entries.length) - 1) },
+    (_, index) => {
+      const page = index + 2;
+      const pageEntries = paginateEntries(entries, basePath, page, PAGE_SIZE).entries;
+      return { path: `${basePath}/page/${page}/`, lastmod: latestDate(pageEntries) };
+    }
+  );
 }
 
 export async function GET(context: APIContext) {
@@ -29,41 +52,44 @@ export async function GET(context: APIContext) {
     getProjects()
   ]);
   const tags = collectTags(entries);
-  const staticPaths = [
-    "/",
-    ...(articles.length > 0 ? ["/articles/"] : []),
-    ...(tech.length > 0 ? ["/articles/tech/"] : []),
-    ...(journal.length > 0 ? ["/articles/journal/"] : []),
-    ...(notes.length > 0 ? ["/notes/"] : []),
-    ...(projects.length > 0 ? ["/projects/"] : []),
-    ...(tags.size > 0 ? ["/tags/"] : []),
-    "/about/"
+  const allLatest = latestDate(entries);
+  // トップ・タグ一覧はサイト全体、各一覧はその一覧に載るエントリの最新日。
+  // About だけは本文がページファイル内の静的な文章で、更新日を持たないため
+  // lastmod を付けない。
+  const staticUrls: { path: string; lastmod?: Date }[] = [
+    { path: "/", lastmod: allLatest },
+    ...(articles.length > 0 ? [{ path: "/articles/", lastmod: latestDate(articles) }] : []),
+    ...(tech.length > 0 ? [{ path: "/articles/tech/", lastmod: latestDate(tech) }] : []),
+    ...(journal.length > 0
+      ? [{ path: "/articles/journal/", lastmod: latestDate(journal) }]
+      : []),
+    ...(notes.length > 0 ? [{ path: "/notes/", lastmod: latestDate(notes) }] : []),
+    ...(projects.length > 0 ? [{ path: "/projects/", lastmod: latestDate(projects) }] : []),
+    ...(tags.size > 0 ? [{ path: "/tags/", lastmod: allLatest }] : []),
+    { path: "/about/" }
   ];
 
-  const paged = (count: number, base: string) =>
-    Array.from(
-      { length: Math.max(0, pageCount(count) - 1) },
-      (_, index) => `${base}/page/${index + 2}/`
-    );
-
-  const tagPagePaths = Array.from(tags.keys()).flatMap((slug) =>
-    paged(getEntriesByTag(entries, slug).length, `/tags/${slug}`)
-  );
-
-  const pagePaths = [
-    ...paged(articles.length, "/articles"),
-    ...paged(tech.length, "/articles/tech"),
-    ...paged(journal.length, "/articles/journal"),
-    ...paged(notes.length, "/notes"),
-    ...paged(projects.length, "/projects"),
-    ...tagPagePaths
+  const pageUrls = [
+    ...pagedUrls(articles, "/articles"),
+    ...pagedUrls(tech, "/articles/tech"),
+    ...pagedUrls(journal, "/articles/journal"),
+    ...pagedUrls(notes, "/notes"),
+    ...pagedUrls(projects, "/projects"),
+    ...Array.from(tags.keys()).flatMap((slug) =>
+      pagedUrls(getEntriesByTag(entries, slug), `/tags/${slug}`)
+    )
   ];
+
+  const tagUrls = Array.from(tags.values()).flatMap((tag) => {
+    const tagEntries = getEntriesByTag(entries, slugifyTag(tag));
+    return [{ path: tagPath(tag), lastmod: latestDate(tagEntries) }];
+  });
 
   const urls = [
-    ...staticPaths.map((path) => urlNode(site, path)),
-    ...pagePaths.map((path) => urlNode(site, path)),
-    ...entries.map((entry) => urlNode(site, getEntryPath(entry), getEntryDate(entry))),
-    ...Array.from(tags.values()).map((tag) => urlNode(site, tagPath(tag)))
+    ...staticUrls.map((url) => urlNode(site, url.path, url.lastmod)),
+    ...pageUrls.map((url) => urlNode(site, url.path, url.lastmod)),
+    ...tagUrls.map((url) => urlNode(site, url.path, url.lastmod)),
+    ...entries.map((entry) => urlNode(site, getEntryPath(entry), getEntryDate(entry)))
   ];
 
   return new Response(`<?xml version="1.0" encoding="UTF-8"?>

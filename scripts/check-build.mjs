@@ -493,20 +493,20 @@ if (sitemap !== null) {
     }
     if (locUrls.has(expected)) checkedSitemapPages++;
     else issues.push(`sitemap.xml: public page not listed ${expected}`);
-    // lastmod は記事・メモ・Projects の詳細ページだけに付く（生成側の
-    // urlNode が getEntryDate を渡す URL）。一覧やタグには付けない。
-    const isDetail =
-      /^(?:articles\/(?:tech|journal)|notes|projects)\/[^/]+\/index\.html$/.test(
-        relative,
-      );
+    // lastmod は About 以外のすべての URL に付く。詳細はそのエントリの日付、
+    // 一覧・タグ・ページ送りは載っているエントリの最新日、トップとタグ一覧は
+    // サイト全体の最新日。About は本文がページファイル内の静的な文章なので
+    // 更新日を持たず、付けない（生成側 src/pages/sitemap.xml.ts の説明と対応）。
+    const skipsLastmod = expected === new URL("/about/", SITE_ORIGIN).href;
     const lastmod = lastmods.get(expected);
-    if (isDetail) {
-      if (!lastmod) issues.push(`sitemap.xml: missing lastmod ${expected}`);
-      else if (!isIsoTime(lastmod))
-        issues.push(`sitemap.xml: lastmod is not an ISO time ${expected}: ${lastmod}`);
+    if (skipsLastmod) {
+      if (lastmod !== undefined)
+        issues.push(`sitemap.xml: unexpected lastmod ${expected}`);
       else checkedSitemapLastmods++;
-    } else if (lastmod !== undefined) {
-      issues.push(`sitemap.xml: unexpected lastmod ${expected}`);
+    } else if (!lastmod) {
+      issues.push(`sitemap.xml: missing lastmod ${expected}`);
+    } else if (!isIsoTime(lastmod)) {
+      issues.push(`sitemap.xml: lastmod is not an ISO time ${expected}: ${lastmod}`);
     } else checkedSitemapLastmods++;
   }
 }
