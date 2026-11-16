@@ -12,13 +12,13 @@ routes = [{ pattern = "feed.slytxt.dev", custom_domain = true }]
 directory = "./public"
 binding = "ASSETS"
 
-# 公開一覧（slytxt.dev/feed/）と同じ D1。作成は
-#   npx wrangler d1 create slytxt-feed
-# で行い、返った database_id をここへ入れる（db/feed/README.md）。
+# 公開一覧（slytxt.dev/feed/）と同じ D1。`npx wrangler d1 create slytxt-feed`
+# で作ったもの。バインディング名はコードが env.FEED を読むので FEED のままにする
+# （Pages 側の D1 バインディングも FEED で揃える）。
 [[d1_databases]]
 binding = "FEED"
 database_name = "slytxt-feed"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "570b8c9d-6ef3-4733-9de3-cf4b70f67c4f"
 
 # 公開メディアの R2（writer / media Worker と共有）。フィードの画像は
 # 最初から pub/ に置き、media.slytxt.dev から配信する。
