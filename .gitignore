@@ -19,3 +19,6 @@ drafts/
 # Playwright (E2E)
 test-results/
 playwright-report/
+
+# Obsidian プラグインのビルド成果物（node esbuild.config.mjs で生成）。
+tools/obsidian-slytxt/main.js

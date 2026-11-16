@@ -30,6 +30,7 @@ pnpm test:e2e     # Playwright で主要フローを確認（手順は e2e/READM
 - [アーキテクチャ](docs/architecture.md) — 全体構成と公開フロー
 - [執筆ツール](tools/writer-cloudflare/README.md) — writer の構成とデプロイ手順
 - [短文フィード](db/feed/README.md) — D1 に置く短文と公開一覧（`/feed/`）。投稿画面は [feed-cloudflare](tools/feed-cloudflare/README.md)
+- [Obsidian プラグイン](tools/obsidian-slytxt/README.md) — Obsidian から PR で公開する
 - [公開メディア配信](tools/media-cloudflare/README.md) — media.slytxt.dev の Worker
 - [健康状態の受け口](tools/status-cloudflare/README.md) — status.slytxt.dev の Worker
 - [E2E テスト](e2e/README.md) — Playwright の手順
