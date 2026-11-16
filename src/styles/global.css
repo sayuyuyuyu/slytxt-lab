@@ -1,4 +1,9 @@
-@import "tailwindcss";
+/* Tailwind から使うのは preflight（リセット）だけ。ユーティリティは
+   マークアップで使っておらず、自動のコンテンツ走査が本文の単語（hidden、
+   grid 等）を拾って未使用ユーティリティを生成し、本体のクラス名（.container）
+   と衝突していた。source(none) で走査を止め、preflight だけを残す。
+   ユーティリティを追加するときは @source を明示すること。 */
+@import "tailwindcss" source(none);
 
 /* ---------------------------------------------------------------------------
    Blue-black terminal palette.
