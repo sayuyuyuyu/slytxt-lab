@@ -1,0 +1,4 @@
+/* 公開モーダルの最小限の調整。Obsidian の既定スタイルに乗せる。 */
+.modal-content .setting-item-description {
+  white-space: pre-wrap;
+}
