@@ -133,11 +133,20 @@ for (const file of htmlFiles) {
   // The default OG image shows only the site name and description, so its
   // alt must be the site name, not the page title.
   const imageAlt = ogImagePath === "/og/site.png" ? "slytxt.lab" : title;
+  // 記事・メモの詳細ページだけが ArticleLayout / NoteLayout を使い、
+  // og:type=article と article:* の日時メタを出す。パスの形から決める。
+  const isArticle =
+    /^articles\/(?:tech|journal)\/[^/]+\/index\.html$/.test(relative) ||
+    /^notes\/[^/]+\/index\.html$/.test(relative);
   for (const [attr, name, expected] of [
     ["property", "og:title", title],
     ["property", "og:description", description],
+    ["property", "og:type", isArticle ? "article" : "website"],
+    ["property", "og:site_name", "slytxt.lab"],
+    ["property", "og:locale", "ja_JP"],
     ["name", "twitter:title", title],
     ["name", "twitter:description", description],
+    ["name", "twitter:site", "@sybtxt"],
     ["property", "og:image:alt", imageAlt],
     ["name", "twitter:image:alt", imageAlt],
     ["property", "og:image:width", "1200"],
@@ -153,7 +162,8 @@ for (const file of htmlFiles) {
   }
   // article:* の日時メタは BaseLayout が og:type=article のときだけ出す。
   // 欠落・破損と、article でないページへの混入の両方を検出する。
-  const isArticle = metaContent("property", "og:type") === "article";
+  // 分岐は og:type の値ではなくページ種別で決める。og:type が欠落した
+  // ページを「article でないページ」として素通りさせないため。
   const publishedTime = metaContent("property", "article:published_time");
   const modifiedTime = metaContent("property", "article:modified_time");
   const isIsoTime = (value) =>
@@ -210,7 +220,7 @@ for (const file of htmlFiles) {
       issues.push(`${relative}: ProfilePage JSON-LD missing Person mainEntity`);
     else checkedStructured++;
   }
-  if (metaContent("property", "og:type") === "article") {
+  if (isArticle) {
     const postingLd = jsonLdItems.find((item) => item?.["@type"] === "BlogPosting");
     if (!postingLd) issues.push(`${relative}: missing BlogPosting JSON-LD`);
     else {
