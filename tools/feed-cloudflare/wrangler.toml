@@ -1,0 +1,27 @@
+name = "slytxt-feed"
+main = "src/index.mjs"
+compatibility_date = "2025-06-01"
+
+# 入口はカスタムドメイン（feed.slytxt.dev）のみ。Cloudflare Access で本人だけに
+# 絞る前提なので、workers.dev は使わない。
+workers_dev = false
+routes = [{ pattern = "feed.slytxt.dev", custom_domain = true }]
+
+# 投稿画面（PWA）の静的ファイル。
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# 公開一覧（slytxt.dev/feed/）と同じ D1。作成は
+#   npx wrangler d1 create slytxt-feed
+# で行い、返った database_id をここへ入れる（db/feed/README.md）。
+[[d1_databases]]
+binding = "FEED"
+database_name = "slytxt-feed"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# 公開メディアの R2（writer / media Worker と共有）。フィードの画像は
+# 最初から pub/ に置き、media.slytxt.dev から配信する。
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "slytxt-writer-media"
