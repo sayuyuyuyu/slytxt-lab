@@ -90,6 +90,22 @@ export async function readFeedPage(
   return { posts, nextBefore };
 }
 
+/**
+ * 投稿を論理削除する。画像は R2 に残るので、実体の削除は手で行う
+ * （tools/feed-cloudflare/README.md の手順）。公開一覧からは即座に消える。
+ */
+export async function deleteFeedPost(db: FeedDatabase, id: string, at: string): Promise<boolean> {
+  const result = (await db
+    .prepare(
+      `UPDATE feed_posts SET deleted_at = ?2 WHERE id = ?1 AND deleted_at IS NULL`
+    )
+    .bind(id, at)
+    .run()) as { meta?: { changes?: number } } | undefined;
+  const changes = result?.meta?.changes;
+  // D1 は changes を返すが、返さない実装（テストの代返など）では true 扱いにする。
+  return changes === undefined ? true : changes > 0;
+}
+
 /** 投稿を1件作る（投稿用 Worker から使う）。 */
 export async function createFeedPost(
   db: FeedDatabase,

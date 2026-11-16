@@ -8,6 +8,7 @@
 | `POST /api/media` | 画像を1枚アップロード（`content-type` は image/jpeg・png・gif・webp、8MB まで）。R2 の `pub/` に置き、`{key, url}` を返す |
 | `POST /api/posts` | `{body, images:[{key, alt}]}` を保存。本文の最初の URL から OGP を取ってリンクカードを作る |
 | `GET /api/posts` | 直近の投稿（`?before=<ISO 8601>` でカーソル） |
+| `DELETE /api/posts/<id>` | 論理削除（公開一覧から外れる。画像の実体は R2 に残る） |
 
 実装は `src/index.mjs`（Worker の入口）と、サイト側の `src/lib/feed/api.ts`（処理本体）・`src/lib/feed/compose.ts`（検証・ID・OGP）です。書き込みは writer と同じく `x-slytxt-client: 1` と同一オリジンを要求します（入口の Cloudflare Access と合わせて二重に守る）。
 
@@ -44,6 +45,16 @@ npx wrangler dev --port 8791
 curl -s -X POST http://127.0.0.1:8791/api/media \
   -H 'x-slytxt-client: 1' -H 'content-type: image/png' --data-binary @test.png
 ```
+
+## 投稿の削除
+
+投稿画面の「最近の投稿」から削除すると、`deleted_at` が入り公開一覧から外れます（行は残る）。画像の実体は R2 の `pub/` に残るため、まとめて消すときはキーを控えて手で削除してください。
+
+```sh
+npx wrangler r2 object delete slytxt-writer-media/pub/<key>
+```
+
+消した画像は `media.slytxt.dev` でも最大5分で 404 になります（`tools/media-cloudflare/README.md`）。ほかの記事が同じ画像を使っている可能性があるので、削除前に `grep` で参照を確認してください。
 
 ## 投稿画面の操作
 

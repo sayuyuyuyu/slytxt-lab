@@ -341,6 +341,40 @@ test("api: 一覧は before を検証して返す", async () => {
   assert.equal(bad.status, 400);
 });
 
+test("api: 削除は論理削除で、公開一覧から外れる", async () => {
+  const db = fakeDb();
+  const response = await handleFeedApi({
+    request: request("/api/posts/01JC0000000000000000000001", {
+      method: "DELETE",
+      headers: { "x-slytxt-client": "1" }
+    }),
+    env: { FEED: db }
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { id: "01JC0000000000000000000001", deleted: true });
+  assert.equal(db.calls.length, 1);
+  assert.match(db.calls[0].sql, /UPDATE feed_posts SET deleted_at = \?2/);
+  assert.equal(db.calls[0].params[0], "01JC0000000000000000000001");
+  assert.match(db.calls[0].params[1], /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("api: 削除は ID の形を検証し、書き込みガードも通す", async () => {
+  const guarded = await handleFeedApi({
+    request: request("/api/posts/01JC0000000000000000000001", { method: "DELETE" }),
+    env: { FEED: fakeDb() }
+  });
+  assert.equal(guarded.status, 403);
+
+  const bad = await handleFeedApi({
+    request: request("/api/posts/abc", {
+      method: "DELETE",
+      headers: { "x-slytxt-client": "1" }
+    }),
+    env: { FEED: fakeDb() }
+  });
+  assert.equal(bad.status, 400);
+});
+
 test("api: 未知のパスは 404", async () => {
   const response = await handleFeedApi({ request: request("/api/unknown"), env: {} });
   assert.equal(response.status, 404);
