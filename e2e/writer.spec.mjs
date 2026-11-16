@@ -112,6 +112,53 @@ test("writer: 公開済み記事の行からX投稿リンクを開ける", async
   await expect(share).toHaveAttribute("rel", "noopener");
 });
 
+test("writer: 公開済み一覧のX投稿リンクはタイトル無しの tech / journal に本文の書き出しを使う", async ({
+  page
+}) => {
+  const techArticle = {
+    category: "tech",
+    slug: "2026-01-05-no-title",
+    url: "https://slytxt.dev/articles/tech/2026-01-05-no-title/",
+    title: "",
+    published: "2026-01-05",
+    excerpt: "本文の書き出しがタイトルになります。",
+    hasDraft: false,
+    draftId: null
+  };
+  const noteArticle = {
+    category: "notes",
+    slug: "2026-01-06-no-title",
+    url: "https://slytxt.dev/notes/2026-01-06-no-title/",
+    title: "",
+    published: "2026-01-06",
+    excerpt: "notes はタイトルを持たない。",
+    hasDraft: false,
+    draftId: null
+  };
+  await page.route("**/api/published", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ articles: [techArticle, noteArticle] })
+    });
+  });
+  await page.goto(`${WRITER_URL}/`);
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+
+  const shares = page.locator(".drafts--published .drafts__share");
+  await expect(shares).toHaveCount(2);
+
+  // tech は見出しと同じく本文の書き出しを投稿文のタイトルに使う。
+  await expect(shares.nth(0)).toHaveAttribute(
+    "href",
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent(techArticle.excerpt)}&url=${encodeURIComponent(techArticle.url)}`
+  );
+  // notes は仕様どおりタイトルを入れない。
+  await expect(shares.nth(1)).toHaveAttribute(
+    "href",
+    `https://twitter.com/intent/tweet?text=&url=${encodeURIComponent(noteArticle.url)}`
+  );
+});
+
 test("writer: 公開済み一覧はタイトル無し・埋め込みのみの記事を（無題）と表示する", async ({
   page
 }) => {

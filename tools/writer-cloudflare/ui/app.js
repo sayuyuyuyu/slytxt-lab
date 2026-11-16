@@ -601,9 +601,11 @@ function renderPublished() {
     item.append(select);
 
     if (article.url) {
-      item.append(
-        createXShareLink(String(article.title ?? "").trim(), article.url, "button drafts__share")
-      );
+      // notes は仕様上タイトルを持たないため、投稿文にも入れない。
+      // tech / journal はタイトルが空でも、見出しと同じく本文の書き出しを
+      // 投稿文のタイトルに使う（公開完了画面の挙動と揃える）。
+      const shareTitle = article.category === "notes" ? "" : displayTitle(article, "");
+      item.append(createXShareLink(shareTitle, article.url, "button drafts__share"));
     }
 
     els.published.append(item);
