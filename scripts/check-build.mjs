@@ -20,6 +20,7 @@ let checkedTitles = 0;
 let checkedLangs = 0;
 let checkedCharsets = 0;
 let checkedViewports = 0;
+let checkedThemeColors = 0;
 let checkedCanonicals = 0;
 let checkedDescriptions = 0;
 let checkedSocial = 0;
@@ -114,6 +115,15 @@ for (const file of htmlFiles) {
   else
     issues.push(
       `${relative}: viewport ${viewport} does not match width=device-width, initial-scale=1`,
+    );
+  // theme-color の初期値は既定ダークのパレット（--bg: #05070f）。
+  // ライトのときに書き換える初期化スクリプトはこの値を起点にする。
+  const themeColor = metaContent("name", "theme-color")?.toLowerCase();
+  if (themeColor === "#05070f") checkedThemeColors++;
+  else if (!themeColor) issues.push(`${relative}: missing theme-color meta`);
+  else
+    issues.push(
+      `${relative}: theme-color ${themeColor} does not match #05070f`,
     );
   const ogImageUrl = metaContent("property", "og:image");
   let ogImagePath = "";
@@ -640,5 +650,5 @@ for (const [directory, suffix] of [
 }
 assert.deepEqual(issues, [], issues.join("\n"));
 console.log(
-  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
+  `Checked ${htmlFiles.length} HTML pages, ${checkedTitles} titles, ${checkedDescriptions} descriptions, ${checkedLangs} html langs, ${checkedCharsets} charsets, ${checkedViewports} viewports, ${checkedThemeColors} theme colors, ${checkedSocial} social metas, ${checkedArticleTimes} article times, ${checkedCanonicals} canonical urls, ${checkedLinks} local links/assets, ${checkedFragments} fragment links, ${checkedImages} og images, ${checkedImgAlts} img alts, ${checkedXmlUrls} XML urls, ${checkedSitemapPages} sitemap pages, ${checkedSitemapExclusions} sitemap exclusions, ${checkedRssMeta} rss channel metas, ${checkedRssItems} rss item fields, ${checkedPagefindAssets} Pagefind assets, ${checkedRobotsRules} robots rules, ${checkedRedirects} redirects, ${checkedHeaders} response headers, ${checkedNoindex} noindex checks, ${checkedSkipLinks} skip links and ${checkedStructured} structured data, ${checkedAriaRefs} aria/label references.`,
 );
