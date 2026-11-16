@@ -102,10 +102,15 @@ test("media: HEAD returns content-length without body", async () => {
   assert.deepEqual(env.MEDIA.requested, [`pub/${HASH_KEY}`]);
 });
 
-test("media: response carries long cache headers and etag", async () => {
+test("media: ブラウザには長期、エッジには5分のキャッシュを返す", async () => {
   const env = envWith({ [`pub/${HASH_KEY}`]: stored() });
   const res = await worker.fetch(req(`/${HASH_KEY}`), env);
-  assert.equal(res.headers.get("cache-control"), "public, max-age=31536000, immutable");
+  // 内容ハッシュの URL なのでブラウザには長く持たせ、R2 の削除が CDN の
+  // エッジに残り続けないよう s-maxage だけ短くする。
+  assert.equal(
+    res.headers.get("cache-control"),
+    "public, max-age=31536000, s-maxage=300, immutable"
+  );
   assert.equal(res.headers.get("etag"), '"abc123"');
   assert.equal(res.headers.get("content-type"), "image/jpeg");
 });

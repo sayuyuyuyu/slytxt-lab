@@ -54,8 +54,10 @@ export default {
     const headers = {
       "content-type":
         object.httpMetadata?.contentType ?? CONTENT_TYPES.get(ext) ?? "application/octet-stream",
-      // 公開 URL は内容ハッシュで一意。長期キャッシュでよい。
-      "cache-control": "public, max-age=31536000, immutable",
+      // 公開 URL は内容ハッシュで一意なので、ブラウザには長く持たせてよい。
+      // ただし R2 の pub/ を消しても CDN のエッジに残ると削除が反映されない
+      // ため、エッジ側（s-maxage）の寿命だけ短くして数分で消えるようにする。
+      "cache-control": "public, max-age=31536000, s-maxage=300, immutable",
       etag: object.httpEtag
     };
     if (request.method === "HEAD") {
