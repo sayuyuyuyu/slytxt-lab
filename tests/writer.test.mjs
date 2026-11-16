@@ -1068,6 +1068,84 @@ test("published: カテゴリを変えて再投稿すると元ファイルを消
   });
 });
 
+test("published: notes から tech へ変えると元ファイルを消して移動する", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const sourceFile = "src/content/notes/2026-02-03-import-me.md";
+    const movedFile = "src/content/tech/2026-02-03-import-me.md";
+    gh.state.mainFiles.set(
+      sourceFile,
+      b64(
+        "---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\nupdated: 2026-03-01\ntags: [タグ1]\n---\n\n公開時の本文 v1\n"
+      )
+    );
+    const store = createDraftStore(memoryKv());
+    const { draft } = await openPublished({
+      env: testEnv,
+      store,
+      category: "notes",
+      slug: "2026-02-03-import-me"
+    });
+    // 編集画面の select で notes → tech に変えた状態を再現する。
+    await store.writeDraft(draft.id, { category: "tech", body: "書き換えた本文 v2" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.state, "waiting");
+    assert.equal(posted.file, movedFile);
+
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "merged");
+
+    // 元カテゴリのファイルは消え、新しいカテゴリのファイルだけが残る。
+    assert.equal(gh.state.mainFiles.has(sourceFile), false);
+    const moved = Buffer.from(gh.state.mainFiles.get(movedFile), "base64").toString();
+    assert.match(moved, /書き換えた本文 v2/);
+    assert.equal(parseFrontmatter(moved).data.published, "2026-02-03");
+    assert.equal(parseFrontmatter(moved).data.updated, today());
+    await assert.rejects(() => store.readDraft(draft.id));
+  });
+});
+
+test("published: tech から notes へ変えると元ファイルを消して移動する", async () => {
+  const gh = fakeGitHub();
+  await withGitHub(gh, async () => {
+    const sourceFile = "src/content/tech/2026-02-03-import-me.md";
+    const movedFile = "src/content/notes/2026-02-03-import-me.md";
+    gh.state.mainFiles.set(
+      sourceFile,
+      b64(
+        "---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\nupdated: 2026-03-01\ntags: [タグ1]\n---\n\n公開時の本文 v1\n"
+      )
+    );
+    const store = createDraftStore(memoryKv());
+    const { draft } = await openPublished({
+      env: testEnv,
+      store,
+      category: "tech",
+      slug: "2026-02-03-import-me"
+    });
+    // 編集画面の select で tech → notes に変えた状態を再現する。
+    await store.writeDraft(draft.id, { category: "notes", body: "書き換えた本文 v2" });
+    const posted = await publishPost({ env: testEnv, store, id: draft.id });
+    assert.equal(posted.state, "waiting");
+    assert.equal(posted.file, movedFile);
+
+    const pr = gh.state.pulls[0];
+    gh.state.checks.set(pr.headSha, "success");
+    const step = await publishStatus({ env: testEnv, store, id: draft.id });
+    assert.equal(step.state, "merged");
+
+    // 元カテゴリのファイルは消え、新しいカテゴリのファイルだけが残る。
+    assert.equal(gh.state.mainFiles.has(sourceFile), false);
+    const moved = Buffer.from(gh.state.mainFiles.get(movedFile), "base64").toString();
+    assert.match(moved, /書き換えた本文 v2/);
+    assert.equal(parseFrontmatter(moved).data.published, "2026-02-03");
+    assert.equal(parseFrontmatter(moved).data.updated, today());
+    await assert.rejects(() => store.readDraft(draft.id));
+  });
+});
+
 test("published: カテゴリ移動の公開待ち中に再投稿しても PR は増えない", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
