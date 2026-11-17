@@ -32,7 +32,7 @@ D1 データベースを作り、テーブルを適用します。作成済み�
 
 `scripts/feed.sh` は D1 とワーカーの操作をまとめたラッパーです（`db` / `sql` / `tables` / `deploy` / `local-db`）。生のコマンドを使う場合は `npx wrangler@latest d1 execute slytxt-feed -c tools/feed-cloudflare/wrangler.toml --remote --file db/feed/0001_init.sql`。
 
-Pages プロジェクト（slytxt.dev）に D1 バインディングを追加します。Git 連携でデプロイしているため、Cloudflare のダッシュボードで **Settings → Bindings → Add → D1 database** を開き、変数名 `FEED`（`slytxt_feed` ではない。コードが `env.FEED` を読む）、データベース `slytxt-feed` を選びます（Production と Preview の両方）。バインディングが無い場合、`/feed/` は空の一覧を返します。バインディングはあるがテーブルが無い場合は、空の一覧に見せかけず 503 と理由を返します（設定の誤りに気づけるように）。
+Pages プロジェクト（Cloudflare 上の名前は `slytxt`、ドメインは slytxt.dev）に D1 バインディングを追加します。Git 連携でデプロイしているため、Cloudflare のダッシュボードで **Settings → Bindings → Add → D1 database** を開き、変数名 `FEED`（`slytxt_feed` ではない。コードが `env.FEED` を読む）、データベース `slytxt-feed` を選びます（Production と Preview の両方）。バインディングは次のデプロイから効くので、追加したら Deployments から Retry deployment を実行します。バインディングが無い場合、`/feed/` は空の一覧を返します。バインディングはあるがテーブルが無い場合は、空の一覧に見せかけず 503 と理由を返します（設定の誤りに気づけるように）。
 
 ## ローカルで動かす
 
