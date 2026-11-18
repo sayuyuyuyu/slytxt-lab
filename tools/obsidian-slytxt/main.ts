@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, TFile, requestUrl } from "obsidian";
+import { App, MarkdownView, Notice, Plugin, TFile, requestUrl, type Editor } from "obsidian";
 import { EmbedModal } from "./src/embed-modal";
 import { FrontmatterModal, type FrontmatterValues } from "./src/frontmatter-modal";
 import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/github";
@@ -57,17 +57,28 @@ export default class SlytxtPublishPlugin extends Plugin {
       id: "insert-embed",
       name: "埋め込み URL を挿入",
       editorCallback: (editor) => {
-        new EmbedModal(this.app, (url) => {
-          const info = classifyEmbedUrl(url);
-          if (!info) {
-            new Notice("URL として読めませんでした。");
-            return;
-          }
-          editor.replaceSelection(embedInsertion(info.url));
-          new Notice(`${embedLabel(info)}として挿入しました。`);
-        }).open();
+        this.openEmbedModal(editor);
       }
     });
+    this.addCommand({
+      id: "seed-frontmatter",
+      name: "公開の項目をノートに追加",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== "md") return false;
+        if (!checking) void this.seedFrontmatter(file);
+        return true;
+      }
+    });
+
+    this.addCommand({
+      id: "insert-image",
+      name: "画像をアップロードして挿入",
+      editorCallback: (editor) => {
+        void this.insertUploadedImage(editor);
+      }
+    });
+
     this.addRibbonIcon("send", "PR を作る（公開）", () => {
       const file = this.app.workspace.getActiveFile();
       if (!file || file.extension !== "md") {
@@ -76,6 +87,36 @@ export default class SlytxtPublishPlugin extends Plugin {
       }
       void this.publish(file);
     });
+
+    this.addRibbonIcon("image", "画像をアップロードして挿入", () => {
+      const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+      if (!view) {
+        new Notice("ノートを開いてから押してください。");
+        return;
+      }
+      void this.insertUploadedImage(view.editor);
+    });
+
+    this.registerEvent(
+      this.app.workspace.on("editor-menu", (menu, editor) => {
+        menu.addItem((item) => {
+          item
+            .setTitle("画像をアップロードして挿入")
+            .setIcon("image")
+            .onClick(() => {
+              void this.insertUploadedImage(editor);
+            });
+        });
+        menu.addItem((item) => {
+          item
+            .setTitle("埋め込み URL を挿入")
+            .setIcon("link")
+            .onClick(() => {
+              this.openEmbedModal(editor);
+            });
+        });
+      })
+    );
 
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
@@ -96,6 +137,14 @@ export default class SlytxtPublishPlugin extends Plugin {
               void this.openFrontmatterModal(file);
             });
         });
+        menu.addItem((item) => {
+          item
+            .setTitle("公開の項目をノートに追加")
+            .setIcon("list-plus")
+            .onClick(() => {
+              void this.seedFrontmatter(file);
+            });
+        });
       })
     );
   }
@@ -107,6 +156,54 @@ export default class SlytxtPublishPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+  }
+
+  /** 公開の項目（タイトル・カテゴリ・タグ・説明・カバー）を frontmatter に用意し、ノート上部のプロパティ欄で直接編集できるようにする。 */
+  private async seedFrontmatter(file: TFile): Promise<void> {
+    await this.app.fileManager.processFrontMatter(file, (front) => {
+      if (front.title === undefined) front.title = "";
+      if (front.category === undefined) front.category = this.settings.defaultCategory;
+      if (front.tags === undefined) front.tags = [];
+      if (front.description === undefined) front.description = "";
+      if (front.cover === undefined) front.cover = "";
+    });
+    new Notice("公開の項目をノート上部のプロパティに追加しました。");
+  }
+
+  /** 画像を選ばせてアップロードし、カーソル位置へ Markdown 画像として差し込む。 */
+  private async insertUploadedImage(editor: Editor): Promise<void> {
+    try {
+      if (!this.settings.uploadToken) {
+        throw new MediaError("設定でアップロード用トークンを登録してください。");
+      }
+      const picked = await pickImageFile();
+      if (!picked) return;
+      new Notice("画像をアップロードしています…");
+      const url = await uploadCover(
+        this.mediaRequest(),
+        this.settings.uploadToken,
+        picked.bytes,
+        picked.mime,
+        crypto.randomUUID()
+      );
+      editor.replaceSelection(`![](${url})`);
+      new Notice("画像を挿入しました。");
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : String(error), 12000);
+    }
+  }
+
+  /** 埋め込み URL の入力モーダルを開き、カーソル位置へ差し込む。 */
+  private openEmbedModal(editor: Editor): void {
+    new EmbedModal(this.app, (url) => {
+      const info = classifyEmbedUrl(url);
+      if (!info) {
+        new Notice("URL として読めませんでした。");
+        return;
+      }
+      editor.replaceSelection(embedInsertion(info.url));
+      new Notice(`${embedLabel(info)}として挿入しました。`);
+    }).open();
   }
 
   /** 現在の frontmatter からモーダルの初期値を決める。 */
