@@ -136,20 +136,42 @@ function isCurrentSection(href: string) {
 
     const menuLinks = () => Array.from(menu.querySelectorAll<HTMLAnchorElement>("a"));
 
+    // 閉じる動き: 開く側は CSS の menu-in が担う。閉じる側は即座に消すと
+    // 唐突なので、短いフェードを WAAPI で付けてから hidden に戻す。
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let closeAnimation: Animation | null = null;
+
     const setOpen = (open: boolean, options: { returnFocus?: boolean } = {}) => {
       const returnFocus = options.returnFocus ?? menu.contains(document.activeElement);
       button.setAttribute("aria-expanded", String(open));
       button.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-      menu.hidden = !open;
       header.dataset.open = String(open);
       if (open) {
+        closeAnimation?.cancel();
+        closeAnimation = null;
+        menu.hidden = false;
         header.dataset.hidden = "false";
         // 開いたら最初の項目へ移し、Tab の流れを視覚順に合わせる
         // （DOM 上は ThemeToggle がメニューより前にあるため、このままでは
         // ボタンの次の Tab がテーマ切替へ進んでしまう）。
         menuLinks()[0]?.focus();
-      } else if (returnFocus) {
-        button.focus();
+      } else {
+        if (returnFocus) button.focus();
+        if (reduceMotion || typeof menu.animate !== "function") {
+          menu.hidden = true;
+        } else {
+          closeAnimation = menu.animate(
+            [
+              { opacity: 1, transform: "translateY(0)" },
+              { opacity: 0, transform: "translateY(-6px)" }
+            ],
+            { duration: 160, easing: "ease-in" }
+          );
+          closeAnimation.onfinish = () => {
+            menu.hidden = true;
+            closeAnimation = null;
+          };
+        }
       }
     };
 

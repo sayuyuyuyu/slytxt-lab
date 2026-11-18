@@ -157,8 +157,8 @@ const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003
       })();
     </script>
     <script is:inline>
-      // Motion が読み込めない・動かない場合でも内容が消えないように。
-      // Motion が正常に初期化できた場合は、画面外要素の出現を inView に任せる。
+      // 出現アニメーションが動かない場合でも内容が消えないように。
+      // 正常に初期化できた場合は、画面外要素の出現を IntersectionObserver に任せる。
       window.addEventListener("load", () => {
         window.setTimeout(() => {
           if (document.documentElement.dataset.motionReady === "true") return;
@@ -214,38 +214,35 @@ const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003
       </main>
       <SiteFooter />
     </div>
-    <script>
-      import { animate, inView } from "motion";
-
-      document.documentElement.dataset.motionReady = "true";
-      const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
-      const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-motion]"));
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-      const show = (el: HTMLElement, delay: number) => {
-        animate(el, { opacity: 1, y: 0 }, { duration: 0.7, delay, ease: EASE });
-      };
-
-      if (reduce) {
-        for (const el of targets) {
-          el.style.opacity = "1";
-          el.style.transform = "none";
+    <script is:inline>
+      // 出現アニメーションは IntersectionObserver + CSS transition で行う
+      // （以前は motion パッケージを使っていたが、全ページで読むには重い）。
+      // 動きの仕様は従来どおり: 画面に入ったら、兄弟要素の並び順に
+      // 少しずつ遅らせてふわりと出す。
+      (() => {
+        document.documentElement.dataset.motionReady = "true";
+        const targets = Array.from(document.querySelectorAll("[data-motion]"));
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduce || !("IntersectionObserver" in window)) {
+          for (const el of targets) el.classList.add("is-shown");
+          return;
         }
-      } else {
-        for (const el of targets) {
-          const siblings = el.parentElement ? Array.from(el.parentElement.children) : [];
-          const delay = Math.min(Math.max(siblings.indexOf(el), 0), 6) * 0.045;
-          let stop = () => {};
-          stop = inView(
-            el,
-            () => {
-              show(el, delay);
-              stop();
-            },
-            { amount: 0.12, margin: "0px 0px -8% 0px" }
-          );
-        }
-      }
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              const el = entry.target;
+              const siblings = el.parentElement ? Array.from(el.parentElement.children) : [];
+              const delay = Math.min(Math.max(siblings.indexOf(el), 0), 6) * 45;
+              el.style.transitionDelay = `${delay}ms`;
+              el.classList.add("is-shown");
+              io.unobserve(el);
+            }
+          },
+          { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+        );
+        for (const el of targets) io.observe(el);
+      })();
     </script>
     {loadXWidgets && <script is:inline async src="https://platform.twitter.com/widgets.js" charset="utf-8" />}
     <SiteEggs />

@@ -1496,6 +1496,13 @@ html {
 html.js [data-motion] {
   opacity: 0;
   transform: translateY(16px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+html.js [data-motion].is-shown {
+  opacity: 1;
+  transform: none;
 }
 .site-header[data-scrolled="true"] {
   background: color-mix(in srgb, var(--bg) 80%, transparent);
@@ -1515,6 +1522,29 @@ html.js [data-motion] {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* ページ遷移: 対応ブラウザではクロスフェード＋わずかな縦移動にする。
+   非対応ブラウザでは通常の遷移のまま（何も壊れない）。 */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root) {
+  animation: page-out 0.16s ease-in both;
+}
+::view-transition-new(root) {
+  animation: page-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 }
 .entry-card,
@@ -1732,6 +1762,11 @@ html.konami-on .site-main {
   html.js [data-motion] {
     opacity: 1;
     transform: none;
+    transition: none;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
   body::after {
     display: none;
