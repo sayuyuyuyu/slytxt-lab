@@ -23,6 +23,17 @@ const els = {
 let attachments = [];
 let nextAttachmentId = 1;
 
+const ICON_X =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
+const ICON_TRASH =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+
+/** 投稿できる状態かどうかを送信ボタンの有効・無効だけで表す。 */
+function updateSubmit() {
+  const blocked = attachments.some((item) => item.state !== "done");
+  els.submit.disabled = els.body.value.trim() === "" || blocked;
+}
+
 function setStatus(message, state = "info") {
   els.status.textContent = message;
   els.status.dataset.state = state;
@@ -37,6 +48,9 @@ function renderAttachments() {
     ...attachments.map((item) => {
       const li = document.createElement("li");
       li.className = "attachment";
+      // 状態は見た目で表す: アップロード中はサムネイルが脈動し、
+      // 失敗したら枠が赤くなる。済んだら何も出ない。
+      li.dataset.state = item.state;
 
       const img = document.createElement("img");
       img.src = item.previewUrl;
@@ -49,28 +63,27 @@ function renderAttachments() {
       altInput.type = "text";
       altInput.value = item.alt;
       altInput.maxLength = 200;
-      altInput.placeholder = "画像の説明（alt）";
+      altInput.placeholder = "alt";
       altInput.setAttribute("aria-label", "画像の説明（alt）");
       altInput.addEventListener("input", () => {
         item.alt = altInput.value;
       });
       right.append(altInput);
 
-      const state = document.createElement("span");
-      state.className = "attachment__state";
-      state.textContent =
-        item.state === "uploading"
-          ? "アップロード中…"
-          : item.state === "error"
-            ? (item.message ?? "アップロードに失敗しました")
-            : "アップロード済み";
-      right.append(state);
+      if (item.state === "error") {
+        const state = document.createElement("span");
+        state.className = "attachment__state";
+        state.textContent = item.message ?? "アップロードに失敗しました";
+        right.append(state);
+      }
       li.append(right);
 
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.className = "button";
-      remove.textContent = "外す";
+      remove.className = "icon-button attachment__remove";
+      remove.innerHTML = ICON_X;
+      remove.setAttribute("aria-label", "画像を外す");
+      remove.title = "画像を外す";
       remove.addEventListener("click", () => {
         URL.revokeObjectURL(item.previewUrl);
         attachments = attachments.filter((entry) => entry !== item);
@@ -81,6 +94,7 @@ function renderAttachments() {
       return li;
     })
   );
+  updateSubmit();
 }
 
 async function uploadOne(item) {
@@ -134,7 +148,10 @@ els.file.addEventListener("change", () => {
   renderAttachments();
 });
 
-els.body.addEventListener("input", updateCount);
+els.body.addEventListener("input", () => {
+  updateCount();
+  updateSubmit();
+});
 
 async function loadRecent() {
   try {
@@ -158,8 +175,10 @@ async function loadRecent() {
 
         const remove = document.createElement("button");
         remove.type = "button";
-        remove.className = "button recent__remove";
-        remove.textContent = "削除";
+        remove.className = "icon-button recent__remove";
+        remove.innerHTML = ICON_TRASH;
+        remove.setAttribute("aria-label", "削除");
+        remove.title = "削除";
         remove.addEventListener("click", () => void removePost(post, remove));
         li.append(remove);
         return li;
@@ -241,7 +260,7 @@ els.form.addEventListener("submit", async (event) => {
   } catch (error) {
     setStatus(error.message, "error");
   } finally {
-    els.submit.disabled = false;
+    updateSubmit();
   }
 });
 

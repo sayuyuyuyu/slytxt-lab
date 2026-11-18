@@ -12,7 +12,9 @@
   <body>
     <header class="bar">
       <h1>Feed</h1>
-      <p class="bar__note">短文の置き場。<a href="https://slytxt.dev/feed/">公開ページ</a></p>
+      <a class="icon-button" href="https://slytxt.dev/feed/" aria-label="公開ページ" title="公開ページ">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+      </a>
     </header>
 
     <main>
@@ -23,25 +25,25 @@
           class="field composer__body"
           rows="4"
           maxlength="2000"
-          placeholder="いまのことを短く。URL を貼るとリンクカードになります。"
           required
         ></textarea>
         <p id="count" class="count">0 / 2000</p>
 
-        <div class="attach">
-          <label class="button" for="file">画像を選ぶ</label>
-          <input id="file" class="sr-only" type="file" accept="image/jpeg,image/png,image/gif,image/webp" />
-        </div>
         <ul id="attachments" class="attachments"></ul>
 
-        <div class="actions">
+        <div class="toolbar">
+          <label class="icon-button" for="file" aria-label="画像を選ぶ" title="画像を選ぶ">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+          </label>
+          <input id="file" class="sr-only" type="file" accept="image/jpeg,image/png,image/gif,image/webp" />
           <p id="status" class="status" role="status" aria-live="polite"></p>
-          <button id="submit" class="button button--primary" type="submit">投稿する</button>
+          <button id="submit" class="send-button" type="submit" aria-label="投稿する" title="投稿する" disabled>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+          </button>
         </div>
       </form>
 
-      <section class="recent" aria-labelledby="recent-title">
-        <h2 id="recent-title">最近の投稿</h2>
+      <section class="recent" aria-label="最近の投稿">
         <ol id="recent" class="recent__list"></ol>
       </section>
     </main>
