@@ -7,9 +7,11 @@ const UUID_KEY = "11111111-2222-4333-8444-555555555555.png";
 
 function memoryR2(objects = {}) {
   const requested = [];
+  const puts = [];
   const store = new Map(Object.entries(objects));
   return {
     requested,
+    puts,
     async get(key) {
       requested.push(key);
       const obj = store.get(key);
@@ -21,6 +23,10 @@ function memoryR2(objects = {}) {
       const obj = store.get(key);
       if (!obj) return null;
       return { size: obj.size, httpEtag: obj.httpEtag, httpMetadata: obj.httpMetadata };
+    },
+    async put(key, body, options = {}) {
+      puts.push({ key, size: body.byteLength ?? body.length, contentType: options.httpMetadata?.contentType });
+      store.set(key, { body, size: body.byteLength ?? body.length, httpEtag: '"def456"', httpMetadata: options.httpMetadata });
     }
   };
 }
@@ -84,13 +90,77 @@ test("media: missing object returns 404", async () => {
   assert.equal(res.status, 404);
 });
 
-test("media: non GET/HEAD methods return 405", async () => {
+test("media: non GET/HEAD/PUT methods return 405", async () => {
   const env = envWith({ [`pub/${HASH_KEY}`]: stored() });
-  for (const method of ["POST", "PUT", "DELETE"]) {
+  for (const method of ["POST", "DELETE"]) {
     const res = await worker.fetch(req(`/${HASH_KEY}`, { method }), env);
     assert.equal(res.status, 405, method);
-    assert.equal(res.headers.get("allow"), "GET, HEAD");
+    assert.equal(res.headers.get("allow"), "GET, HEAD, PUT");
   }
+});
+
+test("media: PUT はトークン未設定なら 503、違うトークンなら 401", async () => {
+  const body = new Uint8Array([1, 2, 3]);
+  const noToken = envWith({});
+  const res503 = await worker.fetch(
+    req(`/${UUID_KEY}`, { method: "PUT", headers: { "content-type": "image/png" }, body }),
+    noToken
+  );
+  assert.equal(res503.status, 503);
+
+  const env = { ...envWith({}), UPLOAD_TOKEN: "secret-token" };
+  const res401 = await worker.fetch(
+    req(`/${UUID_KEY}`, {
+      method: "PUT",
+      headers: { "content-type": "image/png", authorization: "Bearer wrong" },
+      body
+    }),
+    env
+  );
+  assert.equal(res401.status, 401);
+  assert.deepEqual(env.MEDIA.puts, []);
+});
+
+test("media: PUT は正しいトークンで pub/ に保存し、公開 URL を返す", async () => {
+  const env = { ...envWith({}), UPLOAD_TOKEN: "secret-token" };
+  const res = await worker.fetch(
+    req(`/${UUID_KEY}`, {
+      method: "PUT",
+      headers: { "content-type": "image/png", authorization: "Bearer secret-token" },
+      body: new Uint8Array([1, 2, 3, 4])
+    }),
+    env
+  );
+  assert.equal(res.status, 201);
+  const payload = await res.json();
+  assert.equal(payload.url, `https://media.slytxt.dev/${UUID_KEY}`);
+  assert.deepEqual(env.MEDIA.puts, [
+    { key: `pub/${UUID_KEY}`, size: 4, contentType: "image/png" }
+  ]);
+});
+
+test("media: PUT は形式の不一致と壊れたキーを弾く", async () => {
+  const env = { ...envWith({}), UPLOAD_TOKEN: "secret-token" };
+  const mismatch = await worker.fetch(
+    req(`/${UUID_KEY}`, {
+      method: "PUT",
+      headers: { "content-type": "image/jpeg", authorization: "Bearer secret-token" },
+      body: new Uint8Array([1])
+    }),
+    env
+  );
+  assert.equal(mismatch.status, 415);
+
+  const badKey = await worker.fetch(
+    req("/not-a-key.png", {
+      method: "PUT",
+      headers: { "content-type": "image/png", authorization: "Bearer secret-token" },
+      body: new Uint8Array([1])
+    }),
+    env
+  );
+  assert.equal(badKey.status, 404);
+  assert.deepEqual(env.MEDIA.puts, []);
 });
 
 test("media: HEAD returns content-length without body", async () => {
