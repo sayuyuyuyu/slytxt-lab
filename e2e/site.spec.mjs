@@ -2,9 +2,10 @@ import { expect, test } from "@playwright/test";
 
 const SITE_URL = "http://127.0.0.1:4321";
 
-test("site: トップページにターミナルが出る", async ({ page }) => {
+test("site: トップページにサイト名と導線が出る", async ({ page }) => {
   await page.goto(`${SITE_URL}/`);
-  await expect(page.locator("[data-terminal]")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "slytxt.lab" })).toBeVisible();
+  await expect(page.locator(".home-hero__links")).toBeVisible();
 });
 
 test("site: 記事ページで Spotify 埋め込みが描画される", async ({ page }) => {
