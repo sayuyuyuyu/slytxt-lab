@@ -43,20 +43,23 @@ function renderBody(body: string): string {
     .join("\n");
 }
 
-function renderImages(images: FeedImage[]): string {
-  if (images.length === 0) return "";
-  const figures = images
-    .map((image) => {
-      const size = [
-        image.width ? ` width="${image.width}"` : "",
-        image.height ? ` height="${image.height}"` : ""
-      ].join("");
-      return `<figure class="feed-item__figure"><img src="${MEDIA_ORIGIN}/${escapeHtml(
-        image.key
-      )}" alt="${escapeHtml(image.alt)}"${size} loading="lazy" decoding="async" /></figure>`;
-    })
-    .join("");
-  return `<div class="feed-item__images">${figures}</div>`;
+/**
+ * 画像はカードの見た目に寄せる: 1枚目はカード上部のサムネイル、
+ * 2枚目以降は下部の小さいサムネイル列にする。
+ */
+function renderImages(images: FeedImage[]): { thumb: string; thumbs: string } {
+  if (images.length === 0) return { thumb: "", thumbs: "" };
+  const img = (image: FeedImage, cls: string) =>
+    `<figure class="${cls}"><img src="${MEDIA_ORIGIN}/${escapeHtml(
+      image.key
+    )}" alt="${escapeHtml(image.alt)}" loading="lazy" decoding="async" /></figure>`;
+  const thumb = img(images[0], "feed-item__thumb");
+  const rest = images.slice(1);
+  const thumbs =
+    rest.length > 0
+      ? `<div class="feed-item__thumbs">${rest.map((image) => img(image, "feed-item__figure")).join("")}</div>`
+      : "";
+  return { thumb, thumbs };
 }
 
 function renderLink(link: FeedLink | undefined): string {
@@ -95,15 +98,17 @@ export function formatTimestamp(iso: string): { label: string; datetime: string 
 
 function renderPost(post: FeedPost): string {
   const { label, datetime } = formatTimestamp(post.createdAt);
+  const { thumb, thumbs } = renderImages(post.images);
   return `<li class="feed-item"><article>
-<header class="feed-item__head"><time datetime="${escapeHtml(datetime)}">${escapeHtml(
-    label
-  )}</time></header>
+${thumb}
 <div class="feed-item__body">
 ${renderBody(post.body)}
 </div>
-${renderImages(post.images)}
+${thumbs}
 ${renderLink(post.link)}
+<footer class="feed-item__foot"><time datetime="${escapeHtml(datetime)}">${escapeHtml(
+    label
+  )}</time></footer>
 </article></li>`;
 }
 
