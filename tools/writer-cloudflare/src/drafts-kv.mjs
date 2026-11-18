@@ -129,12 +129,13 @@ export function serializeDraft(draft) {
 }
 
 function slugFragment(title) {
-  const ascii = String(title)
+  // タイトルから英数字の断片が取れないときは空を返す。呼び出し側で
+  // 日付だけの id にし、衝突時は連番を付ける（URL に "memo" を入れない）。
+  return String(title)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
-  return ascii || "memo";
 }
 
 /** 一覧表示用の要約（listDrafts / listPendingDrafts 共通）。 */
@@ -396,7 +397,8 @@ export function createDraftStore(kv) {
 
   async function createDraft({ title = "", category = "notes" } = {}) {
     const stamp = today();
-    const base = `${stamp}-${slugFragment(title)}`;
+    const fragment = slugFragment(title);
+    const base = fragment ? `${stamp}-${fragment}` : stamp;
     let id = base;
     let suffix = 2;
     for (;;) {

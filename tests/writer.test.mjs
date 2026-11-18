@@ -10,6 +10,7 @@ import {
   truncateText
 } from "../tools/writer-cloudflare/src/markdown.mjs";
 import {
+  articleSlug,
   deriveDescription,
   normalizeSlug,
   publicUrl,
@@ -96,6 +97,13 @@ test("slug: 日本語や記号から作れないときは日付に落とす", ()
   assert.equal(normalizeSlug("--MCP---サーバー--"), "mcp");
   assert.equal(normalizeSlug("日本語だけ", "20260917"), "post-20260917");
   assert.equal(normalizeSlug("", "20260917"), "post-20260917");
+});
+
+test("publish: articleSlug は旧 id の -memo を日付＋連番に直す", () => {
+  assert.equal(articleSlug("2026-11-10-memo"), "2026-11-10");
+  assert.equal(articleSlug("2026-11-04-memo-2"), "2026-11-04-2");
+  assert.equal(articleSlug("2026-11-10-linux-server"), "2026-11-10-linux-server");
+  assert.equal(articleSlug("2026-11-10"), "2026-11-10");
 });
 
 test("publish: 公開 URL はサイト側のパスに対応する", () => {
@@ -349,10 +357,11 @@ test("date: today は Asia/Tokyo の日付を返し、UTC の前日にならな�
   assert.equal(today(new Date("2025-12-31T23:30:00+09:00")), "2025-12-31");
 });
 
-test("drafts: 新規作成の id は JST の今日から始まる", async () => {
+test("drafts: 新規作成の id は JST の今日が基本形になる", async () => {
   const store = createDraftStore(memoryKv());
   const draft = await store.createDraft({ title: "日付確認" });
-  assert.ok(draft.id.startsWith(`${today()}-`), `id=${draft.id} today=${today()}`);
+  // 日本語タイトルでは断片が付かず、日付そのもの（衝突時は日付+連番）が id になる。
+  assert.match(draft.id, new RegExp(`^${today()}(-\\d+)?$`), `id=${draft.id} today=${today()}`);
 });
 
 test("drafts: 削除した id は再利用できる", async () => {
