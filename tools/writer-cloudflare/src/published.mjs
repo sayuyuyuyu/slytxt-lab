@@ -17,7 +17,7 @@
 import { parseFrontmatter } from "./frontmatter.mjs";
 import { plainText, truncateText } from "./markdown.mjs";
 import { createGitHubClient } from "./github.mjs";
-import { PublishError, decodeContentText, normalizeSlug, publicUrl } from "./publish.mjs";
+import { PublishError, articleSlug, decodeContentText, publicUrl } from "./publish.mjs";
 import { CATEGORIES, assertId } from "./drafts-kv.mjs";
 
 function requireGitHub(env) {
@@ -33,7 +33,7 @@ function requireGitHub(env) {
 function draftIdByArticle(drafts) {
   const map = new Map();
   for (const draft of drafts) {
-    const key = `${draft.category}:${normalizeSlug(draft.id)}`;
+    const key = `${draft.category}:${articleSlug(draft.id)}`;
     if (!map.has(key)) map.set(key, draft.id);
   }
   return map;
@@ -98,7 +98,7 @@ export async function openPublished({ env, store, category, slug }) {
 
   const drafts = await store.listDrafts().catch(() => []);
   const existing = drafts.find(
-    (draft) => draft.category === category && normalizeSlug(draft.id) === slug
+    (draft) => draft.category === category && articleSlug(draft.id) === slug
   );
   if (existing) {
     return { draft: await store.readDraft(existing.id), created: false };

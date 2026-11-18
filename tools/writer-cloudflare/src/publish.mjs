@@ -81,6 +81,16 @@ export function normalizeSlug(raw, fallbackDate = today()) {
 }
 
 /**
+ * 記事の slug。下書き id から作る。旧ルールで付いた末尾の "-memo" /
+ * "-memo-<連番>" は、日付＋連番の形に直して公開する（URL に "memo" を
+ * 入れないための移行処理。新規の下書き id にはもう付かない）。
+ */
+export function articleSlug(raw, fallbackDate = today()) {
+  const slug = normalizeSlug(raw, fallbackDate);
+  return slug.replace(/-memo(?:-(\d+))?$/, (_m, num) => (num ? `-${num}` : ""));
+}
+
+/**
  * 公開時のタイトル。記事はタイトルが無ければ本文の書き出しで補う。
  * notes はタイトル不要なので、付いていなければ空のままにする
  * （本文の書き出しで代用しない。表示名はサイト側が本文の書き出しから作る）。
@@ -110,7 +120,7 @@ function extrasForPublished(draft, prefix = []) {
 }
 
 function publishTarget(draft) {
-  const slug = normalizeSlug(draft.id) || draft.id;
+  const slug = articleSlug(draft.id) || draft.id;
   return {
     slug,
     file: `src/content/${draft.category}/${slug}.md`,
@@ -495,7 +505,7 @@ async function publishPostInner({ env, store, id, onLog }) {
   // タグの上限は note に合わせて10件（公開パネルの UI と揃える）。
   const tags = draft.tags.slice(0, 10);
   const published = today();
-  const slug = normalizeSlug(draft.id, published.replace(/-/g, "")) || draft.id;
+  const slug = articleSlug(draft.id, published.replace(/-/g, "")) || draft.id;
   const note = draft.category === "notes";
   const file = `src/content/${draft.category}/${slug}.md`;
   const branch = `${note ? "note" : "write"}/${slug}`;
