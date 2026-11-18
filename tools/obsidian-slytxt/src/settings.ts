@@ -9,6 +9,8 @@ export type SlytxtSettings = {
   baseBranch: string;
   /** frontmatter モーダルで最初に選ばれるカテゴリ。 */
   defaultCategory: PublishCategory;
+  /** media Worker のアップロード用トークン（カバー画像のアップロードに使う）。 */
+  uploadToken: string;
 };
 
 export const DEFAULT_SETTINGS: SlytxtSettings = {
@@ -16,7 +18,8 @@ export const DEFAULT_SETTINGS: SlytxtSettings = {
   repo: "slytxt-lab",
   token: "",
   baseBranch: "main",
-  defaultCategory: "misc"
+  defaultCategory: "misc",
+  uploadToken: ""
 };
 
 export class SlytxtSettingTab extends PluginSettingTab {
@@ -88,6 +91,21 @@ export class SlytxtSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.token)
           .onChange(async (value) => {
             this.plugin.settings.token = value.trim();
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("アップロード用トークン")
+      .setDesc(
+        "カバー画像を media.slytxt.dev へ上げるためのトークン（media Worker の UPLOAD_TOKEN と対）。端末のローカル設定にだけ保存されます。"
+      )
+      .addText((text) => {
+        text.inputEl.type = "password";
+        text
+          .setValue(this.plugin.settings.uploadToken)
+          .onChange(async (value) => {
+            this.plugin.settings.uploadToken = value.trim();
             await this.plugin.saveSettings();
           });
       });

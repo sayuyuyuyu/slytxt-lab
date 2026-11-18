@@ -1,4 +1,5 @@
-import { App, Modal, Setting } from "obsidian";
+import { App, Modal, Notice, Setting, type TextAreaComponent, type TextComponent } from "obsidian";
+import { deriveDescription } from "./lib/publish-plan";
 import { PUBLISH_CATEGORIES, isPublishCategory, type PublishCategory } from "./lib/slug";
 
 export type FrontmatterValues = {
@@ -9,6 +10,13 @@ export type FrontmatterValues = {
   cover: string;
 };
 
+export type FrontmatterModalOptions = {
+  /** 説明文の候補を作る材料（ノート本文）。 */
+  bodyText?: string;
+  /** カバー画像のアップロード。成功したら公開 URL を返す。 */
+  onUploadCover?: () => Promise<string>;
+};
+
 /**
  * frontmatter の入力フォーム。YAML を手で直す代わりに、公開に必要な項目を
  * ここで揃える（タイプミスを CI で知る形を避ける）。
@@ -16,11 +24,20 @@ export type FrontmatterValues = {
 export class FrontmatterModal extends Modal {
   private values: FrontmatterValues;
   private readonly onSubmit: (values: FrontmatterValues) => void;
+  private readonly options: FrontmatterModalOptions;
+  private descriptionInput: TextAreaComponent | null = null;
+  private coverInput: TextComponent | null = null;
 
-  constructor(app: App, initial: FrontmatterValues, onSubmit: (values: FrontmatterValues) => void) {
+  constructor(
+    app: App,
+    initial: FrontmatterValues,
+    onSubmit: (values: FrontmatterValues) => void,
+    options: FrontmatterModalOptions = {}
+  ) {
     super(app);
     this.values = { ...initial };
     this.onSubmit = onSubmit;
+    this.options = options;
   }
 
   onOpen(): void {
@@ -58,24 +75,55 @@ export class FrontmatterModal extends Modal {
         })
       );
 
-    new Setting(contentEl)
+    const descriptionSetting = new Setting(contentEl)
       .setName("説明文")
       .setDesc("空なら本文の書き出しから作ります。")
       .addTextArea((text) => {
+        this.descriptionInput = text;
         text.inputEl.rows = 3;
         text.setValue(this.values.description).onChange((value) => {
           this.values.description = value;
         });
       });
-
-    new Setting(contentEl)
-      .setName("カバー画像の URL")
-      .setDesc("media.slytxt.dev の URL（空ならカバーなし）。")
-      .addText((text) =>
-        text.setValue(this.values.cover).onChange((value) => {
-          this.values.cover = value.trim();
+    if (this.options.bodyText !== undefined) {
+      descriptionSetting.addButton((button) =>
+        button.setButtonText("本文から候補を作る").onClick(() => {
+          const candidate = deriveDescription(this.options.bodyText ?? "");
+          if (!candidate) {
+            new Notice("本文が空なので候補を作れません。");
+            return;
+          }
+          this.values.description = candidate;
+          this.descriptionInput?.setValue(candidate);
         })
       );
+    }
+
+    const coverSetting = new Setting(contentEl)
+      .setName("カバー画像の URL")
+      .setDesc("media.slytxt.dev の URL（空ならカバーなし）。")
+      .addText((text) => {
+        this.coverInput = text;
+        text.setValue(this.values.cover).onChange((value) => {
+          this.values.cover = value.trim();
+        });
+      });
+    if (this.options.onUploadCover) {
+      coverSetting.addButton((button) =>
+        button.setButtonText("画像をアップロード").onClick(async () => {
+          button.setDisabled(true);
+          try {
+            const url = await this.options.onUploadCover?.();
+            if (url) {
+              this.values.cover = url;
+              this.coverInput?.setValue(url);
+            }
+          } finally {
+            button.setDisabled(false);
+          }
+        })
+      );
+    }
 
     new Setting(contentEl)
       .addButton((button) =>

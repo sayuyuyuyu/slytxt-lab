@@ -15,6 +15,13 @@ import {
 } from "../tools/obsidian-slytxt/src/lib/frontmatter.ts";
 import { deriveDescription, preparePublish } from "../tools/obsidian-slytxt/src/lib/publish-plan.ts";
 import { PublishError, publishNote, toBase64 } from "../tools/obsidian-slytxt/src/lib/github.ts";
+import {
+  MediaError,
+  assertCoverSize,
+  coverKey,
+  uploadCover
+} from "../tools/obsidian-slytxt/src/lib/media.ts";
+import { classifyEmbedUrl, embedInsertion, embedLabel } from "../tools/obsidian-slytxt/src/lib/embed.ts";
 
 /* ---- slug・パス・ブランチ ---- */
 
@@ -271,4 +278,113 @@ test("obsidian: ファイル書き込みや PR 作成の失敗は GitHub のメ�
     () => publishNote(prFail.request, settings, publishInput),
     (error) => error instanceof PublishError && /PR を作れませんでした: Validation Failed/.test(error.message)
   );
+});
+
+/* ---- 自動マージ ---- */
+
+test("obsidian: PR に node_id があれば自動マージ（squash）を設定する", async () => {
+  const gh = fakeGitHub({
+    "GET /git/ref/heads/main": { json: { object: { sha: "base-sha" } } },
+    "POST /git/refs": { status: 201, json: {} },
+    "PUT /contents/src/content/comic/hello-world.md": { status: 201, json: {} },
+    "POST /pulls": {
+      status: 201,
+      json: { html_url: "https://github.com/x/y/pull/9", number: 9, node_id: "PR_node_9" }
+    }
+  });
+  // GraphQL は REST のパス接頭辞が付かないので、fake の外側で受ける。
+  const baseRequest = gh.request;
+  const calls = [];
+  const request = async (options) => {
+    calls.push(options.url);
+    if (options.url === "https://api.github.com/graphql") {
+      const body = JSON.parse(options.body);
+      assert.match(body.query, /enablePullRequestAutoMerge/);
+      assert.equal(body.variables.id, "PR_node_9");
+      return { status: 200, json: { data: { enablePullRequestAutoMerge: { clientMutationId: null } } } };
+    }
+    return baseRequest(options);
+  };
+  const result = await publishNote(request, settings, publishInput);
+  assert.equal(result.autoMerge, true);
+  assert.equal(calls.at(-1), "https://api.github.com/graphql");
+});
+
+test("obsidian: 自動マージの設定に失敗しても PR の結果は返す", async () => {
+  const gh = fakeGitHub({
+    "GET /git/ref/heads/main": { json: { object: { sha: "base-sha" } } },
+    "POST /git/refs": { status: 201, json: {} },
+    "PUT /contents/src/content/comic/hello-world.md": { status: 201, json: {} },
+    "POST /pulls": {
+      status: 201,
+      json: { html_url: "https://github.com/x/y/pull/9", number: 9, node_id: "PR_node_9" }
+    }
+  });
+  const request = async (options) => {
+    if (options.url === "https://api.github.com/graphql") {
+      return { status: 200, json: { errors: [{ message: "Auto-merge is not allowed" }] } };
+    }
+    return gh.request(options);
+  };
+  const result = await publishNote(request, settings, publishInput);
+  assert.equal(result.autoMerge, false);
+  assert.equal(result.prNumber, 9);
+});
+
+/* ---- カバー画像のアップロード ---- */
+
+const UUID = "123e4567-e89b-42d3-a456-426614174000";
+
+test("obsidian: カバーのキーは MIME から拡張子を決める", () => {
+  assert.equal(coverKey("image/jpeg", UUID), `${UUID}.jpg`);
+  assert.equal(coverKey("image/png", UUID), `${UUID}.png`);
+  assert.equal(coverKey("image/webp", UUID), `${UUID}.webp`);
+  assert.throws(() => coverKey("image/heic", UUID), MediaError);
+  assert.throws(() => coverKey("image/png", "not-a-uuid"), MediaError);
+});
+
+test("obsidian: カバーの大きさは 8MB までに縛る", () => {
+  assert.doesNotThrow(() => assertCoverSize(1024));
+  assert.throws(() => assertCoverSize(0), MediaError);
+  assert.throws(() => assertCoverSize(8 * 1024 * 1024 + 1), MediaError);
+});
+
+test("obsidian: カバーは PUT で上げ、返ってきた公開 URL を使う", async () => {
+  const seen = [];
+  const request = async (options) => {
+    seen.push(options);
+    return { status: 201, json: { key: `${UUID}.png`, url: `https://media.slytxt.dev/${UUID}.png` } };
+  };
+  const url = await uploadCover(request, "token-123", new ArrayBuffer(16), "image/png", UUID);
+  assert.equal(url, `https://media.slytxt.dev/${UUID}.png`);
+  assert.equal(seen[0].method, "PUT");
+  assert.equal(seen[0].url, `https://media.slytxt.dev/${UUID}.png`);
+  assert.equal(seen[0].headers.authorization, "Bearer token-123");
+  assert.equal(seen[0].headers["content-type"], "image/png");
+
+  const denied = async () => ({ status: 401, json: { error: "トークンが違います。" } });
+  await assert.rejects(
+    () => uploadCover(denied, "wrong", new ArrayBuffer(16), "image/png", UUID),
+    (error) => error instanceof MediaError && /トークン/.test(error.message)
+  );
+  await assert.rejects(
+    () => uploadCover(request, "", new ArrayBuffer(16), "image/png", UUID),
+    MediaError
+  );
+});
+
+/* ---- 埋め込み URL ---- */
+
+test("obsidian: 埋め込み URL の種別判定はサイト側と揃える", () => {
+  assert.equal(classifyEmbedUrl("https://www.youtube.com/watch?v=abcdefghijk")?.type, "youtube");
+  assert.equal(classifyEmbedUrl("https://youtu.be/abcdefghijk")?.type, "youtube");
+  assert.equal(classifyEmbedUrl("https://www.youtube.com/shorts/abcdefghijk")?.type, "youtube");
+  assert.equal(classifyEmbedUrl("https://open.spotify.com/intl-ja/track/1234567890abcd")?.type, "spotify");
+  assert.equal(classifyEmbedUrl("https://x.com/sybtxt/status/1234567890")?.type, "x");
+  assert.equal(classifyEmbedUrl("https://twitter.com/sybtxt/status/1234567890")?.type, "x");
+  assert.equal(classifyEmbedUrl("https://example.com/article")?.type, "link");
+  assert.equal(classifyEmbedUrl("ただの文章"), null);
+  assert.equal(classifyEmbedUrl(""), null);
+  assert.equal(embedLabel({ type: "youtube", url: "" }), "YouTube の埋め込み");
+  assert.equal(embedInsertion("https://example.com"), "\n\nhttps://example.com\n\n");
 });
