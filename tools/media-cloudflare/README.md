@@ -10,6 +10,16 @@ npx wrangler deploy -c tools/media-cloudflare/wrangler.toml
 
 `wrangler.toml` の routes により `https://media.slytxt.dev` に割り当たる。バケットは writer 側の手順で作成済みのものを使う（無ければ `npx wrangler r2 bucket create slytxt-writer-media`）。
 
+## アップロード（Obsidian プラグインのカバー画像用）
+
+配信（GET / HEAD）のほかに、`PUT /<キー>` で画像を `pub/` へ直接アップロードできる。キーは配信と同じ形（UUID または 32 桁 hex + jpg / png / gif / webp）、上限 8MB。認証は secret の `UPLOAD_TOKEN` と対になる Bearer トークン必須で、未設定のときは無効（503）。
+
+```sh
+npx wrangler secret put UPLOAD_TOKEN -c tools/media-cloudflare/wrangler.toml
+```
+
+プラグイン側の設定（slytxt publish の「アップロード用トークン」）に同じ値を入れる。トークンを変えたら両方を差し替える。
+
 ## キャッシュと画像の削除
 
 レスポンスは `cache-control: public, max-age=31536000, s-maxage=300, immutable` です。URL が内容ハッシュなので、ブラウザには1年間持たせます。一方、R2 の `pub/` から画像を消しても CDN のエッジに残り続けないよう、エッジ側（`s-maxage`）の寿命は300秒にしています。

@@ -42,6 +42,8 @@ export type PublishResult = {
   prUrl: string;
   prNumber: number;
   url: string;
+  /** PR に自動マージを設定できたか（CI 通過後にそのまま公開される）。 */
+  autoMerge: boolean;
 };
 
 /** UTF-8 の文字列を base64 にする（btoa は ASCII しか扱えないため自前で変換）。 */
@@ -129,12 +131,37 @@ export async function publishNote(
     body: input.prBody ?? "執筆ツール（Obsidian）から投稿。"
   });
   if (pr.status !== 201) throw new PublishError(`PR を作れませんでした: ${messageOf(pr)}`);
-  const prJson = pr.json as { html_url?: string; number?: number };
+  const prJson = pr.json as { html_url?: string; number?: number; node_id?: string };
+
+  // 公開はここで終えるのが本人の決定（2026-11-16）: PR に自動マージを設定し、
+  // CI が通ったらマージされて公開される。設定に失敗しても PR 自体はできて
+  // いるので、失敗として投げずに手動マージへ落とす。
+  let autoMerge = false;
+  if (prJson.node_id) {
+    try {
+      const gql = await request({
+        url: "https://api.github.com/graphql",
+        method: "POST",
+        headers: headers(settings),
+        body: JSON.stringify({
+          query:
+            "mutation($id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: SQUASH }) { clientMutationId } }",
+          variables: { id: prJson.node_id }
+        })
+      });
+      const errors = (gql.json as { errors?: unknown[] } | null)?.errors;
+      autoMerge = gql.status === 200 && !errors?.length;
+    } catch {
+      autoMerge = false;
+    }
+  }
+
   return {
     branch,
     path,
     prUrl: prJson.html_url ?? "",
     prNumber: prJson.number ?? 0,
-    url: publicUrl(input.category, input.slug)
+    url: publicUrl(input.category, input.slug),
+    autoMerge
   };
 }

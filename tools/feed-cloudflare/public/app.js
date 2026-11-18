@@ -1,7 +1,7 @@
 /**
  * 投稿画面。Cloudflare Access の裏でだけ動く前提。
  * - 画像は先に /api/media へ上げ、返った key を本文と一緒に /api/posts へ送る。
- * - alt は画像ごとに入力させる（公開側でそのまま alt になる）。
+ * - alt は任意。入れた場合は公開側でそのまま alt になる。
  */
 
 const MAX_IMAGES = 4;
@@ -230,12 +230,6 @@ els.form.addEventListener("submit", async (event) => {
     els.body.focus();
     return;
   }
-  const missingAlt = attachments.filter((item) => item.alt.trim() === "");
-  if (missingAlt.length > 0) {
-    setStatus("画像には説明（alt）を入れてください。", "error");
-    return;
-  }
-
   els.submit.disabled = true;
   setStatus("投稿しています…");
   try {

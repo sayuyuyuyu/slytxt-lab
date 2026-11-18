@@ -1,6 +1,9 @@
 import { App, Notice, Plugin, TFile, requestUrl } from "obsidian";
+import { EmbedModal } from "./src/embed-modal";
 import { FrontmatterModal, type FrontmatterValues } from "./src/frontmatter-modal";
 import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/github";
+import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
+import { MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
 import { preparePublish } from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
@@ -19,7 +22,7 @@ export default class SlytxtPublishPlugin extends Plugin {
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
         if (!file || file.extension !== "md") return false;
-        if (!checking) this.openFrontmatterModal(file);
+        if (!checking) void this.openFrontmatterModal(file);
         return true;
       }
     });
@@ -32,6 +35,37 @@ export default class SlytxtPublishPlugin extends Plugin {
         if (!file || file.extension !== "md") return false;
         if (!checking) void this.publish(file);
         return true;
+      }
+    });
+
+    this.addCommand({
+      id: "upload-cover",
+      name: "カバー画像をアップロード",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== "md") return false;
+        if (!checking) {
+          void this.uploadCoverFor(file).catch((error: unknown) => {
+            new Notice(error instanceof Error ? error.message : String(error), 12000);
+          });
+        }
+        return true;
+      }
+    });
+
+    this.addCommand({
+      id: "insert-embed",
+      name: "埋め込み URL を挿入",
+      editorCallback: (editor) => {
+        new EmbedModal(this.app, (url) => {
+          const info = classifyEmbedUrl(url);
+          if (!info) {
+            new Notice("URL として読めませんでした。");
+            return;
+          }
+          editor.replaceSelection(embedInsertion(info.url));
+          new Notice(`${embedLabel(info)}として挿入しました。`);
+        }).open();
       }
     });
   }
@@ -64,17 +98,56 @@ export default class SlytxtPublishPlugin extends Plugin {
     };
   }
 
-  private openFrontmatterModal(file: TFile): void {
+  private async openFrontmatterModal(file: TFile): Promise<void> {
     const initial = this.currentValues(file);
-    new FrontmatterModal(this.app, initial, (values) => {
-      void this.app.fileManager.processFrontMatter(file, (front) => {
-        front.title = values.title;
-        front.description = values.description;
-        front.tags = values.tags;
-        front.cover = values.cover;
-        front.category = values.category;
-      });
-    }).open();
+    const raw = await this.app.vault.read(file);
+    const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
+    new FrontmatterModal(
+      this.app,
+      initial,
+      (values) => {
+        void this.app.fileManager.processFrontMatter(file, (front) => {
+          front.title = values.title;
+          front.description = values.description;
+          front.tags = values.tags;
+          front.cover = values.cover;
+          front.category = values.category;
+        });
+      },
+      {
+        bodyText,
+        onUploadCover: async () => {
+          try {
+            return await this.uploadCoverFor(file);
+          } catch (error) {
+            new Notice(error instanceof Error ? error.message : String(error), 12000);
+            return "";
+          }
+        }
+      }
+    ).open();
+  }
+
+  /** 画像ファイルを選ばせて media Worker へ上げ、frontmatter の cover に URL を差す。 */
+  private async uploadCoverFor(file: TFile): Promise<string> {
+    if (!this.settings.uploadToken) {
+      throw new MediaError("設定でアップロード用トークンを登録してください。");
+    }
+    const picked = await pickImageFile();
+    if (!picked) throw new MediaError("画像が選ばれませんでした。");
+    new Notice("カバー画像をアップロードしています…");
+    const url = await uploadCover(
+      this.mediaRequest(),
+      this.settings.uploadToken,
+      picked.bytes,
+      picked.mime,
+      crypto.randomUUID()
+    );
+    await this.app.fileManager.processFrontMatter(file, (front) => {
+      front.cover = url;
+    });
+    new Notice(`カバーを設定しました: ${url}`, 8000);
+    return url;
   }
 
   /** ノートの frontmatter と本文から PR を作る。 */
@@ -110,7 +183,12 @@ export default class SlytxtPublishPlugin extends Plugin {
         title: payload.title,
         content: payload.content
       });
-      new Notice(`PR #${result.prNumber} を作成しました: ${result.prUrl}`, 12000);
+      new Notice(
+        result.autoMerge
+          ? `PR #${result.prNumber} を作成しました（CI が通れば自動でマージされ、公開されます）: ${result.prUrl}`
+          : `PR #${result.prNumber} を作成しました: ${result.prUrl}`,
+        12000
+      );
     } catch (error) {
       const message =
         error instanceof PublishError || error instanceof Error
@@ -139,4 +217,40 @@ export default class SlytxtPublishPlugin extends Plugin {
       return { status: response.status, json, text: response.text };
     };
   }
+
+  /** 二進数ボディ用（カバー画像のアップロード）。 */
+  private mediaRequest(): MediaRequest {
+    return async ({ url, method, headers, body }) => {
+      const response = await requestUrl({ url, method, headers, body, throw: false });
+      let json: unknown = null;
+      try {
+        json = response.json;
+      } catch {
+        json = null;
+      }
+      return { status: response.status, json, text: response.text };
+    };
+  }
+}
+
+/** 端末のファイル選択を開き、画像1枚の中身を返す。キャンセル時は null。 */
+function pickImageFile(): Promise<{ bytes: ArrayBuffer; mime: string } | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/gif,image/webp";
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      void file
+        .arrayBuffer()
+        .then((bytes) => resolve({ bytes, mime: file.type }))
+        .catch(() => resolve(null));
+    });
+    input.addEventListener("cancel", () => resolve(null));
+    input.click();
+  });
 }
