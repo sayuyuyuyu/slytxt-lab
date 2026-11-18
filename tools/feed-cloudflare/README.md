@@ -24,6 +24,8 @@
 3. Cloudflare Access で `feed.slytxt.dev` にアプリケーションを作り、本人のメールアドレスだけを許可する（writer と同じ設定）。
 4. デプロイする。
 
+   デプロイは Workers Builds の GitHub 連携で、`main` への push 時に自動で行われます（2026-11-18 連携。ルートディレクトリ `tools/feed-cloudflare`、ビルドコマンドなし、デプロイコマンド `npx wrangler deploy`）。手動で出す場合は従来どおり:
+
    ```sh
    ./scripts/feed.sh deploy
    ```
