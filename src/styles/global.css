@@ -1641,13 +1641,6 @@ html.js .adult-gate[data-locked="true"] {
     transform: scale(0.82);
   }
 }
-.site-footer__quote {
-  color: var(--text-muted);
-}
-.site-footer__quote::before {
-  content: "// ";
-  color: var(--accent-5);
-}
 .footer-links a {
   display: inline-flex;
   align-items: center;
