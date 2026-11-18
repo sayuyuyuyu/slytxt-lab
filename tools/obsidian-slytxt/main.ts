@@ -68,6 +68,36 @@ export default class SlytxtPublishPlugin extends Plugin {
         }).open();
       }
     });
+    this.addRibbonIcon("send", "PR を作る（公開）", () => {
+      const file = this.app.workspace.getActiveFile();
+      if (!file || file.extension !== "md") {
+        new Notice("Markdown ファイルを開いてから押してください。");
+        return;
+      }
+      void this.publish(file);
+    });
+
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        if (!(file instanceof TFile) || file.extension !== "md") return;
+        menu.addItem((item) => {
+          item
+            .setTitle("PR を作る（公開）")
+            .setIcon("send")
+            .onClick(() => {
+              void this.publish(file);
+            });
+        });
+        menu.addItem((item) => {
+          item
+            .setTitle("公開の項目を入力")
+            .setIcon("settings-2")
+            .onClick(() => {
+              void this.openFrontmatterModal(file);
+            });
+        });
+      })
+    );
   }
 
   async loadSettings(): Promise<void> {
