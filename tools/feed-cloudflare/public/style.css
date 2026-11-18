@@ -1,4 +1,5 @@
-/* 投稿画面。サイト本体とは別ドメインなので、同じ配色だけ持たせる。 */
+/* 投稿画面。サイト本体とは別ドメインなので、同じ配色だけ持たせる。
+   説明文は置かず、操作はアイコンと状態の見た目で表す。 */
 :root {
   color-scheme: dark;
   --bg: #05070f;
@@ -21,8 +22,7 @@ body {
   font: 16px/1.7 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
   padding: 0 16px 48px;
 }
-h1,
-h2 {
+h1 {
   margin: 0;
   font-size: 1rem;
   letter-spacing: 0.08em;
@@ -43,16 +43,11 @@ a {
 }
 .bar {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 0 16px;
+  padding: 16px 0 14px;
   border-bottom: 1px solid var(--border);
-}
-.bar__note {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.8rem;
 }
 main {
   display: grid;
@@ -89,37 +84,63 @@ main {
   color: var(--text-muted);
   font-size: 0.78rem;
 }
-.attach {
+.toolbar {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
 }
-.button {
+.status {
+  margin: 0;
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.status[data-state="error"] {
+  color: var(--danger);
+}
+.icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 10px 18px;
+  width: 44px;
+  height: 44px;
+  flex: none;
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   background: transparent;
   color: inherit;
-  font: inherit;
-  text-decoration: none;
   cursor: pointer;
+  text-decoration: none;
 }
-.button:hover,
-.button:focus-visible {
+.icon-button:hover,
+.icon-button:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
 }
-.button--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
-}
-.button:disabled {
+.icon-button:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
+}
+.send-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+.send-button:active {
+  transform: scale(0.94);
+}
+/* 押せない理由は言葉でなく見た目で: 本文が空か画像の処理中は沈む。 */
+.send-button:disabled {
+  opacity: 0.3;
   cursor: not-allowed;
 }
 .attachments {
@@ -139,13 +160,29 @@ main {
   border-radius: 10px;
   background: var(--surface);
 }
+.attachment[data-state="error"] {
+  border-color: var(--danger);
+}
 .attachment img {
   width: 88px;
   height: 88px;
   object-fit: cover;
   border-radius: 8px;
 }
+.attachment[data-state="uploading"] img {
+  animation: attachment-pulse 1.1s ease-in-out infinite;
+}
+@keyframes attachment-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
 .attachment input {
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -154,33 +191,21 @@ main {
   font: inherit;
   font-size: 0.9rem;
 }
-.attachment button {
-  min-height: 36px;
-  padding: 6px 12px;
+.attachment__remove {
+  width: 36px;
+  height: 36px;
 }
 .attachment__state {
-  color: var(--text-muted);
-  font-size: 0.76rem;
-}
-.actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.status {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-.status[data-state="error"] {
+  display: block;
+  margin-top: 6px;
   color: var(--danger);
+  font-size: 0.76rem;
 }
 .recent__list {
   display: grid;
   gap: 14px;
   list-style: none;
-  margin: 12px 0 0;
+  margin: 0;
   padding: 0;
 }
 .recent__item {
@@ -195,9 +220,8 @@ main {
 }
 .recent__remove {
   margin-top: 8px;
-  min-height: 36px;
-  padding: 4px 14px;
-  font-size: 0.8rem;
+  width: 36px;
+  height: 36px;
   color: var(--text-muted);
 }
 .recent__body {
@@ -213,11 +237,17 @@ main {
     width: 72px;
     height: 72px;
   }
-  .attachment button {
+  .attachment__remove {
     grid-column: 1 / -1;
+    justify-self: end;
   }
-  .actions {
-    flex-direction: column;
-    align-items: stretch;
+}
+@media (prefers-reduced-motion: reduce) {
+  .attachment[data-state="uploading"] img {
+    animation: none;
+    opacity: 0.6;
+  }
+  .send-button {
+    transition: none;
   }
 }
