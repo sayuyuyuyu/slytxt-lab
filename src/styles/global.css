@@ -203,51 +203,6 @@ samp,
   transform: translateY(0);
 }
 
-/* ---------------------------------------------------------------------------
-   Terminal chrome
-   --------------------------------------------------------------------------- */
-.terminal {
-  border: 1px solid var(--border);
-  background:
-    linear-gradient(color-mix(in srgb, var(--surface) 92%, transparent), var(--bg-soft));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--bg) 60%, transparent),
-    0 40px 80px -60px var(--shadow),
-    0 0 90px -40px var(--glow);
-}
-.terminal__bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
-}
-.terminal__dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  flex: none;
-}
-.terminal__dot--red {
-  background: var(--accent-red);
-}
-.terminal__dot--yellow {
-  background: var(--accent-warn);
-}
-.terminal__dot--green {
-  background: var(--accent-5);
-}
-.terminal__title {
-  margin-left: 8px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .prompt {
   color: var(--accent-5);
   font-family: var(--font-mono);
@@ -469,39 +424,11 @@ samp,
 .home-hero {
   padding-block: clamp(36px, 6vw, 68px);
 }
-.home-hero .terminal {
-  animation: terminal-glow 6s ease-in-out infinite;
-}
-@keyframes terminal-glow {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--bg) 60%, transparent),
-      0 40px 80px -60px var(--shadow),
-      0 0 80px -52px var(--glow);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
-      0 40px 80px -60px var(--shadow),
-      0 0 110px -40px var(--glow);
-  }
-}
+
 .home-hero__body {
   padding: clamp(24px, 4vw, 44px);
 }
-.terminal__cmd {
-  margin: 0 0 10px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-.terminal__cmd .prompt {
-  margin-right: 8px;
-}
-.terminal__cmd-text {
-  color: var(--text);
-}
+
 .home-hero h1,
 .page-title,
 .section-head h2 {
@@ -550,138 +477,6 @@ samp,
 .home-hero__links a:hover::after {
   opacity: 1;
   animation: cursor-blink 1.05s steps(1) infinite;
-}
-
-/* The hero terminal is playable: with JS on, a console opens under the
-   intro and takes real commands. Without JS it stays a plain intro card. */
-.terminal__console {
-  display: none;
-  border-top: 1px solid var(--border);
-  padding: 16px clamp(24px, 4vw, 44px) 20px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  line-height: 1.7;
-}
-html.js .terminal__console {
-  display: block;
-}
-.terminal__output {
-  max-height: 260px;
-  overflow-x: auto;
-  overflow-y: auto;
-  padding-bottom: 4px;
-}
-.terminal__line {
-  white-space: pre;
-}
-.terminal__block {
-  margin: 0;
-  font: inherit;
-  white-space: pre;
-}
-.terminal__output a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-/* Tappable command candidates for the playable terminal, shown while
-   typing. They mirror what Tab completion offers on a keyboard. */
-.terminal__suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-.terminal__suggestions[hidden] {
-  display: none;
-}
-.terminal__suggestion {
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  line-height: 1.4;
-  cursor: pointer;
-}
-.terminal__suggestion:hover {
-  color: var(--text);
-}
-.terminal__suggestion:active {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.terminal__input-line {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-top: 6px;
-  cursor: text;
-}
-.terminal__prompt {
-  color: var(--accent-5);
-  font-family: var(--font-mono);
-  font-weight: 600;
-  flex: none;
-}
-.terminal__input {
-  flex: 1;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  outline: none;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  caret-color: var(--accent);
-}
-.terminal__input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.55;
-}
-.terminal__input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Touch-friendly way to run the current line, same as pressing Enter. */
-.terminal__enter {
-  flex: none;
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  line-height: 1.4;
-  cursor: pointer;
-}
-.terminal__enter:hover {
-  color: var(--text);
-}
-.terminal__enter:active {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-@media (pointer: coarse) {
-  /* Keep iOS Safari from zooming in on the focused input. */
-  .terminal__input {
-    font-size: 16px;
-  }
-}
-@media (max-width: 600px) {
-  /* On narrow screens the output is not a scroll box of its own: it
-     grows with the page, and lines wrap at spaces instead of sliding
-     sideways. The help text stacks to match (see the help command). */
-  .terminal__output {
-    max-height: none;
-    overflow: visible;
-  }
-  .terminal__line,
-  .terminal__block {
-    white-space: pre-wrap;
-  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -1915,7 +1710,6 @@ html.konami-on .site-main {
   body::after {
     display: none;
   }
-  .home-hero .terminal,
   .brand__cursor {
     animation: none;
   }
@@ -2021,8 +1815,6 @@ html.konami-on .site-main {
   .article-nav,
   .pagination,
   .listing-tools,
-  .terminal__console,
-  .terminal__suggestions,
   .home-hero__links,
   .breadcrumbs,
   .link-button {
