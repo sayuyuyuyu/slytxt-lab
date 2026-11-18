@@ -141,11 +141,10 @@ for (const file of htmlFiles) {
   // The default OG image shows only the site name and description, so its
   // alt must be the site name, not the page title.
   const imageAlt = ogImagePath === "/og/site.png" ? "slytxt.lab" : title;
-  // 記事・メモの詳細ページだけが ArticleLayout / NoteLayout を使い、
+  // 記事の詳細ページだけが ArticleLayout を使い、
   // og:type=article と article:* の日時メタを出す。パスの形から決める。
   const isArticle =
-    /^articles\/(?:tech|journal)\/[^/]+\/index\.html$/.test(relative) ||
-    /^notes\/[^/]+\/index\.html$/.test(relative);
+    /^articles\/(?:tech|misc|comic|game|anime)\/[^/]+\/index\.html$/.test(relative);
   for (const [attr, name, expected] of [
     ["property", "og:title", title],
     ["property", "og:description", description],

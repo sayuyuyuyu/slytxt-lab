@@ -19,14 +19,14 @@ for (const name of ["src", "public", "package.json", "astro.config.mjs", "tsconf
   await cp(source, path.join(target, name), { recursive: true });
 }
 await symlink(path.join(root, "node_modules"), path.join(target, "node_modules"), "dir");
-for (const collection of ["tech", "journal", "notes", "projects"]) {
+for (const collection of ["tech", "misc", "comic", "game", "anime", "projects"]) {
   await mkdir(path.join(target, "src", "content", collection), { recursive: true });
 }
 
 // 埋め込み確認用の記事。本文に単独行で置いた Spotify の URL が
 // 公開側（remark-embed）でプレイヤーになることを E2E で見る。
 await writeFile(
-  path.join(target, "src", "content", "journal", "e2e-embed.md"),
+  path.join(target, "src", "content", "comic", "e2e-embed.md"),
   [
     "---",
     "title: E2E 埋め込み確認",

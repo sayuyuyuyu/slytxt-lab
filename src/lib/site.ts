@@ -12,8 +12,10 @@ export const site = {
 
 export const categoryLabels = {
   tech: "Tech",
-  journal: "Journal",
-  notes: "Notes",
+  misc: "なんか",
+  comic: "Comic",
+  game: "Game",
+  anime: "Anime",
   projects: "Projects",
   about: "About"
 } as const;
@@ -21,15 +23,16 @@ export const categoryLabels = {
 /** Where each collection lives in the URL space. */
 export const categoryPaths = {
   tech: "/articles/tech/",
-  journal: "/articles/journal/",
-  notes: "/notes/",
+  misc: "/articles/misc/",
+  comic: "/articles/comic/",
+  game: "/articles/game/",
+  anime: "/articles/anime/",
   projects: "/projects/"
 } as const;
 
 /** Empty-state headings: one pattern, "No <collection> yet", kept distinct from the 404 heading "Not found". */
 export const emptyStateTitles = {
   articles: "No articles yet",
-  notes: "No notes yet",
   projects: "No projects yet",
   tags: "No tags yet"
 } as const;
@@ -42,7 +45,7 @@ export type ArticleSection = {
   emptyDescription: string;
 };
 
-export const articleSections: Record<"tech" | "journal" | "notes", ArticleSection> = {
+export const articleSections: Record<"tech" | "misc" | "comic" | "game" | "anime", ArticleSection> = {
   tech: {
     title: categoryLabels.tech,
     eyebrow: "tech",
@@ -50,27 +53,41 @@ export const articleSections: Record<"tech" | "journal" | "notes", ArticleSectio
     emptyTitle: emptyStateTitles.articles,
     emptyDescription: "まだありません。AIやクラウドを試した記録の最初の1本がここに並びます。"
   },
-  journal: {
-    title: categoryLabels.journal,
-    eyebrow: "journal",
-    description: "旅行、ゲーム、音楽、ガジェットの話。",
+  misc: {
+    title: categoryLabels.misc,
+    eyebrow: "misc",
+    description: "どの区分にも入らないもの。短いメモや日々のこと。",
     emptyTitle: emptyStateTitles.articles,
-    emptyDescription: "まだありません。旅行、ゲーム、音楽、ガジェットの話がここに並びます。"
+    emptyDescription: "まだありません。短いメモや日々のことがここに並びます。"
   },
-  notes: {
-    title: categoryLabels.notes,
-    eyebrow: "notes",
-    description: "あとで記事にする前の、短いメモ。",
-    emptyTitle: emptyStateTitles.notes,
-    emptyDescription: "まだありません。短いメモがここに並びます。"
+  comic: {
+    title: categoryLabels.comic,
+    eyebrow: "comic",
+    description: "漫画の感想。ジャンプ感想など。",
+    emptyTitle: emptyStateTitles.articles,
+    emptyDescription: "まだありません。漫画の感想がここに並びます。"
+  },
+  game: {
+    title: categoryLabels.game,
+    eyebrow: "game",
+    description: "ゲームの話。音ゲーの記録など。",
+    emptyTitle: emptyStateTitles.articles,
+    emptyDescription: "まだありません。ゲームの話がここに並びます。"
+  },
+  anime: {
+    title: categoryLabels.anime,
+    eyebrow: "anime",
+    description: "アニメの感想。",
+    emptyTitle: emptyStateTitles.articles,
+    emptyDescription: "まだありません。アニメの感想がここに並びます。"
   }
 };
 
-/** The index page that gathers Tech and Journal. */
+/** The index page that gathers every category. */
 export const articlesIndex: ArticleSection = {
   title: "Articles",
   eyebrow: "articles",
-  description: "技術系の記事と、それ以外の記事。",
+  description: "技術と漫画、ゲーム、アニメ、それ以外の記事。",
   emptyTitle: emptyStateTitles.articles,
   emptyDescription: "まだありません。長い文章がここに並びます。"
 };
@@ -79,8 +96,8 @@ export const articlesIndex: ArticleSection = {
 export const pageDescriptions = {
   about: "しらゆ（slytxt）のプロフィール。",
   projects: "しらゆがつくっているものと、いまの進み具合。",
-  tags: "Tech、Journal、Notes、Projects をタグから辿れます。",
-  search: "記事とメモ、つくったもの、プロフィールを、書いてある言葉から探せます。"
+  tags: "記事と Projects をタグから辿れます。",
+  search: "記事とつくったもの、プロフィールを、書いてある言葉から探せます。"
 } as const;
 
 export const projectStatusLabels = {
@@ -104,10 +121,12 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
         label: "Articles",
         children: [
           { href: "/articles/tech/", label: categoryLabels.tech },
-          { href: "/articles/journal/", label: categoryLabels.journal }
+          { href: "/articles/misc/", label: categoryLabels.misc },
+          { href: "/articles/comic/", label: categoryLabels.comic },
+          { href: "/articles/game/", label: categoryLabels.game },
+          { href: "/articles/anime/", label: categoryLabels.anime }
         ]
       },
-      { href: "/notes/", label: categoryLabels.notes },
       { href: "/feed/", label: "Feed" }
     ]
   },

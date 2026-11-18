@@ -4,7 +4,7 @@ import ArticleLayout from "@/layouts/ArticleLayout.astro";
 import { render } from "astro:content";
 
 export async function getStaticPaths() {
-  const entries = await getArticles("journal");
+  const entries = await getArticles("comic");
   return entries.map((entry) => ({
     params: { slug: getEntrySlug(entry) },
     props: { entry }
@@ -13,7 +13,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
-const entries = await getArticles("journal");
+const entries = await getArticles("comic");
 const { previous, next } = getAdjacentArticles(entries, entry.id);
 ---
 

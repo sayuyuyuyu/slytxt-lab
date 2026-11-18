@@ -1,5 +1,4 @@
 import {
-  loneEmbedUrls,
   plainText,
   renderPreviewMarkdown,
   textLength,
@@ -68,14 +67,12 @@ const els = {
   previewLead: $("#previewLead"),
   previewCover: $("#previewCover"),
   previewBody: $("#previewBody"),
-  previewEmbedWarning: $("#previewEmbedWarning"),
   previewTags: $("#previewTags"),
   publishOpen: $("#publishOpen"),
   publishPanel: $("#publishPanel"),
   publishTitle: $("#publishTitle"),
   publishTitleRow: $("#publishTitleRow"),
   publishCategory: $("#publishCategory"),
-  categoryNote: $("#categoryNote"),
   publishDescription: $("#publishDescription"),
   publishDescriptionCount: $("#publishDescriptionCount"),
   publishDescriptionNote: $("#publishDescriptionNote"),
@@ -601,10 +598,10 @@ function renderPublished() {
     item.append(select);
 
     if (article.url) {
-      // notes は仕様上タイトルを持たないため、投稿文にも入れない。
-      // tech / journal はタイトルが空でも、見出しと同じく本文の書き出しを
+      // misc（なんか）は仕様上タイトルを持たないため、投稿文にも入れない。
+      // それ以外はタイトルが空でも、見出しと同じく本文の書き出しを
       // 投稿文のタイトルに使う（公開完了画面の挙動と揃える）。
-      const shareTitle = article.category === "notes" ? "" : displayTitle(article, "");
+      const shareTitle = article.category === "misc" ? "" : displayTitle(article, "");
       item.append(createXShareLink(shareTitle, article.url, "button drafts__share"));
     }
 
@@ -854,7 +851,6 @@ function clearEditor() {
   editorSet("");
   els.titleInput.hidden = false;
   resizeTitle();
-  els.categoryNote.hidden = true;
   showEmpty(true);
   renderList();
   setBusy(state.busy);
@@ -1005,31 +1001,13 @@ function collect() {
 
 function onInput() {
   updateCount();
-  updateCategoryNote();
   scheduleSave();
 }
 
 /*
- * notes では単独行の URL が埋め込みにならない（公開側もプレーンテキスト）。
- * 埋め込み対象の URL が本文にあるときだけ、カテゴリ欄の横に注意を出す。
- * 記事カテゴリでは出さない。プレビュー側にも同じ趣旨の注意を出す。
- */
-const NOTE_EMBED_MESSAGE =
-  "メモでは埋め込みできません。カテゴリを記事（Tech / Journal）に変えると、リンクがプレイヤーで表示されます。";
-
-function updateCategoryNote() {
-  const show =
-    state.current !== null &&
-    els.category.value === "notes" &&
-    loneEmbedUrls(els.body.value).length > 0;
-  els.categoryNote.hidden = !show;
-  if (show) els.categoryNote.textContent = NOTE_EMBED_MESSAGE;
-}
-
-/*
- * カテゴリで変わる編集画面の出し分け。notes はタイトル不要なので
- * タイトル欄を出さない（値は下書きに残るが、記事に戻すまで編集できない）。
- * 記事（tech / journal）ではタイトル欄を通常どおり出す。
+ * カテゴリで変わる編集画面の出し分け。misc（なんか）はタイトル不要
+ * なのでタイトル欄を出さない（値は下書きに残るが、記事に戻すまで
+ * 編集できない）。他のカテゴリではタイトル欄を通常どおり出す。
  */
 /**
  * タイトル欄（textarea）の高さを内容に合わせる。折り返した行数だけ
@@ -1053,8 +1031,7 @@ function resizeTitle(retries = 0) {
 }
 
 function applyCategoryUi() {
-  els.titleInput.hidden = els.category.value === "notes";
-  updateCategoryNote();
+  els.titleInput.hidden = els.category.value === "misc";
   resizeTitle();
 }
 
@@ -1063,7 +1040,6 @@ function applyCategoryUi() {
  * 公開後の記事ページに近い見た目で、現在の下書き（未保存分を含む）を
  * 確認する。開くたびに collect() の内容で描き直すので、編集中の本文・
  * タイトル・タグ・見出し画像・説明文がそのまま反映される。
- * notes は公開側がプレーンテキスト表示（NoteLayout）なので、そちらに合わせる。
  * 保存や autosave の挙動には触れない。
  */
 
@@ -1094,7 +1070,6 @@ function loadXWidgets(root) {
 // 編集画面の h1 はヘッダーの「執筆」（#barLabel）が持つ。
 // 記事プレビューを開いた間はプレビュー側の記事タイトル（#previewTitle の h1）が
 // 主見出しになるよう、ヘッダー側を span に差し替えて h1 が二重にならないようにする。
-// notes のプレビューでは記事タイトルを出さないため、ヘッダー側を h1 のままにする。
 function setBarLabelHeading(isHeading) {
   const current = document.querySelector('#barLabel');
   if (!current) return;
@@ -1110,8 +1085,7 @@ function setBarLabelHeading(isHeading) {
 function openPreview() {
   if (!state.current || state.busy) return;
   const data = collect();
-  const isNote = data.category === "notes";
-  els.previewArticle.classList.toggle("preview__article--article", !isNote);
+  els.previewArticle.classList.toggle("preview__article--article", true);
   previewReturnFocus = rememberFocus();
 
   els.previewCategory.textContent =
@@ -1121,32 +1095,19 @@ function openPreview() {
     title: data.title || "無題",
     body: data.body
   });
-  els.previewTitle.hidden = isNote;
-  setBarLabelHeading(isNote);
+  els.previewTitle.hidden = false;
+  setBarLabelHeading(false);
   els.previewLead.textContent = data.description;
-  els.previewLead.hidden = isNote || !data.description;
+  els.previewLead.hidden = !data.description;
 
   const cover = coverDisplayUrl || data.cover;
   els.previewCover.hidden = !cover;
   if (cover) els.previewCover.src = cover;
   else els.previewCover.removeAttribute("src");
 
-  // notes では埋め込み対象の URL があってもプレーンテキストのままになる。
-  // 記事との差に気づけるよう、プレビューの先頭に注意を出す。
-  const showEmbedWarning = isNote && loneEmbedUrls(data.body).length > 0;
-  els.previewEmbedWarning.hidden = !showEmbedWarning;
-  if (showEmbedWarning) els.previewEmbedWarning.textContent = NOTE_EMBED_MESSAGE;
-
   els.previewBody.replaceChildren();
-  if (isNote) {
-    const pre = document.createElement("pre");
-    pre.className = "preview__notetext";
-    pre.textContent = data.body.trim();
-    els.previewBody.append(pre);
-  } else {
-    els.previewBody.innerHTML = renderPreviewMarkdown(data.body);
-    loadXWidgets(els.previewBody);
-  }
+  els.previewBody.innerHTML = renderPreviewMarkdown(data.body);
+  loadXWidgets(els.previewBody);
 
   els.previewTags.replaceChildren(
     ...data.tags.map((tag) => {
@@ -1162,9 +1123,7 @@ function openPreview() {
     })
   );
   els.previewTags.hidden = data.tags.length === 0;
-  // タグは記事では cover の前、Note では本文の後に出る（公開側の並び）。
-  if (isNote) els.previewArticle.append(els.previewTags);
-  else els.previewArticle.insertBefore(els.previewTags, els.previewCover);
+  els.previewArticle.insertBefore(els.previewTags, els.previewCover);
 
   els.preview.hidden = false;
   els.previewOpen.setAttribute("aria-pressed", "true");
@@ -2047,8 +2006,8 @@ function openPublishPanel() {
     title: els.titleInput.value.trim() || "無題",
     body: els.body.value
   });
-  // notes はタイトル不要なので、確認欄のタイトル行自体を出さない。
-  els.publishTitleRow.hidden = els.category.value === "notes";
+  // misc はタイトル不要なので、確認欄のタイトル行自体を出さない。
+  els.publishTitleRow.hidden = els.category.value === "misc";
   // カテゴリは編集画面の select が単一の状態で、ここでは表示だけする。
   els.publishCategory.textContent =
     state.meta?.categoryLabels?.[els.category.value] ?? els.category.value;
@@ -2176,9 +2135,9 @@ async function runPublish() {
       result = await pollPublishStatus(state.current.id, result);
     }
     // 公開時に確定したタイトル（本文から補ったものを含む）を投稿文に使う。
-    // notes はタイトルを持たないので、公開時の X 投稿文にも入れない。
+    // misc はタイトルを持たないので、公開時の X 投稿文にも入れない。
     const shareTitle =
-      state.current.category === "notes" ? "" : String(result.title ?? "").trim();
+      state.current.category === "misc" ? "" : String(result.title ?? "").trim();
     finishTask();
     showResult([
       { label: result.file },
@@ -2214,7 +2173,7 @@ async function newDraft() {
   try {
     const { draft } = await api("/api/drafts", {
       method: "POST",
-      body: JSON.stringify({ category: "notes" })
+      body: JSON.stringify({ category: "misc" })
     });
     state.drafts.unshift({
       ...draft,
@@ -2224,8 +2183,8 @@ async function newDraft() {
     applyDraft(draft);
     setView("editor");
     await loadDrafts();
-    // notes はタイトル欄が無いので本文へ、それ以外はタイトル欄へフォーカスする。
-    if (draft.category === "notes") focusBody();
+    // misc はタイトル欄が無いので本文へ、それ以外はタイトル欄へフォーカスする。
+    if (draft.category === "misc") focusBody();
     else els.titleInput.focus();
   } catch (error) {
     toast(error.message, "error");
@@ -2280,8 +2239,8 @@ async function removeDraft(id) {
 /* ---- 起動 ---- */
 
 const FALLBACK_META = {
-  categories: ["tech", "journal", "notes"],
-  categoryLabels: { tech: "Tech", journal: "Journal", notes: "Notes" },
+  categories: ["tech", "misc", "comic", "game", "anime"],
+  categoryLabels: { tech: "Tech", misc: "なんか", comic: "Comic", game: "Game", anime: "Anime" },
   draftsDir: "Cloudflare KV",
   tags: []
 };

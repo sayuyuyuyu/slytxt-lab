@@ -1,12 +1,12 @@
 ---
-import { getNotes } from "@/lib/content";
+import { getArticles } from "@/lib/content";
 import { pagedStaticPaths } from "@/lib/pagination";
 import { articleSections } from "@/lib/site";
 import ArticleListing from "@/layouts/ArticleListing.astro";
 export async function getStaticPaths() {
-  const entries = await getNotes();
-  return pagedStaticPaths(entries, "/notes");
+  const entries = await getArticles("comic");
+  return pagedStaticPaths(entries, "/articles/comic");
 }
 const { page } = Astro.props;
 ---
-<ArticleListing section={articleSections.notes} basePath="/notes" page={page} variant="note" />
+<ArticleListing section={articleSections.comic} basePath="/articles/comic" page={page} />

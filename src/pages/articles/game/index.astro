@@ -3,6 +3,6 @@ import { getArticles } from "@/lib/content";
 import { paginateEntries } from "@/lib/pagination";
 import { articleSections } from "@/lib/site";
 import ArticleListing from "@/layouts/ArticleListing.astro";
-const page = paginateEntries(await getArticles("journal"), "/articles/journal");
+const page = paginateEntries(await getArticles("game"), "/articles/game");
 ---
-<ArticleListing section={articleSections.journal} basePath="/articles/journal" page={page} />
+<ArticleListing section={articleSections.game} basePath="/articles/game" page={page} />

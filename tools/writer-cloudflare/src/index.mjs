@@ -111,7 +111,7 @@ async function handleApi(request, env, url) {
       const body = await readJsonBody(request);
       const draft = await store.createDraft({
         title: body.title ?? "",
-        category: body.category ?? "notes"
+        category: body.category ?? "misc"
       });
       return json({ draft }, 201);
     }

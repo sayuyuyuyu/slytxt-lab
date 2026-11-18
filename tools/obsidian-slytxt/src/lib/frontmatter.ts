@@ -4,6 +4,7 @@
  *
  * YAML の型に依存しないよう、値は必要最小限の引用だけを行う。
  */
+import type { PublishCategory } from "./slug";
 export type FrontmatterInput = {
   title: string;
   description: string;
@@ -50,16 +51,16 @@ export function documentBody(frontmatter: FrontmatterInput, body: string): strin
 
 /**
  * 記事のタイトル。無ければ本文の書き出しで補う。
- * notes はタイトルを持たないので空のままにする（writer と同じ）。
+ * misc（なんか）はタイトルを持たないので空のままにする（writer と同じ）。
  */
 export function deriveTitle(
-  category: "tech" | "journal" | "notes",
+  category: PublishCategory,
   title: string | undefined,
   body: string
 ): string {
   const given = (title ?? "").trim();
   if (given && given !== "無題") return given;
-  if (category === "notes") return "";
+  if (category === "misc") return "";
   const firstLine = body.split("\n").map((line) => line.trim()).find(Boolean) ?? "";
   const text = firstLine
     .replace(/[#>*_`~]/g, "")

@@ -4,9 +4,9 @@ import { pagedStaticPaths } from "@/lib/pagination";
 import { articleSections } from "@/lib/site";
 import ArticleListing from "@/layouts/ArticleListing.astro";
 export async function getStaticPaths() {
-  const entries = await getArticles("journal");
-  return pagedStaticPaths(entries, "/articles/journal");
+  const entries = await getArticles("anime");
+  return pagedStaticPaths(entries, "/articles/anime");
 }
 const { page } = Astro.props;
 ---
-<ArticleListing section={articleSections.journal} basePath="/articles/journal" page={page} />
+<ArticleListing section={articleSections.anime} basePath="/articles/anime" page={page} />

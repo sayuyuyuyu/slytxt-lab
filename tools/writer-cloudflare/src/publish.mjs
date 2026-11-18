@@ -36,8 +36,10 @@ const SITE_ORIGIN = "https://slytxt.dev";
 /** サイト側の公開パス（src/lib/content.ts の ARTICLE_BASE と対応）。 */
 const PUBLIC_BASE = {
   tech: "articles/tech",
-  journal: "articles/journal",
-  notes: "notes"
+  misc: "articles/misc",
+  comic: "articles/comic",
+  game: "articles/game",
+  anime: "articles/anime"
 };
 
 /** 投稿が公開される URL。想定外のカテゴリなら空文字を返す。 */
@@ -92,12 +94,12 @@ export function articleSlug(raw, fallbackDate = today()) {
 
 /**
  * 公開時のタイトル。記事はタイトルが無ければ本文の書き出しで補う。
- * notes はタイトル不要なので、付いていなければ空のままにする
+ * misc（なんか）はタイトル不要なので、付いていなければ空のままにする
  * （本文の書き出しで代用しない。表示名はサイト側が本文の書き出しから作る）。
  */
 function deriveTitle(draft, body) {
   if (draft.title && draft.title !== "無題") return draft.title;
-  if (draft.category === "notes") return "";
+  if (draft.category === "misc") return "";
   const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
   const text = plainText(firstLine).replace(/\s+/g, " ").trim();
   return truncateText(text || "無題", 40);
@@ -109,7 +111,7 @@ const PUBLISHED_KEYS = new Set(["title", "description", "published", "tags", "co
 /**
  * 下書きが持ち回る未知の frontmatter 行（adult など）を公開ファイルへ引き継ぐ。
  * 公開時に明示的に書くキーは二重に書かないよう除く。prefix は key 行より前に
- * 置く（notes の title: "" 明示など）。
+ * 置く（misc の title: "" 明示など）。
  */
 function extrasForPublished(draft, prefix = []) {
   const carried = (draft.extras ?? []).filter((line) => {
@@ -506,13 +508,13 @@ async function publishPostInner({ env, store, id, onLog }) {
   const tags = draft.tags.slice(0, 10);
   const published = today();
   const slug = articleSlug(draft.id, published.replace(/-/g, "")) || draft.id;
-  const note = draft.category === "notes";
+  const titleless = draft.category === "misc";
   const file = `src/content/${draft.category}/${slug}.md`;
-  const branch = `${note ? "note" : "write"}/${slug}`;
-  // ブランチ接頭辞は notes だけ note/、他は write/。カテゴリ移動で接頭辞を
-  // またぐと PR のブランチも変わるので、開いている PR の探索は両方で行う。
-  const siblingBranch = `${note ? "write" : "note"}/${slug}`;
-  // タイトル無しの notes は title: "" を明示して書く。stringifyFrontmatter は
+  const branch = `write/${slug}`;
+  // 旧 notes 時代の PR は note/ 接頭辞で開いている可能性があるので、
+  // 開いている PR の探索はそちらも見る。
+  const siblingBranch = `note/${slug}`;
+  // タイトル無しの misc は title: "" を明示して書く。stringifyFrontmatter は
   // 空文字列のキーを落とすが、サイト側のスキーマは title キーが必須なので、
   // extras で行そのものを足す。
   const content = stringifyFrontmatter(
@@ -520,7 +522,7 @@ async function publishPostInner({ env, store, id, onLog }) {
     publicBody,
     extrasForPublished(draft, title === "" ? ['title: ""'] : [])
   );
-  const commitMessage = `${note ? "note" : "post"}: ${title || slug}`;
+  const commitMessage = `${titleless ? "note" : "post"}: ${title || slug}`;
   // 公開済みファイルとの突き合わせ（再編集かどうか）の材料。
   const generated = { title, description, tags, cover: publicCover, body: publicBody };
 
@@ -583,7 +585,7 @@ async function publishPostInner({ env, store, id, onLog }) {
 
   // 再投稿: 同じブランチの open PR が残っていたら、ファイルを更新して
   // 同じ PR で CI を回し直す。今のカテゴリのブランチに無いときは、接頭辞を
-  // またぐ移動 PR（notes↔tech/journal）が開いている可能性があるので、
+  // またぐ移動 PR が開いている可能性があるので、
   // もう一方の接頭辞の PR も探して同じように再利用する。
   const existingPr = history.find((entry) => entry.state === "open") ?? null;
   const siblingHistory = existingPr ? [] : await gh.findPulls(siblingBranch);
@@ -753,7 +755,7 @@ async function publishPostInner({ env, store, id, onLog }) {
   onLog(`書き出しました: ${file}`);
 
   const pr = await gh.createPull({
-    // タイトル無しの notes は PR タイトルが空になるので、コミットメッセージで代用する。
+    // タイトル無しの misc は PR タイトルが空になるので、コミットメッセージで代用する。
     title: title || commitMessage,
     head: branch,
     base: "main",
@@ -802,7 +804,7 @@ export async function publishStatus({ env, store, id }) {
 async function publishStatusInner({ env, store, id }) {
   const draft = await store.readDraft(id);
   const { slug, file, url } = publishTarget(draft);
-  const branch = `${draft.category === "notes" ? "note" : "write"}/${slug}`;
+  const branch = `write/${slug}`;
   const base = { prUrl: draft.pr || "", file, slug, url, title: draft.title };
 
   const gh = createGitHubClient(env);

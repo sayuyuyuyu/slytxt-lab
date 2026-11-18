@@ -18,8 +18,8 @@ test("writer: 作成→編集→自動保存→カテゴリ切替→タイトル
   await page.goto(`${WRITER_URL}/`);
   await page.locator("#new").click();
 
-  // 新規の下書きは notes。notes ではタイトル欄を出さない。
-  await expect(page.locator("#category")).toHaveValue("notes");
+  // 新規の下書きは misc。misc ではタイトル欄を出さない。
+  await expect(page.locator("#category")).toHaveValue("misc");
   await expect(page.locator("#title")).toBeHidden();
 
   // 本文を書く。見出しはキー入力、Spotify の URL は貼り付け
@@ -43,16 +43,16 @@ test("writer: 作成→編集→自動保存→カテゴリ切替→タイトル
     .evaluate((el) => getComputedStyle(el).boxShadow);
   expect(itemShadow).not.toBe("none");
 
-  // notes のまま開く公開パネル: タイトル行は出ず、カテゴリは表示のみ。
+  // misc のまま開く公開パネル: タイトル行は出ず、カテゴリは表示のみ。
   await page.locator("#publishOpen").click();
   await expect(page.locator("#publishPanel")).toBeVisible();
   await expect(page.locator("#publishTitleRow")).toBeHidden();
-  await expect(page.locator("#publishCategory")).toHaveText("Notes");
+  await expect(page.locator("#publishCategory")).toHaveText("なんか");
   await page.locator("#publishCancel").click();
   await expect(page.locator("#publishPanel")).toBeHidden();
 
-  // journal に切り替えるとタイトル欄が出て、付けて保存できる。
-  await page.locator("#category").selectOption("journal");
+  // comic に切り替えるとタイトル欄が出て、付けて保存できる。
+  await page.locator("#category").selectOption("comic");
   await expect(page.locator("#title")).toBeVisible();
   await page.locator("#title").fill("E2E テスト記事");
   await expectSaved(page);
@@ -79,14 +79,14 @@ test("writer: 作成→編集→自動保存→カテゴリ切替→タイトル
   await expect(page.locator("#publishPanel")).toBeVisible();
   await expect(page.locator("#publishTitleRow")).toBeVisible();
   await expect(page.locator("#publishTitle")).toHaveText("E2E テスト記事");
-  await expect(page.locator("#publishCategory")).toHaveText("Journal");
+  await expect(page.locator("#publishCategory")).toHaveText("Comic");
 });
 
 test("writer: 公開済み記事の行からX投稿リンクを開ける", async ({ page }) => {
   const article = {
-    category: "journal",
+    category: "comic",
     slug: "2026-01-02-x-share",
-    url: "https://slytxt.dev/articles/journal/2026-01-02-x-share/",
+    url: "https://slytxt.dev/articles/comic/2026-01-02-x-share/",
     title: "X 投稿のテスト",
     published: "2026-01-02",
     excerpt: "公開済み記事の説明です。",
@@ -112,7 +112,7 @@ test("writer: 公開済み記事の行からX投稿リンクを開ける", async
   await expect(share).toHaveAttribute("rel", "noopener");
 });
 
-test("writer: 公開済み一覧のX投稿リンクはタイトル無しの tech / journal に本文の書き出しを使う", async ({
+test("writer: 公開済み一覧のX投稿リンクはタイトル無しの tech / comic に本文の書き出しを使う", async ({
   page
 }) => {
   const techArticle = {
@@ -126,12 +126,12 @@ test("writer: 公開済み一覧のX投稿リンクはタイトル無しの tech
     draftId: null
   };
   const noteArticle = {
-    category: "notes",
+    category: "misc",
     slug: "2026-01-06-no-title",
-    url: "https://slytxt.dev/notes/2026-01-06-no-title/",
+    url: "https://slytxt.dev/articles/misc/2026-01-06-no-title/",
     title: "",
     published: "2026-01-06",
-    excerpt: "notes はタイトルを持たない。",
+    excerpt: "misc はタイトルを持たない。",
     hasDraft: false,
     draftId: null
   };
@@ -152,7 +152,7 @@ test("writer: 公開済み一覧のX投稿リンクはタイトル無しの tech
     "href",
     `https://twitter.com/intent/tweet?text=${encodeURIComponent(techArticle.excerpt)}&url=${encodeURIComponent(techArticle.url)}`
   );
-  // notes は仕様どおりタイトルを入れない。
+  // misc は仕様どおりタイトルを入れない。
   await expect(shares.nth(1)).toHaveAttribute(
     "href",
     `https://twitter.com/intent/tweet?text=&url=${encodeURIComponent(noteArticle.url)}`
@@ -165,7 +165,7 @@ test("writer: 公開済み一覧はタイトル無し・埋め込みのみの記
   const emptyDraft = {
     id: "empty-draft",
     title: "無題",
-    category: "notes",
+    category: "misc",
     tags: [],
     updated: "2026-01-04T00:00:00Z",
     pr: "",
@@ -173,9 +173,9 @@ test("writer: 公開済み一覧はタイトル無し・埋め込みのみの記
     chars: 0
   };
   const article = {
-    category: "notes",
+    category: "misc",
     slug: "2026-01-04-embed-only",
-    url: "https://slytxt.dev/notes/2026-01-04-embed-only/",
+    url: "https://slytxt.dev/articles/misc/2026-01-04-embed-only/",
     title: "",
     published: "2026-01-04",
     excerpt: "",
@@ -213,7 +213,7 @@ test("writer: 公開済み一覧はタイトル無し・埋め込みのみの記
 });
 
 test("writer: 公開完了の表示にX投稿リンクが出る", async ({ page }) => {
-  const articleUrl = "https://slytxt.dev/articles/journal/2026-01-03-x-share-done/";
+  const articleUrl = "https://slytxt.dev/articles/comic/2026-01-03-x-share-done/";
   await page.route("**/api/published", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -226,7 +226,7 @@ test("writer: 公開完了の表示にX投稿リンクが出る", async ({ page 
       body: `${JSON.stringify({
         type: "done",
         result: {
-          file: "src/content/journal/2026-01-03-x-share-done.md",
+          file: "src/content/comic/2026-01-03-x-share-done.md",
           url: articleUrl,
           title: "公開後の X 投稿",
           state: "merged",
@@ -239,8 +239,8 @@ test("writer: 公開完了の表示にX投稿リンクが出る", async ({ page 
   await page.goto(`${WRITER_URL}/`);
   await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
   await page.locator("#new").click();
-  await expect(page.locator("#category")).toHaveValue("notes");
-  await page.locator("#category").selectOption("journal");
+  await expect(page.locator("#category")).toHaveValue("misc");
+  await page.locator("#category").selectOption("comic");
   await page.locator("#title").fill("公開後の X 投稿");
   const editor = page.locator('#editorRoot [contenteditable="true"]');
   await editor.click();
@@ -260,10 +260,10 @@ test("writer: 公開完了の表示にX投稿リンクが出る", async ({ page 
   await expect(share).toHaveAttribute("rel", "noopener");
 });
 
-test("writer: タイトル欄が空の tech / journal 記事は公開完了時のX投稿文に補ったタイトルが入る", async ({
+test("writer: タイトル欄が空の tech / comic 記事は公開完了時のX投稿文に補ったタイトルが入る", async ({
   page
 }) => {
-  const articleUrl = "https://slytxt.dev/articles/journal/2026-01-05-x-share-derived/";
+  const articleUrl = "https://slytxt.dev/articles/comic/2026-01-05-x-share-derived/";
   await page.route("**/api/published", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -276,7 +276,7 @@ test("writer: タイトル欄が空の tech / journal 記事は公開完了時�
       body: `${JSON.stringify({
         type: "done",
         result: {
-          file: "src/content/journal/2026-01-05-x-share-derived.md",
+          file: "src/content/comic/2026-01-05-x-share-derived.md",
           url: articleUrl,
           title: "本文から補ったタイトル",
           state: "merged",
@@ -289,8 +289,8 @@ test("writer: タイトル欄が空の tech / journal 記事は公開完了時�
   await page.goto(`${WRITER_URL}/`);
   await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
   await page.locator("#new").click();
-  await expect(page.locator("#category")).toHaveValue("notes");
-  await page.locator("#category").selectOption("journal");
+  await expect(page.locator("#category")).toHaveValue("misc");
+  await page.locator("#category").selectOption("comic");
   await expect(page.locator("#title")).toHaveValue("");
   const editor = page.locator('#editorRoot [contenteditable="true"]');
   await editor.click();
@@ -332,7 +332,7 @@ function expectClose(actual, expected, label) {
 test("writer: 編集画面のスタイルが公開記事ページと一致する", async ({ page }) => {
   // 公開側フィクスチャ記事（start-site.mjs の e2e-embed）の値を取る。
   const sitePage = await page.context().newPage();
-  await sitePage.goto(`${SITE_URL}/articles/journal/e2e-embed/`);
+  await sitePage.goto(`${SITE_URL}/articles/comic/e2e-embed/`);
   const sitePara = await measure(
     sitePage.locator(".article-body > p", { hasText: "スタイル比較" })
   );
@@ -343,7 +343,7 @@ test("writer: 編集画面のスタイルが公開記事ページと一致する
   // writer 側で同じ内容を書く（段落→見出し→Spotify URL の貼り付け）。
   await page.goto(`${WRITER_URL}/`);
   await page.locator("#new").click();
-  await page.locator("#category").selectOption("journal");
+  await page.locator("#category").selectOption("comic");
   await page.locator("#title").fill("E2E 埋め込み確認");
   const editor = page.locator('#editorRoot [contenteditable="true"]');
   await editor.click();
@@ -444,8 +444,8 @@ test("writer: 見出し画像の切り取り→反映→外す→付け直しと
   // テーマ切替ボタンが表示されるので、それを待ってから操作する。
   await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
   await page.locator("#new").click();
-  await expect(page.locator("#category")).toHaveValue("notes");
-  await page.locator("#category").selectOption("journal");
+  await expect(page.locator("#category")).toHaveValue("misc");
+  await page.locator("#category").selectOption("comic");
   await page.locator("#title").fill("カバー確認用");
   await expectSaved(page);
 
@@ -506,8 +506,8 @@ test("writer: 見出し画像の切り取り位置を矢印キーで動かせる
   // 初期化の最終ステップ（テーマ切替の表示）を待ってから操作する。
   await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
   await page.locator("#new").click();
-  await expect(page.locator("#category")).toHaveValue("notes");
-  await page.locator("#category").selectOption("journal");
+  await expect(page.locator("#category")).toHaveValue("misc");
+  await page.locator("#category").selectOption("comic");
 
   await injectCoverFile(page, "image");
   await expect(page.locator("#cropDialog")).toBeVisible();
@@ -550,8 +550,8 @@ test("writer: 長いタイトルが折り返し、本文と重ならず、編集
   // 初期化の最終ステップ（テーマ切替の表示）を待ってから操作する。
   await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
   await page.locator("#new").click();
-  await expect(page.locator("#category")).toHaveValue("notes");
-  await page.locator("#category").selectOption("journal");
+  await expect(page.locator("#category")).toHaveValue("misc");
+  await page.locator("#category").selectOption("comic");
 
   // 長いタイトルは横スクロールにならず、折り返して高さが伸びる。
   const title = page.locator("#title");
@@ -635,7 +635,7 @@ test("writer: 閉じている間に完了した公開の結果が起動時に知
             id: "2026-01-01-closed-tab",
             title: "閉じている間に公開された記事",
             state: "merged",
-            url: "https://slytxt.dev/articles/journal/2026-01-01-closed-tab/",
+            url: "https://slytxt.dev/articles/comic/2026-01-01-closed-tab/",
             prUrl: "https://github.com/sayuyuyuyu/slytxt-lab/pull/999",
             message: "",
             at: "2026-01-01T00:00:00.000Z"
