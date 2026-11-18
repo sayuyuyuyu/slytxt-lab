@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type SlytxtPublishPlugin from "../main";
-import { isPublishCategory, type PublishCategory } from "./lib/slug";
+import { PUBLISH_CATEGORIES, isPublishCategory, type PublishCategory } from "./lib/slug";
 
 export type SlytxtSettings = {
   owner: string;
@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: SlytxtSettings = {
   repo: "slytxt-lab",
   token: "",
   baseBranch: "main",
-  defaultCategory: "journal"
+  defaultCategory: "misc"
 };
 
 export class SlytxtSettingTab extends PluginSettingTab {
@@ -65,7 +65,7 @@ export class SlytxtSettingTab extends PluginSettingTab {
       .setName("既定のカテゴリ")
       .setDesc("frontmatter モーダルで最初に選ばれるカテゴリ。")
       .addDropdown((dropdown) => {
-        for (const category of ["tech", "journal", "notes"]) {
+        for (const category of PUBLISH_CATEGORIES) {
           dropdown.addOption(category, category);
         }
         dropdown.setValue(this.plugin.settings.defaultCategory).onChange(async (value) => {

@@ -107,9 +107,9 @@ test("publish: articleSlug は旧 id の -memo を日付＋連番に直す", () 
 });
 
 test("publish: 公開 URL はサイト側のパスに対応する", () => {
-  assert.equal(publicUrl("notes", "my-note"), "https://slytxt.dev/notes/my-note/");
+  assert.equal(publicUrl("misc", "my-note"), "https://slytxt.dev/articles/misc/my-note/");
   assert.equal(publicUrl("tech", "my-post"), "https://slytxt.dev/articles/tech/my-post/");
-  assert.equal(publicUrl("journal", "my-post"), "https://slytxt.dev/articles/journal/my-post/");
+  assert.equal(publicUrl("comic", "my-post"), "https://slytxt.dev/articles/comic/my-post/");
   assert.equal(publicUrl("projects", "my-post"), "");
 });
 
@@ -469,9 +469,10 @@ test("drafts: 一覧の excerpt が絵文字を分断しない", async () => {
   assert.equal(listed.excerpt, "😀".repeat(120));
 });
 
-test("drafts: 旧 life は journal として読む", () => {
-  assert.equal(normalizeDraft("x", { category: "life" }, "").category, "journal");
-  assert.equal(normalizeDraft("y", { category: "notes" }, "").category, "notes");
+test("drafts: 廃止した区分は現在の区分として読む", () => {
+  assert.equal(normalizeDraft("x", { category: "life" }, "").category, "misc");
+  assert.equal(normalizeDraft("y", { category: "notes" }, "").category, "misc");
+  assert.equal(normalizeDraft("z", { category: "journal" }, "").category, "comic");
 });
 
 test("drafts: 見出し画像（cover）が往復し、空にすると消える", async () => {
@@ -724,7 +725,7 @@ test("publish冪等: BEHIND はブランチ更新で回復し、次の確認で�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "冪等テスト", category: "notes" });
+    const draft = await store.createDraft({ title: "冪等テスト", category: "misc" });
     await store.writeDraft(draft.id, { body: "本文です。" });
 
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
@@ -755,7 +756,7 @@ test("publish冪等: 別の主体がマージ中（405 Merge already in progress
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "競合テスト", category: "notes" });
+    const draft = await store.createDraft({ title: "競合テスト", category: "misc" });
     await store.writeDraft(draft.id, { body: "本文です。" });
     await publishPost({ env: testEnv, store, id: draft.id });
     const pr = gh.state.pulls[0];
@@ -780,7 +781,7 @@ test("publish冪等: マージ競合の瞬間だけ BEHIND になっても取り
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "競合テスト", category: "notes" });
+    const draft = await store.createDraft({ title: "競合テスト", category: "misc" });
     await store.writeDraft(draft.id, { body: "本文です。" });
     await publishPost({ env: testEnv, store, id: draft.id });
     const pr = gh.state.pulls[0];
@@ -798,7 +799,7 @@ test("publish冪等: ブランチ更新が conflict したら理由つきで失�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "更新失敗", category: "notes" });
+    const draft = await store.createDraft({ title: "更新失敗", category: "misc" });
     await store.writeDraft(draft.id, { body: "本文です。" });
     await publishPost({ env: testEnv, store, id: draft.id });
     const pr = gh.state.pulls[0];
@@ -816,7 +817,7 @@ test("publish冪等: 既にマージ済みなら再マージせず成功とし�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "マージ済み", category: "notes" });
+    const draft = await store.createDraft({ title: "マージ済み", category: "misc" });
     await store.writeDraft(draft.id, { body: "本文です。" });
     await publishPost({ env: testEnv, store, id: draft.id });
     const pr = gh.state.pulls[0];
@@ -833,13 +834,13 @@ test("publish冪等: 既にマージ済みなら再マージせず成功とし�
     await assert.rejects(() => store.readDraft(draft.id));
 
     // 公開の再実行でも、新しい PR を作らず成功に収束する。
-    const draft2 = await store.createDraft({ title: "マージ済み2", category: "notes" });
+    const draft2 = await store.createDraft({ title: "マージ済み2", category: "misc" });
     await store.writeDraft(draft2.id, { body: "本文です。" });
     await publishPost({ env: testEnv, store, id: draft2.id });
     const pr2 = gh.state.pulls[1];
     pr2.merged = true;
     pr2.state = "closed";
-    const file2 = `src/content/notes/${draft2.id}.md`;
+    const file2 = `src/content/misc/${draft2.id}.md`;
     gh.state.mainFiles.set(file2, "x");
     await store.writeDraft(draft2.id, { pr: "" });
     const again = await publishPost({ env: testEnv, store, id: draft2.id });
@@ -853,7 +854,7 @@ test("publish再編集: 公開済みと同一の下書きは収束し、本文�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "再編集テスト", category: "journal" });
+    const draft = await store.createDraft({ title: "再編集テスト", category: "comic" });
     await store.writeDraft(draft.id, { body: "本文 v1 です。" });
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(posted.state, "waiting");
@@ -862,14 +863,14 @@ test("publish再編集: 公開済みと同一の下書きは収束し、本文�
     const mergedStep = await publishStatus({ env: testEnv, store, id: draft.id });
     assert.equal(mergedStep.state, "merged");
     await assert.rejects(() => store.readDraft(draft.id));
-    const file = `src/content/journal/${draft.id}.md`;
+    const file = `src/content/comic/${draft.id}.md`;
     const publishedText = Buffer.from(gh.state.mainFiles.get(file), "base64").toString();
     assert.match(publishedText, /本文 v1 です。/);
     const { data, body } = parseFrontmatter(publishedText);
 
     // 公開済み記事を読み直した下書き（同じ id・公開時の中身のまま）を
     // 再現して再投稿すると、新しい PR は作らず成功に収束する。
-    const same = await store.createDraft({ title: "再編集テスト", category: "journal" });
+    const same = await store.createDraft({ title: "再編集テスト", category: "comic" });
     assert.equal(same.id, draft.id);
     await store.writeDraft(same.id, {
       body,
@@ -883,7 +884,7 @@ test("publish再編集: 公開済みと同一の下書きは収束し、本文�
 
     // 同じ読み直しから本文を変えて再投稿すると、再編集として更新 PR を
     // 作り、下書きは残る。マージまで進めると main の本文が v2 になる。
-    const edited = await store.createDraft({ title: "再編集テスト", category: "journal" });
+    const edited = await store.createDraft({ title: "再編集テスト", category: "comic" });
     assert.equal(edited.id, draft.id);
     await store.writeDraft(edited.id, {
       body,
@@ -915,19 +916,19 @@ test("published: 一覧は frontmatter と下書きの有無を返し、下書�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     gh.state.mainFiles.set(
-      "src/content/journal/2026-01-02-first.md",
+      "src/content/comic/2026-01-02-first.md",
       b64("---\ntitle: 最初の記事\ndescription: 説明です\npublished: 2026-01-02\ntags: [日記]\n---\n\n本文その1\n")
     );
     gh.state.mainFiles.set(
-      "src/content/notes/2026-01-03-memo.md",
+      "src/content/misc/2026-01-03-memo.md",
       b64('---\ntitle: ""\ndescription: メモの説明\npublished: 2026-01-03\n---\n\nメモ本文\n')
     );
     gh.state.mainFiles.set(
-      "src/content/notes/2026-01-04-hidden.md",
+      "src/content/misc/2026-01-04-hidden.md",
       b64("---\ntitle: 非公開下書き\ndescription: x\npublished: 2026-01-04\ndraft: true\n---\n\n下書き本文\n")
     );
     gh.state.mainFiles.set(
-      "src/content/notes/2026-01-04-embed-only.md",
+      "src/content/misc/2026-01-04-embed-only.md",
       b64(
         "---\ntitle: \"\"\npublished: 2026-01-04\n---\n\nhttps://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw\n"
       )
@@ -935,7 +936,7 @@ test("published: 一覧は frontmatter と下書きの有無を返し、下書�
     const store = createDraftStore(memoryKv());
     await store.importDraft(
       "2026-01-02-first",
-      { title: "最初の記事", category: "journal" },
+      { title: "最初の記事", category: "comic" },
       "編集中の本文"
     );
     const articles = await listPublished({ env: testEnv, store });
@@ -952,17 +953,17 @@ test("published: 一覧は frontmatter と下書きの有無を返し、下書�
     assert.equal(articles[0].title, "");
     assert.equal(articles[0].hasDraft, false);
     assert.equal(articles[0].draftId, null);
-    assert.equal(articles[0].url, "https://slytxt.dev/notes/2026-01-04-embed-only/");
+    assert.equal(articles[0].url, "https://slytxt.dev/articles/misc/2026-01-04-embed-only/");
     assert.equal(articles[1].title, "");
     assert.equal(articles[1].published, "2026-01-03");
-    assert.equal(articles[1].url, "https://slytxt.dev/notes/2026-01-03-memo/");
+    assert.equal(articles[1].url, "https://slytxt.dev/articles/misc/2026-01-03-memo/");
     assert.equal(articles[2].title, "最初の記事");
     assert.equal(articles[2].published, "2026-01-02");
     assert.equal(articles[2].hasDraft, true);
     assert.equal(articles[2].draftId, "2026-01-02-first");
     assert.equal(
       articles[2].url,
-      "https://slytxt.dev/articles/journal/2026-01-02-first/"
+      "https://slytxt.dev/articles/comic/2026-01-02-first/"
     );
   });
 });
@@ -971,7 +972,7 @@ test("published: 開くと記事が下書きとして取り込まれ、公開日
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     gh.state.mainFiles.set(
-      "src/content/journal/2026-02-03-import-me.md",
+      "src/content/comic/2026-02-03-import-me.md",
       b64(
         '---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\ntags: [タグ1, タグ2]\ncover: "https://media.slytxt.dev/0123456789abcdef0123456789abcdef.jpg"\n---\n\n取り込む本文です。\n'
       )
@@ -981,7 +982,7 @@ test("published: 開くと記事が下書きとして取り込まれ、公開日
     const { draft, created } = await openPublished({
       env: testEnv,
       store,
-      category: "journal",
+      category: "comic",
       slug: "2026-02-03-import-me"
     });
     assert.equal(created, true);
@@ -1008,14 +1009,14 @@ test("published: 対応する下書きがあれば作り直さずそれを開く
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     gh.state.mainFiles.set(
-      "src/content/journal/2026-02-03-import-me.md",
+      "src/content/comic/2026-02-03-import-me.md",
       b64("---\ntitle: 取り込み対象\ndescription: 説明\npublished: 2026-02-03\n---\n\n公開時の本文\n")
     );
     const store = createDraftStore(memoryKv());
     const first = await openPublished({
       env: testEnv,
       store,
-      category: "journal",
+      category: "comic",
       slug: "2026-02-03-import-me"
     });
     assert.equal(first.created, true);
@@ -1023,7 +1024,7 @@ test("published: 対応する下書きがあれば作り直さずそれを開く
     const second = await openPublished({
       env: testEnv,
       store,
-      category: "journal",
+      category: "comic",
       slug: "2026-02-03-import-me"
     });
     assert.equal(second.created, false);
@@ -1036,7 +1037,7 @@ test("published: 対応する下書きがあれば作り直さずそれを開く
 test("published: 取り込んだ下書きを編集して再投稿すると更新 PR で公開日を引き継ぐ", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
-    const file = "src/content/journal/2026-02-03-import-me.md";
+    const file = "src/content/comic/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       file,
       b64("---\ntitle: 取り込み対象\ndescription: 説明文です\npublished: 2026-02-03\nupdated: 2026-03-01\ntags: [タグ1]\nadult: true\nmemo: あとで読む\n---\n\n公開時の本文 v1\n")
@@ -1047,7 +1048,7 @@ test("published: 取り込んだ下書きを編集して再投稿すると更新
     const { draft } = await openPublished({
       env: testEnv,
       store,
-      category: "journal",
+      category: "comic",
       slug: "2026-02-03-import-me"
     });
     await store.writeDraft(draft.id, { body: "書き換えた本文 v2" });
@@ -1076,7 +1077,7 @@ test("published: カテゴリを変えて再投稿すると元ファイルを消
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const sourceFile = "src/content/tech/2026-02-03-import-me.md";
-    const movedFile = "src/content/journal/2026-02-03-import-me.md";
+    const movedFile = "src/content/comic/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       sourceFile,
       b64(
@@ -1090,8 +1091,8 @@ test("published: カテゴリを変えて再投稿すると元ファイルを消
       category: "tech",
       slug: "2026-02-03-import-me"
     });
-    // 編集画面の select で tech → journal に変えた状態を再現する。
-    await store.writeDraft(draft.id, { category: "journal", body: "書き換えた本文 v2" });
+    // 編集画面の select で tech → comic に変えた状態を再現する。
+    await store.writeDraft(draft.id, { category: "comic", body: "書き換えた本文 v2" });
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(posted.state, "waiting");
     assert.equal(posted.file, movedFile);
@@ -1112,10 +1113,10 @@ test("published: カテゴリを変えて再投稿すると元ファイルを消
   });
 });
 
-test("published: notes から tech へ変えると元ファイルを消して移動する", async () => {
+test("published: misc から tech へ変えると元ファイルを消して移動する", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
-    const sourceFile = "src/content/notes/2026-02-03-import-me.md";
+    const sourceFile = "src/content/misc/2026-02-03-import-me.md";
     const movedFile = "src/content/tech/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       sourceFile,
@@ -1127,10 +1128,10 @@ test("published: notes から tech へ変えると元ファイルを消して移
     const { draft } = await openPublished({
       env: testEnv,
       store,
-      category: "notes",
+      category: "misc",
       slug: "2026-02-03-import-me"
     });
-    // 編集画面の select で notes → tech に変えた状態を再現する。
+    // 編集画面の select で misc → tech に変えた状態を再現する。
     await store.writeDraft(draft.id, { category: "tech", body: "書き換えた本文 v2" });
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(posted.state, "waiting");
@@ -1151,11 +1152,11 @@ test("published: notes から tech へ変えると元ファイルを消して移
   });
 });
 
-test("published: tech から notes へ変えると元ファイルを消して移動する", async () => {
+test("published: tech から misc へ変えると元ファイルを消して移動する", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const sourceFile = "src/content/tech/2026-02-03-import-me.md";
-    const movedFile = "src/content/notes/2026-02-03-import-me.md";
+    const movedFile = "src/content/misc/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       sourceFile,
       b64(
@@ -1169,8 +1170,8 @@ test("published: tech から notes へ変えると元ファイルを消して移
       category: "tech",
       slug: "2026-02-03-import-me"
     });
-    // 編集画面の select で tech → notes に変えた状態を再現する。
-    await store.writeDraft(draft.id, { category: "notes", body: "書き換えた本文 v2" });
+    // 編集画面の select で tech → misc に変えた状態を再現する。
+    await store.writeDraft(draft.id, { category: "misc", body: "書き換えた本文 v2" });
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(posted.state, "waiting");
     assert.equal(posted.file, movedFile);
@@ -1194,7 +1195,7 @@ test("published: カテゴリ移動の公開待ち中に再投稿しても PR �
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const sourceFile = "src/content/tech/2026-02-03-import-me.md";
-    const movedFile = "src/content/journal/2026-02-03-import-me.md";
+    const movedFile = "src/content/comic/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       sourceFile,
       b64(
@@ -1208,7 +1209,7 @@ test("published: カテゴリ移動の公開待ち中に再投稿しても PR �
       category: "tech",
       slug: "2026-02-03-import-me"
     });
-    await store.writeDraft(draft.id, { category: "journal", body: "書き換えた本文 v2" });
+    await store.writeDraft(draft.id, { category: "comic", body: "書き換えた本文 v2" });
 
     const first = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(first.state, "waiting");
@@ -1230,9 +1231,9 @@ test("published: カテゴリ移動の公開待ち中に再投稿しても PR �
 test("published: カテゴリ移動の PR が開いている間に別カテゴリへ変えても複製が残らない", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
-    const sourceFile = "src/content/notes/2026-02-03-import-me.md";
+    const sourceFile = "src/content/misc/2026-02-03-import-me.md";
     const firstMoveFile = "src/content/tech/2026-02-03-import-me.md";
-    const finalFile = "src/content/journal/2026-02-03-import-me.md";
+    const finalFile = "src/content/comic/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       sourceFile,
       b64(
@@ -1243,18 +1244,18 @@ test("published: カテゴリ移動の PR が開いている間に別カテゴ�
     const { draft } = await openPublished({
       env: testEnv,
       store,
-      category: "notes",
+      category: "misc",
       slug: "2026-02-03-import-me"
     });
 
-    // notes → tech の移動 PR を開く。
+    // misc → tech の移動 PR を開く。
     await store.writeDraft(draft.id, { category: "tech", body: "書き換えた本文 v2" });
     const first = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(first.state, "waiting");
     assert.equal(gh.state.pulls.length, 1);
 
-    // マージ前に tech → journal へ変えて再投稿する。
-    await store.writeDraft(draft.id, { category: "journal", body: "書き換えた本文 v3" });
+    // マージ前に tech → comic へ変えて再投稿する。
+    await store.writeDraft(draft.id, { category: "comic", body: "書き換えた本文 v3" });
     const second = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(second.state, "waiting");
     assert.equal(gh.state.pulls.length, 1);
@@ -1281,7 +1282,7 @@ test("published: カテゴリ移動の PR が開いている間に別カテゴ�
 test("published: 再編集の PR が開いている間に再投稿しても公開日と updated を保つ", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
-    const file = "src/content/journal/2026-02-03-import-me.md";
+    const file = "src/content/comic/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       file,
       b64(
@@ -1292,7 +1293,7 @@ test("published: 再編集の PR が開いている間に再投稿しても公�
     const { draft } = await openPublished({
       env: testEnv,
       store,
-      category: "journal",
+      category: "comic",
       slug: "2026-02-03-import-me"
     });
 
@@ -1323,7 +1324,7 @@ test("published: 再編集の PR が開いている間に再投稿しても公�
 test("published: 移動 PR が開いている間に元のカテゴリへ戻しても複製が残らない", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
-    const sourceFile = "src/content/notes/2026-02-03-import-me.md";
+    const sourceFile = "src/content/misc/2026-02-03-import-me.md";
     const movedFile = "src/content/tech/2026-02-03-import-me.md";
     gh.state.mainFiles.set(
       sourceFile,
@@ -1335,18 +1336,18 @@ test("published: 移動 PR が開いている間に元のカテゴリへ戻し�
     const { draft } = await openPublished({
       env: testEnv,
       store,
-      category: "notes",
+      category: "misc",
       slug: "2026-02-03-import-me"
     });
 
-    // notes → tech の移動 PR を開く（接頭辞が note/ から write/ に変わる）。
+    // misc → tech の移動 PR を開く。
     await store.writeDraft(draft.id, { category: "tech", body: "書き換えた本文 v2" });
     const first = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(first.state, "waiting");
     assert.equal(gh.state.pulls.length, 1);
 
-    // マージ前に元の notes へ戻して再投稿する。
-    await store.writeDraft(draft.id, { category: "notes", body: "書き換えた本文 v3" });
+    // マージ前に元の misc へ戻して再投稿する。
+    await store.writeDraft(draft.id, { category: "misc", body: "書き換えた本文 v3" });
     const second = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(second.state, "waiting");
 
@@ -1354,7 +1355,7 @@ test("published: 移動 PR が開いている間に元のカテゴリへ戻し�
     assert.equal(gh.state.pulls.length, 1);
     assert.equal(second.prUrl, first.prUrl);
 
-    // ブランチに残るのは最後に選んだ notes のファイルだけ。
+    // ブランチに残るのは最後に選んだ misc のファイルだけ。
     assert.ok(gh.state.branchFiles.has(`write/${draft.id}:${sourceFile}`));
     assert.equal(gh.state.branchFiles.has(`write/${draft.id}:${movedFile}`), false);
     assert.ok(gh.state.deletes.has(`write/${draft.id}:${movedFile}`));
@@ -1376,7 +1377,7 @@ test("published: Worker の /api/published と開く導線が往復する", asyn
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     gh.state.mainFiles.set(
-      "src/content/journal/2026-02-03-import-me.md",
+      "src/content/comic/2026-02-03-import-me.md",
       b64("---\ntitle: 取り込み対象\ndescription: 説明\npublished: 2026-02-03\n---\n\n公開時の本文\n")
     );
     const env = { GITHUB_TOKEN: "test-token", DRAFTS: memoryKv() };
@@ -1390,7 +1391,7 @@ test("published: Worker の /api/published と開く導線が往復する", asyn
     assert.equal(list.articles[0].hasDraft, false);
     assert.equal(
       list.articles[0].url,
-      "https://slytxt.dev/articles/journal/2026-02-03-import-me/"
+      "https://slytxt.dev/articles/comic/2026-02-03-import-me/"
     );
 
     const openInit = {
@@ -1398,7 +1399,7 @@ test("published: Worker の /api/published と開く導線が往復する", asyn
       headers: { "x-slytxt-client": "1" }
     };
     const openRes = await writerWorker.fetch(
-      new Request("https://write.slytxt.dev/api/published/journal/2026-02-03-import-me", openInit),
+      new Request("https://write.slytxt.dev/api/published/comic/2026-02-03-import-me", openInit),
       env
     );
     assert.equal(openRes.status, 201);
@@ -1407,7 +1408,7 @@ test("published: Worker の /api/published と開く導線が往復する", asyn
     assert.equal(opened.draft.id, "2026-02-03-import-me");
 
     const againRes = await writerWorker.fetch(
-      new Request("https://write.slytxt.dev/api/published/journal/2026-02-03-import-me", openInit),
+      new Request("https://write.slytxt.dev/api/published/comic/2026-02-03-import-me", openInit),
       env
     );
     assert.equal(againRes.status, 200);
@@ -1419,7 +1420,7 @@ test("publish冪等: 下書きに PR が残っていなくてもブランチか�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "引き継ぎ", category: "notes" });
+    const draft = await store.createDraft({ title: "引き継ぎ", category: "misc" });
     await store.writeDraft(draft.id, { body: "本文です。" });
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
     // PR 作成直後に Worker が落ちて URL を保存できなかった状態を再現。
@@ -1435,7 +1436,7 @@ test("publish冪等: 閉じられた PR は再実行で作り直し、ci 失敗�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "再実行", category: "notes" });
+    const draft = await store.createDraft({ title: "再実行", category: "misc" });
     await store.writeDraft(draft.id, { body: "下書き v1" });
     await publishPost({ env: testEnv, store, id: draft.id });
     const pr1 = gh.state.pulls[0];
@@ -1601,7 +1602,7 @@ test("publish: 本文とカバーの画像は公開側へ移り、URL が media.
     const media = memoryR2();
     const env = { GITHUB_TOKEN: "test-token", MEDIA: media };
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "画像つき", category: "journal" });
+    const draft = await store.createDraft({ title: "画像つき", category: "comic" });
 
     const cover = await uploadMedia(mediaRequest(PNG_BYTES), env);
     const otherBytes = new Uint8Array(PNG_BYTES);
@@ -1691,7 +1692,7 @@ test("publish: 下書きの説明文があればそのまま使う（AI は呼�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "説明文テスト", category: "notes" });
+    const draft = await store.createDraft({ title: "説明文テスト", category: "misc" });
     await store.writeDraft(draft.id, {
       body: "本文です。",
       description: "本人が決めた説明文。"
@@ -1722,7 +1723,7 @@ test("publish: 説明文が無ければ AI 要約を使い、下書きに書き�
   globalThis.fetch = fetchImpl;
   try {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "AI 要約テスト", category: "notes" });
+    const draft = await store.createDraft({ title: "AI 要約テスト", category: "misc" });
     await store.writeDraft(draft.id, { body: "本文です。AI に要約してもらいます。" });
     const posted = await publishPost({
       env: { GITHUB_TOKEN: "test-token", OPENCODE_GO_API_KEY: "go-key" },
@@ -1748,7 +1749,7 @@ test("publish: AI 要約が失敗したら抜粋で公開が完結する", async
   globalThis.fetch = fetchImpl;
   try {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "フォールバック", category: "notes" });
+    const draft = await store.createDraft({ title: "フォールバック", category: "misc" });
     await store.writeDraft(draft.id, { body: "抜粋になる本文です。よろしくお願いします。" });
     const posted = await publishPost({
       env: { GITHUB_TOKEN: "test-token", OPENCODE_GO_API_KEY: "go-key" },
@@ -1763,11 +1764,11 @@ test("publish: AI 要約が失敗したら抜粋で公開が完結する", async
   }
 });
 
-test("publish: notes はタイトルが無ければ title を空で書き、本文の書き出しで代用しない", async () => {
+test("publish: misc はタイトルが無ければ title を空で書き、本文の書き出しで代用しない", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ category: "notes" });
+    const draft = await store.createDraft({ category: "misc" });
     await store.writeDraft(draft.id, { body: "最初の行がこれです。\n続きの文。" });
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(posted.state, "waiting");
@@ -1779,11 +1780,11 @@ test("publish: notes はタイトルが無ければ title を空で書き、本�
   });
 });
 
-test("publish: notes でもタイトルが付いていればそのまま書く", async () => {
+test("publish: misc でもタイトルが付いていればそのまま書く", async () => {
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ title: "メモの題", category: "notes" });
+    const draft = await store.createDraft({ title: "メモの題", category: "misc" });
     await store.writeDraft(draft.id, { body: "本文です。" });
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(posted.title, "メモの題");
@@ -1796,7 +1797,7 @@ test("publish: 記事はタイトルが無ければ本文の書き出しをタ�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ category: "journal" });
+    const draft = await store.createDraft({ category: "comic" });
     await store.writeDraft(draft.id, { body: "書き出しが題になる。\n続きの文。" });
     const posted = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(posted.title, "書き出しが題になる。");
@@ -1809,7 +1810,7 @@ test("publish: タイトル無しの記事を本文を直して再投稿する�
   const gh = fakeGitHub();
   await withGitHub(gh, async () => {
     const store = createDraftStore(memoryKv());
-    const draft = await store.createDraft({ category: "journal" });
+    const draft = await store.createDraft({ category: "comic" });
     await store.writeDraft(draft.id, { body: "最初の書き出し。\n本文です。" });
     const first = await publishPost({ env: testEnv, store, id: draft.id });
     assert.equal(first.state, "waiting");
@@ -2099,7 +2100,7 @@ function recordingKv() {
 
 /** pr 付きの下書きを作る（見届け対象）。 */
 async function seedPendingDraft(store, title, pr) {
-  const draft = await store.createDraft({ title, category: "journal" });
+  const draft = await store.createDraft({ title, category: "comic" });
   return store.writeDraft(draft.id, { pr, body: "本文。" });
 }
 
@@ -2122,7 +2123,7 @@ test("driver: pr のある下書きだけを駆動し、merged の結果を TTL 
         return {
           state: "merged",
           title: "公開された記事",
-          url: "https://slytxt.dev/articles/journal/driver-merged-target/",
+          url: "https://slytxt.dev/articles/comic/driver-merged-target/",
           prUrl: "https://github.com/sayuyuyuyu/slytxt-lab/pull/901",
           message: ""
         };
@@ -2137,7 +2138,7 @@ test("driver: pr のある下書きだけを駆動し、merged の結果を TTL 
   assert.equal(record.id, pending.id);
   assert.equal(record.state, "merged");
   assert.equal(record.title, "公開された記事");
-  assert.equal(record.url, "https://slytxt.dev/articles/journal/driver-merged-target/");
+  assert.equal(record.url, "https://slytxt.dev/articles/comic/driver-merged-target/");
   assert.equal(record.prUrl, "https://github.com/sayuyuyuyu/slytxt-lab/pull/901");
   const resultPut = puts.find((entry) => entry.key === `publish-result:${pending.id}`);
   assert.equal(resultPut.options?.expirationTtl, 7 * 24 * 60 * 60);

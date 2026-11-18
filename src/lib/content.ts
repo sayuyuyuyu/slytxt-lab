@@ -1,14 +1,8 @@
 import { getCollection } from "astro:content";
 import { sortArticles, sortProjects } from "./entries";
-import type { ArticleEntry, ProjectEntry, SiteEntry, TechJournalEntry } from "./entries";
+import type { ArticleCollection, ArticleEntry, ProjectEntry, SiteEntry } from "./entries";
 
-export type {
-  ArticleCollection,
-  ArticleEntry,
-  ProjectEntry,
-  SiteEntry,
-  TechJournalEntry
-} from "./entries";
+export type { ArticleCollection, ArticleEntry, ProjectEntry, SiteEntry } from "./entries";
 export {
   getAdjacentArticles,
   getEntriesByTag,
@@ -29,31 +23,32 @@ function isPublished<T extends SiteEntry>(entry: T): boolean {
   return !entry.data.draft;
 }
 
+export const ARTICLE_COLLECTIONS: ArticleCollection[] = [
+  "tech",
+  "misc",
+  "comic",
+  "game",
+  "anime"
+];
+
 export async function getArticles(
-  collection: "tech" | "journal"
-): Promise<TechJournalEntry[]> {
+  collection: ArticleCollection
+): Promise<ArticleEntry[]> {
   const entries = await getCollection(collection, isPublished);
-  return sortArticles(entries as TechJournalEntry[]);
-}
-
-/** Tech and Journal together. Notes are deliberately left out. */
-export async function getAllArticles(): Promise<TechJournalEntry[]> {
-  const [tech, journal] = await Promise.all([
-    getArticles("tech"),
-    getArticles("journal")
-  ]);
-  return sortArticles([...tech, ...journal]);
-}
-
-export async function getNotes(): Promise<ArticleEntry[]> {
-  const entries = await getCollection("notes", isPublished);
   return sortArticles(entries as ArticleEntry[]);
 }
 
-/** Everything written: articles and notes. */
+/** All article categories together. */
+export async function getAllArticles(): Promise<ArticleEntry[]> {
+  const perCategory = await Promise.all(
+    ARTICLE_COLLECTIONS.map((collection) => getArticles(collection))
+  );
+  return sortArticles(perCategory.flat());
+}
+
+/** Everything written: all articles. */
 export async function getAllWriting(): Promise<ArticleEntry[]> {
-  const [articles, notes] = await Promise.all([getAllArticles(), getNotes()]);
-  return sortArticles([...articles, ...notes]);
+  return getAllArticles();
 }
 
 export async function getProjects(): Promise<ProjectEntry[]> {
@@ -62,10 +57,6 @@ export async function getProjects(): Promise<ProjectEntry[]> {
 }
 
 export async function getAllEntries(): Promise<SiteEntry[]> {
-  const [articles, notes, projects] = await Promise.all([
-    getAllArticles(),
-    getNotes(),
-    getProjects()
-  ]);
-  return [...articles, ...notes, ...projects];
+  const [articles, projects] = await Promise.all([getAllArticles(), getProjects()]);
+  return [...articles, ...projects];
 }

@@ -1,7 +1,6 @@
 ---
 import PageHeader from "@/components/PageHeader.astro";
 import ArticleCard from "@/components/ArticleCard.astro";
-import NoteCard from "@/components/NoteCard.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import Pagination from "@/components/Pagination.astro";
 import type { ArticleEntry, ProjectEntry, SiteEntry } from "@/lib/content";
@@ -18,14 +17,13 @@ const { label, tag, page } = Astro.props;
 const basePath = `/tags/${tag}`;
 const suffix = page.currentPage > 1 ? ` (page ${page.currentPage})` : "";
 const articles = page.entries.filter(
-  (entry) => entry.collection === "tech" || entry.collection === "journal"
+  (entry) => entry.collection !== "projects"
 ) as ArticleEntry[];
-const notes = page.entries.filter((entry) => entry.collection === "notes") as ArticleEntry[];
 const projects = page.entries.filter((entry) => entry.collection === "projects") as ProjectEntry[];
 const breadcrumbs = [{ label: "Tags", href: "/tags/" }, { label: `#${label}` }];
 ---
 
-<BaseLayout title={`#${label}${suffix} - Tags - ${site.name}`} description={`#${label} が付いた記事とメモ、つくったもの。`} breadcrumbs={breadcrumbs}>
+<BaseLayout title={`#${label}${suffix} - Tags - ${site.name}`} description={`#${label} が付いた記事とつくったもの。`} breadcrumbs={breadcrumbs}>
   <PageHeader
     eyebrow="tag"
     title={`#${label}${suffix}`}
@@ -46,19 +44,9 @@ const breadcrumbs = [{ label: "Tags", href: "/tags/" }, { label: `#${label}` }];
           </div>
         </>
       )}
-      {notes.length > 0 && (
-        <>
-          <div class={articles.length > 0 ? "section-head section-head--following" : "section-head"}>
-            <h2>Notes</h2>
-          </div>
-          <div class="listing-list">
-            {notes.map((entry) => <NoteCard entry={entry} />)}
-          </div>
-        </>
-      )}
       {projects.length > 0 && (
         <>
-          <div class={articles.length > 0 || notes.length > 0 ? "section-head section-head--following" : "section-head"}>
+          <div class={articles.length > 0 ? "section-head section-head--following" : "section-head"}>
             <h2>Projects</h2>
           </div>
           <div class="project-grid">

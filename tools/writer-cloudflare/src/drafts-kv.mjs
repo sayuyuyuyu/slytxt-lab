@@ -22,8 +22,11 @@ import { parseFrontmatter, stringifyFrontmatter } from "./frontmatter.mjs";
 import { plainText, textLength, truncateText } from "./markdown.mjs";
 import { today } from "./date.mjs";
 
-export const CATEGORIES = ["tech", "journal", "notes"];
-export const CATEGORY_LABELS = { tech: "Tech", journal: "Journal", notes: "Notes" };
+export const CATEGORIES = ["tech", "misc", "comic", "game", "anime"];
+export const CATEGORY_LABELS = { tech: "Tech", misc: "なんか", comic: "Comic", game: "Game", anime: "Anime" };
+
+/** 廃止した区分から現在の区分への読み替え。既存の下書きを壊さないため。 */
+const LEGACY_CATEGORIES = { life: "misc", journal: "comic", notes: "misc" };
 
 export class DraftNotFound extends Error {}
 
@@ -86,14 +89,11 @@ function carriedLines(raw = []) {
 }
 
 export function normalizeDraft(id, data, body, raw = []) {
-  // 旧 life カテゴリのメモは journal として扱う。
+  // 廃止した区分（life / journal / notes）の下書きは現在の区分へ読み替える。
   const rawCategory = asString(data.category);
   const category =
-    rawCategory === "life"
-      ? "journal"
-      : CATEGORIES.includes(rawCategory)
-        ? rawCategory
-        : "tech";
+    LEGACY_CATEGORIES[rawCategory] ??
+    (CATEGORIES.includes(rawCategory) ? rawCategory : "tech");
   return {
     id,
     title: asString(data.title).trim() || "無題",
@@ -395,7 +395,7 @@ export function createDraftStore(kv) {
     return next;
   }
 
-  async function createDraft({ title = "", category = "notes" } = {}) {
+  async function createDraft({ title = "", category = "misc" } = {}) {
     const stamp = today();
     const fragment = slugFragment(title);
     const base = fragment ? `${stamp}-${fragment}` : stamp;

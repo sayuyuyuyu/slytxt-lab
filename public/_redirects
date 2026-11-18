@@ -1,8 +1,19 @@
 # Old collection paths moved under /articles/.
 /tech/     /articles/tech/     301
 /tech/*    /articles/tech/:splat  301
-/life/     /articles/journal/  301
-/life/*    /articles/journal/:splat  301
+/life/     /articles/  301
+/life/*    /articles/  301
+
+# 2026-11: journal / notes を廃止し、区分を tech / misc / comic / game / anime に再編。
+# 旧区分のトップと、既存記事の URL（memo を含む slug）から移転先へ飛ばす。
+/articles/journal/     /articles/comic/  301
+/notes/     /articles/misc/  301
+/articles/journal/2026-11-04-memo-2/    /articles/comic/2026-11-04-2/  301
+/articles/journal/2026-11-10-memo/    /articles/comic/2026-11-10/  301
+/notes/2026-09-26-memo/    /articles/misc/2026-09-26/  301
+/notes/2026-11-03-memo/    /articles/misc/2026-11-03/  301
+/notes/2026-11-04-memo/    /articles/misc/2026-11-04/  301
+/notes/2026-11-05-memo/    /articles/tech/2026-11-05/  301
 
 # Media moved to R2 (media.slytxt.dev). Keep old URLs working.
 /media/*    https://media.slytxt.dev/:splat    301

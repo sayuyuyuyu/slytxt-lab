@@ -6,7 +6,7 @@
 
 個人のメモと制作物を置くサイト [slytxt.dev](https://slytxt.dev/) のソースです。Astro / TypeScript / Pagefind で作り、Cloudflare Pages で配信しています（`slytxt.pages.dev` も同じものを返します）。CSS は `src/styles/global.css` に手で書き、ブラウザ間の差異を埋めるリセット（Tailwind の preflight）だけを Tailwind から借りています。スタイルは Tailwind のユーティリティではなく独自クラスで当てます。
 
-コンテンツは `src/content/` に置きます（技術記事は `tech/`、それ以外の記事は `journal/`、短いメモは `notes/`、制作物は `projects/`）。
+コンテンツは `src/content/` に置きます（技術記事は `tech/`、漫画は `comic/`、ゲームは `game/`、アニメは `anime/`、それ以外は `misc/`、制作物は `projects/`）。
 
 ## 開発
 

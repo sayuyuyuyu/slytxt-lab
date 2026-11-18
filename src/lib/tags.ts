@@ -2,8 +2,10 @@ import type { CollectionEntry } from "astro:content";
 
 export type TaggedEntry =
   | CollectionEntry<"tech">
-  | CollectionEntry<"journal">
-  | CollectionEntry<"notes">
+  | CollectionEntry<"misc">
+  | CollectionEntry<"comic">
+  | CollectionEntry<"game">
+  | CollectionEntry<"anime">
   | CollectionEntry<"projects">;
 
 // Symbols that would otherwise be dropped are spelled out (common tech

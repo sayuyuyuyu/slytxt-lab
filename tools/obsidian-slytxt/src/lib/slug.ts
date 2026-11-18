@@ -1,11 +1,10 @@
 /**
  * 公開先のパスとブランチ名。writer（tools/writer-cloudflare）と同じ規則に揃える。
  * - 記事は src/content/<category>/<slug>.md、ブランチは write/<slug>
- * - メモ（notes）は note/<slug> ブランチ
  */
-export type PublishCategory = "tech" | "journal" | "notes";
+export type PublishCategory = "tech" | "misc" | "comic" | "game" | "anime";
 
-export const PUBLISH_CATEGORIES: PublishCategory[] = ["tech", "journal", "notes"];
+export const PUBLISH_CATEGORIES: PublishCategory[] = ["tech", "misc", "comic", "game", "anime"];
 
 export function isPublishCategory(value: string): value is PublishCategory {
   return (PUBLISH_CATEGORIES as string[]).includes(value);
@@ -26,14 +25,12 @@ export function contentPath(category: PublishCategory, slug: string): string {
   return `src/content/${category}/${slug}.md`;
 }
 
-export function branchName(category: PublishCategory, slug: string): string {
-  return `${category === "notes" ? "note" : "write"}/${slug}`;
+export function branchName(_category: PublishCategory, slug: string): string {
+  return `write/${slug}`;
 }
 
 export function publicUrl(category: PublishCategory, slug: string): string {
-  const base =
-    category === "notes" ? "notes" : category === "tech" ? "articles/tech" : "articles/journal";
-  return `https://slytxt.dev/${base}/${slug}/`;
+  return `https://slytxt.dev/articles/${category}/${slug}/`;
 }
 
 /** JST の今日（writer の today() と同じ扱い）。 */

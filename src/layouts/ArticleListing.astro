@@ -1,7 +1,6 @@
 ---
 import ArticleCard from "@/components/ArticleCard.astro";
 import EmptyState from "@/components/EmptyState.astro";
-import NoteCard from "@/components/NoteCard.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import Pagination from "@/components/Pagination.astro";
 import { getAllEntries, type ArticleEntry } from "@/lib/content";
@@ -14,9 +13,8 @@ type Props = {
   section: ArticleSection;
   basePath: string;
   page: PageData<ArticleEntry>;
-  variant?: "article" | "note";
 };
-const { section, basePath, page, variant = "article" } = Astro.props;
+const { section, basePath, page } = Astro.props;
 const suffix = page.currentPage > 1 ? ` (page ${page.currentPage})` : "";
 const hasTags = collectTags(await getAllEntries()).size > 0;
 ---
@@ -27,11 +25,7 @@ const hasTags = collectTags(await getAllEntries()).size > 0;
       {hasTags && <div class="listing-tools"><a href="/tags/">Browse tags <span aria-hidden="true">↗</span></a></div>}
       {page.entries.length > 0 ? (
         <div class="listing-list">
-          {page.entries.map((entry) =>
-            variant === "note"
-              ? <NoteCard entry={entry} headingLevel="h2" />
-              : <ArticleCard entry={entry} headingLevel="h2" />
-          )}
+          {page.entries.map((entry) => <ArticleCard entry={entry} headingLevel="h2" />)}
         </div>
       ) : <EmptyState title={section.emptyTitle} description={section.emptyDescription} />}
       <Pagination basePath={basePath} {...page} />

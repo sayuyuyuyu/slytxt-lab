@@ -12,7 +12,7 @@ import {
 function entry(overrides = {}) {
   return {
     id: "2026-01-01-memo.md",
-    collection: "notes",
+    collection: "misc",
     body: "",
     data: { title: "", description: undefined, tags: [] },
     ...overrides,

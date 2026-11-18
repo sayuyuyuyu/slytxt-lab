@@ -1,20 +1,23 @@
 import type { CollectionEntry } from "astro:content";
 import { slugifyTag } from "./tags.ts";
 
-export type ArticleCollection = "tech" | "journal" | "notes";
+export type ArticleCollection = "tech" | "misc" | "comic" | "game" | "anime";
 export type ArticleEntry =
   | CollectionEntry<"tech">
-  | CollectionEntry<"journal">
-  | CollectionEntry<"notes">;
-export type TechJournalEntry = CollectionEntry<"tech"> | CollectionEntry<"journal">;
+  | CollectionEntry<"misc">
+  | CollectionEntry<"comic">
+  | CollectionEntry<"game">
+  | CollectionEntry<"anime">;
 export type ProjectEntry = CollectionEntry<"projects">;
 export type SiteEntry = ArticleEntry | ProjectEntry;
 
-/** URL segment for each article collection. `notes` sits outside `articles`. */
+/** URL segment for each article collection. All live under `articles`. */
 const ARTICLE_BASE: Record<ArticleCollection, string> = {
   tech: "articles/tech",
-  journal: "articles/journal",
-  notes: "notes"
+  misc: "articles/misc",
+  comic: "articles/comic",
+  game: "articles/game",
+  anime: "articles/anime"
 };
 
 function articleDate(entry: ArticleEntry): Date {

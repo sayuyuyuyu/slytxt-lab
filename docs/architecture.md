@@ -18,7 +18,7 @@
 
 ### サイト本体（Cloudflare Pages）
 
-Astro（TypeScript）で静的生成し、Cloudflare Pages が配信します。コンテンツは `src/content/` の4コレクション（`tech` / `journal` / `notes` / `projects`）で、ビルド時に Pagefind の検索インデックスも `dist/` へ生成します。デプロイは main へのマージで自動です。
+Astro（TypeScript）で静的生成し、Cloudflare Pages が配信します。コンテンツは `src/content/` の6コレクション（`tech` / `misc` / `comic` / `game` / `anime` / `projects`）で、ビルド時に Pagefind の検索インデックスも `dist/` へ生成します。デプロイは main へのマージで自動です。
 
 CSS は `src/styles/global.css` に手で書きます。Tailwind はリセット（preflight）のためだけに入れていて、`@import "tailwindcss" source(none)` でユーティリティの自動生成を止めています。走査を有効にすると、記事本文やスクリプト中の単語（`hidden`、`grid` など）がクラス名として拾われ、未使用のユーティリティが配信 CSS に混ざります。`.container` のように本体のクラス名と衝突してレイアウトを変えた例があるため、ユーティリティを意図的に使うときは `@source` を明示してください（#692 / #693）。
 

@@ -9,7 +9,7 @@ test("site: トップページにサイト名と導線が出る", async ({ page 
 });
 
 test("site: 記事ページで Spotify 埋め込みが描画される", async ({ page }) => {
-  await page.goto(`${SITE_URL}/articles/journal/e2e-embed/`);
+  await page.goto(`${SITE_URL}/articles/comic/e2e-embed/`);
   await expect(page.getByRole("heading", { name: "埋め込みテスト" })).toBeVisible();
   await expect(
     page.locator(

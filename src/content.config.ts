@@ -32,12 +32,20 @@ export const collections = {
     loader: glob({ pattern: "**/*.md", base: "./src/content/tech" }),
     schema: articleSchema
   }),
-  journal: defineCollection({
-    loader: glob({ pattern: "**/*.md", base: "./src/content/journal" }),
+  misc: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/content/misc" }),
     schema: articleSchema
   }),
-  notes: defineCollection({
-    loader: glob({ pattern: "**/*.md", base: "./src/content/notes" }),
+  comic: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/content/comic" }),
+    schema: articleSchema
+  }),
+  game: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/content/game" }),
+    schema: articleSchema
+  }),
+  anime: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/content/anime" }),
     schema: articleSchema
   }),
   projects: defineCollection({

@@ -1,5 +1,5 @@
 import { App, Modal, Setting } from "obsidian";
-import { isPublishCategory, type PublishCategory } from "./lib/slug";
+import { PUBLISH_CATEGORIES, isPublishCategory, type PublishCategory } from "./lib/slug";
 
 export type FrontmatterValues = {
   category: PublishCategory;
@@ -29,7 +29,7 @@ export class FrontmatterModal extends Modal {
     contentEl.createEl("h2", { text: "公開の項目" });
 
     new Setting(contentEl).setName("カテゴリ").addDropdown((dropdown) => {
-      for (const category of ["tech", "journal", "notes"]) {
+      for (const category of PUBLISH_CATEGORIES) {
         dropdown.addOption(category, category);
       }
       dropdown.setValue(this.values.category).onChange((value) => {
@@ -39,7 +39,7 @@ export class FrontmatterModal extends Modal {
 
     new Setting(contentEl)
       .setName("タイトル")
-      .setDesc("notes は空のままで構いません。空なら本文の書き出しで補います。")
+      .setDesc("misc（なんか）は空のままで構いません。")
       .addText((text) =>
         text.setValue(this.values.title).onChange((value) => {
           this.values.title = value;

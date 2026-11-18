@@ -26,13 +26,13 @@ test("obsidian: slug は英数字とハイフンにし、作れないときは�
 });
 
 test("obsidian: カテゴリごとのパス・ブランチ・公開 URL", () => {
-  assert.equal(contentPath("notes", "memo"), "src/content/notes/memo.md");
+  assert.equal(contentPath("misc", "memo"), "src/content/misc/memo.md");
   assert.equal(contentPath("tech", "memo"), "src/content/tech/memo.md");
-  assert.equal(branchName("notes", "memo"), "note/memo");
-  assert.equal(branchName("journal", "memo"), "write/memo");
-  assert.equal(publicUrl("notes", "memo"), "https://slytxt.dev/notes/memo/");
+  assert.equal(branchName("misc", "memo"), "write/memo");
+  assert.equal(branchName("comic", "memo"), "write/memo");
+  assert.equal(publicUrl("misc", "memo"), "https://slytxt.dev/articles/misc/memo/");
   assert.equal(publicUrl("tech", "memo"), "https://slytxt.dev/articles/tech/memo/");
-  assert.equal(publicUrl("journal", "memo"), "https://slytxt.dev/articles/journal/memo/");
+  assert.equal(publicUrl("comic", "memo"), "https://slytxt.dev/articles/comic/memo/");
   assert.equal(isPublishCategory("projects"), false);
 });
 
@@ -86,10 +86,10 @@ test("obsidian: 本文は frontmatter の後ろに1つ空行を置いて連結�
   );
 });
 
-test("obsidian: タイトルは記事は本文から補い、notes は空にする", () => {
+test("obsidian: タイトルは記事は本文から補い、misc は空にする", () => {
   assert.equal(deriveTitle("tech", "与えた題名", "本文"), "与えた題名");
-  assert.equal(deriveTitle("journal", "", "## 見出しの行\n次の行"), "見出しの行");
-  assert.equal(deriveTitle("notes", "", "メモの書き出し"), "");
+  assert.equal(deriveTitle("comic", "", "## 見出しの行\n次の行"), "見出しの行");
+  assert.equal(deriveTitle("misc", "", "メモの書き出し"), "");
   assert.equal(deriveTitle("tech", "無題", ""), "無題");
   assert.equal([...deriveTitle("tech", "", "あ".repeat(100))].length, 40);
 });
@@ -128,7 +128,7 @@ test("obsidian: 既存の公開日があれば引き継ぐ", () => {
   const payload = preparePublish(
     {
       name: "memo",
-      category: "notes",
+      category: "misc",
       published: "2026-02-03",
       body: "メモ"
     },
@@ -168,7 +168,7 @@ const settings = {
 };
 
 const publishInput = {
-  category: "journal",
+  category: "comic",
   slug: "hello-world",
   title: "Hello World",
   content: "---\ntitle: Hello World\n---\n\n本文\n"
@@ -178,7 +178,7 @@ test("obsidian: 公開はブランチ作成→ファイル書き込み→PR の�
   const gh = fakeGitHub({
     "GET /git/ref/heads/main": { json: { object: { sha: "base-sha" } } },
     "POST /git/refs": { status: 201, json: { ref: "refs/heads/write/hello-world" } },
-    "PUT /contents/src/content/journal/hello-world.md": { status: 201, json: {} },
+    "PUT /contents/src/content/comic/hello-world.md": { status: 201, json: {} },
     "POST /pulls": { status: 201, json: { html_url: "https://github.com/x/y/pull/9", number: 9 } }
   });
 
@@ -188,7 +188,7 @@ test("obsidian: 公開はブランチ作成→ファイル書き込み→PR の�
     [
       "GET /git/ref/heads/main",
       "POST /git/refs",
-      "PUT /contents/src/content/journal/hello-world.md",
+      "PUT /contents/src/content/comic/hello-world.md",
       "POST /pulls"
     ]
   );
@@ -202,24 +202,24 @@ test("obsidian: 公開はブランチ作成→ファイル書き込み→PR の�
 
   assert.equal(result.prNumber, 9);
   assert.equal(result.prUrl, "https://github.com/x/y/pull/9");
-  assert.equal(result.path, "src/content/journal/hello-world.md");
-  assert.equal(result.url, "https://slytxt.dev/articles/journal/hello-world/");
+  assert.equal(result.path, "src/content/comic/hello-world.md");
+  assert.equal(result.url, "https://slytxt.dev/articles/comic/hello-world/");
 });
 
-test("obsidian: メモは note/ ブランチになる", async () => {
+test("obsidian: misc も write/ ブランチになる", async () => {
   const gh = fakeGitHub({
     "GET /git/ref/heads/main": { json: { object: { sha: "base-sha" } } },
     "POST /git/refs": { status: 201, json: {} },
-    "PUT /contents/src/content/notes/memo.md": { status: 201, json: {} },
+    "PUT /contents/src/content/misc/memo.md": { status: 201, json: {} },
     "POST /pulls": { status: 201, json: { html_url: "u", number: 1 } }
   });
   await publishNote(gh.request, settings, {
-    category: "notes",
+    category: "misc",
     slug: "memo",
     title: "",
     content: "----\n"
   });
-  assert.equal(gh.calls[1].body.ref, "refs/heads/note/memo");
+  assert.equal(gh.calls[1].body.ref, "refs/heads/write/memo");
 });
 
 test("obsidian: ベースブランチが無ければ理由つきで止まる", async () => {
@@ -249,7 +249,7 @@ test("obsidian: ファイル書き込みや PR 作成の失敗は GitHub のメ�
   const putFail = fakeGitHub({
     "GET /git/ref/heads/main": { json: { object: { sha: "base-sha" } } },
     "POST /git/refs": { status: 201, json: {} },
-    "PUT /contents/src/content/journal/hello-world.md": {
+    "PUT /contents/src/content/comic/hello-world.md": {
       status: 403,
       json: { message: "Resource not accessible by personal access token" }
     }
@@ -264,7 +264,7 @@ test("obsidian: ファイル書き込みや PR 作成の失敗は GitHub のメ�
   const prFail = fakeGitHub({
     "GET /git/ref/heads/main": { json: { object: { sha: "base-sha" } } },
     "POST /git/refs": { status: 201, json: {} },
-    "PUT /contents/src/content/journal/hello-world.md": { status: 201, json: {} },
+    "PUT /contents/src/content/comic/hello-world.md": { status: 201, json: {} },
     "POST /pulls": { status: 422, json: { message: "Validation Failed" } }
   });
   await assert.rejects(

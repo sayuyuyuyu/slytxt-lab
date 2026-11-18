@@ -1,13 +1,13 @@
 import type { APIContext } from "astro";
 import { PAGE_SIZE, pageCount, paginateEntries } from "@/lib/pagination";
 import {
+  ARTICLE_COLLECTIONS,
   getAllArticles,
   getAllEntries,
   getArticles,
   getEntriesByTag,
   getEntryDate,
   getEntryPath,
-  getNotes,
   getProjects
 } from "@/lib/content";
 import type { SiteEntry } from "@/lib/content";
@@ -43,14 +43,16 @@ function pagedUrls(entries: SiteEntry[], basePath: string) {
 
 export async function GET(context: APIContext) {
   const site = context.site ?? new URL("https://slytxt.dev");
-  const [entries, articles, tech, journal, notes, projects] = await Promise.all([
+  const [entries, articles, projects, ...perCategory] = await Promise.all([
     getAllEntries(),
     getAllArticles(),
-    getArticles("tech"),
-    getArticles("journal"),
-    getNotes(),
-    getProjects()
+    getProjects(),
+    ...ARTICLE_COLLECTIONS.map((collection) => getArticles(collection))
   ]);
+  const categoryEntries = ARTICLE_COLLECTIONS.map((collection, index) => ({
+    collection,
+    entries: perCategory[index]
+  }));
   const tags = collectTags(entries);
   const allLatest = latestDate(entries);
   // トップ・タグ一覧はサイト全体、各一覧はその一覧に載るエントリの最新日。
@@ -59,11 +61,11 @@ export async function GET(context: APIContext) {
   const staticUrls: { path: string; lastmod?: Date }[] = [
     { path: "/", lastmod: allLatest },
     ...(articles.length > 0 ? [{ path: "/articles/", lastmod: latestDate(articles) }] : []),
-    ...(tech.length > 0 ? [{ path: "/articles/tech/", lastmod: latestDate(tech) }] : []),
-    ...(journal.length > 0
-      ? [{ path: "/articles/journal/", lastmod: latestDate(journal) }]
-      : []),
-    ...(notes.length > 0 ? [{ path: "/notes/", lastmod: latestDate(notes) }] : []),
+    ...categoryEntries.flatMap(({ collection, entries: list }) =>
+      list.length > 0
+        ? [{ path: `/articles/${collection}/`, lastmod: latestDate(list) }]
+        : []
+    ),
     // /feed/ の中身は D1 からリクエスト時に読むので、ビルド時には最終更新日を
     // 知る手立てが無い。lastmod は付けない（About と同じ扱い）。
     { path: "/feed/" },
@@ -74,9 +76,9 @@ export async function GET(context: APIContext) {
 
   const pageUrls = [
     ...pagedUrls(articles, "/articles"),
-    ...pagedUrls(tech, "/articles/tech"),
-    ...pagedUrls(journal, "/articles/journal"),
-    ...pagedUrls(notes, "/notes"),
+    ...categoryEntries.flatMap(({ collection, entries: list }) =>
+      pagedUrls(list, `/articles/${collection}`)
+    ),
     ...pagedUrls(projects, "/projects"),
     ...Array.from(tags.keys()).flatMap((slug) =>
       pagedUrls(getEntriesByTag(entries, slug), `/tags/${slug}`)
