@@ -14,6 +14,7 @@
 - 執筆ツールは画像を R2（slytxt-writer-media）へ保存し、公開時に `draft/` から `pub/` へ移します。
 - 健康状態の Worker（status.slytxt.dev）は KV（slytxt-status-data）に最新スナップショットを1件だけ持ちます。更新は Muse の VM 上のスクリプトが Apple Health の集計を POST します。サイト側からは現在読んでいません（About の「いまの状態」は撤去済み）。
 - X のブックマークは Pages Functions が配信し、取得結果は KV（BOOKMARKS）にキャッシュします。
+- 短文フィードは D1（slytxt-feed）に置きます。読者は Pages Functions が差し込んだ一覧を読み、投稿は feed.slytxt.dev の Worker が同じ D1 へ書きます。
 
 ## 構成要素
 
@@ -25,7 +26,16 @@ CSS は `src/styles/global.css` に手で書きます。Tailwind はリセット
 
 短文フィードの公開一覧（`/feed/`）とトップの最新3件は、Astro がビルドした HTML を雛形にし、`functions/feed/index.ts` と `functions/index.ts` が D1（`FEED`）から読んだ投稿を差し込みます。トップの記事一覧と Projects は静的のままです。
 
-`functions/` の Pages Functions は、X のブックマークを推測不能な URL の下で一覧・RSS・JSON・埋め込み用スクリプトとして配信します。詳細は次の節を見てください。
+`functions/` の Pages Functions は、短文フィードの一覧と、X のブックマークの配信を担当します。詳細は次の節を見てください。
+
+### 短文フィード（D1 と Pages Functions、Worker: slytxt-feed）
+
+記事未満の短文は、Git ではなく D1（データベース `slytxt-feed`、バインディング `FEED`）に置きます。テーブルは `db/feed/0001_init.sql`、データの形とローカル実行の手順は `db/feed/README.md` です。
+
+- 読み取りは Pages Functions です。`functions/feed/index.ts` が `/feed/` の一覧を、`functions/index.ts` がトップページの最新3件を、Astro がビルドした HTML の目印の間に差し込みます。HTML の組み立ては `src/lib/feed/`（`render.ts` / `page.ts`）にまとめています。
+- 書き込みは Worker `slytxt-feed`（feed.slytxt.dev、コードは `tools/feed-cloudflare/`）です。投稿画面（PWA）と API を持ち、Cloudflare Access で本人だけに絞ります。入口は `src/index.mjs`、処理本体は `src/lib/feed/api.ts` と `src/lib/feed/compose.ts` を共有します。
+- 添付画像は R2 `slytxt-writer-media` の `pub/` に置き、公開 URL は media Worker が配信します（メディアの節と同じ）。
+- リンクカードは投稿時にサーバーが OGP を取り、`link` 列に単一オブジェクトの JSON で保存します。削除は論理削除で、公開側は `deleted_at IS NULL` だけを読みます。
 
 ### X のブックマーク（Pages Functions）
 
@@ -104,4 +114,4 @@ writer 固有なのは下書きの KV 同期、画像の `draft/` → `pub/` 付
 ## デプロイ
 
 - サイト本体は main へのマージで Cloudflare Pages が自動デプロイします。
-- 3つの Worker（writer / media / status）は `npx wrangler deploy -c tools/<対象>/wrangler.toml` で個別にデプロイします。wrangler はリポジトリの依存には足しません。
+- 4つの Worker（writer / media / status / feed）は `npx wrangler deploy -c tools/<対象>/wrangler.toml` で個別にデプロイします。wrangler はリポジトリの依存には足しません。
