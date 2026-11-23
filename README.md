@@ -23,7 +23,12 @@ pnpm test:e2e     # Playwright で主要フローを確認（手順は e2e/READM
 
 ## 執筆と公開
 
-執筆は Cloudflare 版のエディタ（<https://write.slytxt.dev>、コードは `tools/writer-cloudflare/`）で行います。認証は Cloudflare Access（本人のメールアドレスのみ許可）です。書いて投稿ボタンを押すと、ファイル作成・ブランチ・Pull Request・CI 待ち・マージまで進みます（マージの条件は CI の成功のみ）。流れの詳細は [アーキテクチャ](docs/architecture.md) と `tools/writer-cloudflare/README.md` を参照してください。
+執筆の経路は2つあります。どちらも `src/content/<カテゴリ>/<slug>.md` を Pull Request で作り、`main` へのマージで Cloudflare Pages がビルドして公開する点は同じです。
+
+- **Obsidian プラグイン**（[tools/obsidian-slytxt](tools/obsidian-slytxt/README.md)）— writer の置き換え先です。ノートから「PR を作る（公開）」でブランチと Pull Request を作り、自動マージ（squash）を設定します。CI が通ればそのまま公開されます。Mac では本番反映まで確認済みで、iPhone への導入が残っています。
+- **writer**（<https://write.slytxt.dev>、[tools/writer-cloudflare](tools/writer-cloudflare/README.md)）— 現行の本体です。認証は Cloudflare Access（本人のメールアドレスのみ許可）。下書きを端末と KV に持ち、投稿ボタンからファイル作成・ブランチ・Pull Request・CI 待ち・マージまで進みます。
+
+共通部分と writer 固有の部分の切り分けは [アーキテクチャ](docs/architecture.md) の「公開フロー」を参照してください。
 
 ## ドキュメント
 

@@ -7,6 +7,7 @@ flowchart LR
   bmKv[("KV<br/>BOOKMARKS")]
   xapi["X API"]
   writer["Worker: slytxt-writer<br/>write.slytxt.dev<br/>執筆ツール"]
+  obsidian["Obsidian プラグイン<br/>slytxt publish<br/>Mac / iPhone"]
   draftsKv[("KV<br/>slytxt-writer-drafts")]
   r2[("R2: slytxt-writer-media<br/>非公開バケット")]
   media["Worker: slytxt-media<br/>media.slytxt.dev"]
@@ -21,6 +22,8 @@ flowchart LR
   functions --> bmKv
   functions -->|OAuth・ブックマーク取得| xapi
   author --> access --> writer
+  author -->|ノートから PR を作る| obsidian
+  obsidian -->|ブランチ・ファイル・PR を作成| github
   writer -->|下書きの同期| draftsKv
   writer -->|画像は下書き時 draft: 公開時 pub:| r2
   writer -->|投稿でブランチ・ファイル・PR を作成| github
