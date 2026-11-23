@@ -9,8 +9,9 @@
 図の要素と接続関係は次のとおりです（図のソースは `docs/diagrams/overview.mmd`、Mermaid 記法。SVG は Ondine で生成したもので、再生成は `npx ondine docs/diagrams/*.mmd` です）。
 
 - 読者は Cloudflare Pages のサイト（slytxt.dev）を閲覧し、公開済み画像は media.slytxt.dev から受け取ります。
-- 本人は Cloudflare Access を通して執筆ツール（write.slytxt.dev）を使います。
-- 執筆ツールは下書きを KV（slytxt-writer-drafts）へ同期し、画像を R2（slytxt-writer-media）へ保存します。投稿すると GitHub にブランチと Pull Request を作り、マージされると Cloudflare Pages が main をビルドして公開します。
+- 本人は2つの経路で書きます。Cloudflare Access の内側の執筆ツール（write.slytxt.dev）と、Mac / iPhone の Obsidian プラグイン（`tools/obsidian-slytxt/`）です。
+- どちらの経路も GitHub にブランチと Pull Request を作り、マージされると Cloudflare Pages が main をビルドして公開します。下書きの置き場所は経路で違います（writer は KV slytxt-writer-drafts、プラグインは Vault のノート）。
+- 執筆ツールは画像を R2（slytxt-writer-media）へ保存し、公開時に `draft/` から `pub/` へ移します。
 - 健康状態の Worker（status.slytxt.dev）は KV（slytxt-status-data）に最新スナップショットを1件だけ持ち、サイトの About ページが読み取ります。更新は Muse の VM 上のスクリプトが Apple Health の集計を POST します。
 - X のブックマークは Pages Functions が配信し、取得結果は KV（BOOKMARKS）にキャッシュします。
 
@@ -84,13 +85,15 @@ refresh token が失効すると、取得が失敗し続けます。症状は、
 
 ![公開フロー](diagrams/publish-flow.svg)
 
-図のソースは `docs/diagrams/publish-flow.mmd`（Mermaid 記法）です。手順は次のとおりです。
+図のソースは `docs/diagrams/publish-flow.mmd`（Mermaid 記法）で、この図は writer の経路を描いたものです。手順は次のとおりです。
 
-1. 書く — 本文は localStorage へ即時保存され、KV へ裏で同期されます。
-2. 投稿 — writer が GitHub REST API で作業ブランチを作り、記事ファイルを `src/content/<カテゴリ>/<slug>.md` として作成して Pull Request を開きます。公開済み記事の一覧から開いて再編集した場合は、同じカテゴリなら同じファイルへの更新 PR になります。カテゴリを変えた場合は、新しいカテゴリへの書き出しと元カテゴリの削除を同じ PR で行う移動になります。どちらも公開日は元の記事から引き継がれ、更新日は再編集日に更新されます。このとき画像は R2 の `draft/` から `pub/` へ移され、本文中の URL は media.slytxt.dev へ付け替えられます。
+1. 書く — 保存先は経路で違います。writer は本文を localStorage へ即時保存し、KV へ裏で同期します。Obsidian プラグインは Vault のノートをそのまま下書きにし、KV への同期はしません。
+2. 投稿 — GitHub REST API で作業ブランチを作り、記事ファイルを `src/content/<カテゴリ>/<slug>.md` として作成して Pull Request を開きます。writer で公開済み記事の一覧から開いて再編集した場合は、同じカテゴリなら同じファイルへの更新 PR になります。カテゴリを変えた場合は、新しいカテゴリへの書き出しと元カテゴリの削除を同じ PR で行う移動になります。どちらも公開日は元の記事から引き継がれ、更新日は再編集日に更新されます。writer ではこのとき画像を R2 の `draft/` から `pub/` へ移し、本文中の URL を media.slytxt.dev へ付け替えます。
 3. CI — Pull Request の CI（チェック名 `ci`）が成功することだけがマージの条件です。Cloudflare Pages のプレビュー結果は条件に入りません。
-4. マージと見届け — CI の成功後、マージと後片付けは UI のポーリングと Cron の見届け（毎分）の両方が駆動し、どちらが先に進めても冪等に収束します。結果は KV に `publish-result:` キーで残り、次回 writer を開いたときに通知され、公開できた下書きは一覧から消えます。
+4. マージ — 駆動するのは経路で違います。writer は UI のポーリングと Cron の見届け（毎分）の両方が進め、どちらが先でも冪等に収束します。結果は KV に `publish-result:` キーで残り、次回 writer を開いたときに通知され、公開できた下書きは一覧から消えます。Obsidian プラグインは PR に自動マージ（squash）を設定し、設定できなかった場合だけ GitHub で手動マージします。
 5. 公開 — main へのマージで Cloudflare Pages がビルドし、slytxt.dev に反映されます。
+
+writer 固有なのは下書きの KV 同期、画像の `draft/` → `pub/` 付け替え、`publish-result:` の見届けです。PR を作って CI の成功でマージされ、Pages が公開する部分は両経路で共通です。
 
 ## 認証と秘密情報
 
