@@ -48,7 +48,7 @@ npx wrangler pages dev dist --persist-to db/feed/.wrangler/state \
   --d1=FEED=00000000-0000-0000-0000-000000000000
 ```
 
-`--d1` には `wranger.local.toml` のダミー ID を渡す（名前で指定すると別のローカル DB が割り当てられ、`no such table` になる）。
+`--d1` には `wrangler.local.toml` のダミー ID を渡す（名前で指定すると別のローカル DB が割り当てられ、`no such table` になる）。
 
 投稿が無いと空状態が出ます。確認用の1件は次のように入れられます。
 
