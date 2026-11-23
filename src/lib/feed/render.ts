@@ -81,7 +81,7 @@ function renderLink(link: FeedLink | undefined): string {
   )}" target="_blank" rel="noopener noreferrer">${parts}</a>`;
 }
 
-/** 投稿時刻を JST の「2026年11月16日 19:30」表記にする。 */
+/** 投稿時刻を JST の「2026/11/16 19:30」表記にする。 */
 export function formatTimestamp(iso: string): { label: string; datetime: string } {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return { label: iso, datetime: iso };
