@@ -12,7 +12,42 @@ export type FrontmatterInput = {
   updated?: string;
   tags: string[];
   cover?: string;
+  /** プラグインが管理しない frontmatter の行。原文のまま後ろに置く。 */
+  extras?: string[];
 };
+
+/** プラグインが組み立て直すキー。extras からは外す。 */
+const MANAGED_KEYS = new Set([
+  "title",
+  "description",
+  "published",
+  "updated",
+  "tags",
+  "cover",
+  "category"
+]);
+
+/**
+ * ノートの frontmatter（--- の内側）から、管理外のキーの行を取り出す。
+ * adult や未知のキーを公開ファイルでもそのまま残すため、値は解釈せず
+ * 行のまま引き継ぐ（#773）。入れ子の行は直前のキーに付いていく。
+ */
+export function extractExtras(rawFrontmatter: string): string[] {
+  const extras: string[] = [];
+  let keeping = false;
+  for (const line of String(rawFrontmatter ?? "").split("\n")) {
+    if (line.trim() === "") continue;
+    const key = line.match(/^([A-Za-z0-9_-]+)\s*:/);
+    if (key) {
+      keeping = !MANAGED_KEYS.has(key[1]);
+      if (keeping) extras.push(line.replace(/\s+$/, ""));
+      continue;
+    }
+    // 先頭が空白の行は直前のキーの続き。管理外のキーにだけ付ける。
+    if (keeping && /^\s/.test(line)) extras.push(line.replace(/\s+$/, ""));
+  }
+  return extras;
+}
 
 /** YAML のプレーンテキストとして安全に書けない値を引用する。 */
 function quote(value: string): string {
@@ -40,6 +75,9 @@ export function serializeFrontmatter(input: FrontmatterInput): string {
   if (input.updated) lines.push(`updated: ${input.updated}`);
   lines.push(`tags: ${tagList(input.tags)}`);
   if (input.cover) lines.push(`cover: ${quote(input.cover)}`);
+  for (const line of input.extras ?? []) {
+    if (line.trim()) lines.push(line);
+  }
   lines.push("---");
   return lines.join("\n");
 }

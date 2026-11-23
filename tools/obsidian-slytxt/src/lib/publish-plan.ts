@@ -21,6 +21,8 @@ export type NoteMeta = {
   cover?: string;
   /** 既存の公開日。再編集のときに入る。 */
   published?: string;
+  /** 管理外の frontmatter 行（adult など）。原文のまま引き継ぐ。 */
+  extras?: string[];
   body: string;
 };
 
@@ -66,7 +68,8 @@ export function preparePublish(meta: NoteMeta, today: string): PublishPayload {
     description,
     published: meta.published ?? today,
     tags: meta.tags ?? [],
-    ...(meta.cover ? { cover: meta.cover } : {})
+    ...(meta.cover ? { cover: meta.cover } : {}),
+    ...(meta.extras && meta.extras.length ? { extras: meta.extras } : {})
   };
   return {
     category: meta.category,
