@@ -825,7 +825,7 @@ textarea {
   line-height: 1.7;
 }
 
-/* notes は公開側がプレーンテキスト表示（.note__text と同じ値）。 */
+/* notes は公開側がプレーンテキスト表示。値は記事本文（.article-body）と揃える。 */
 .preview__notetext {
   margin: 20px 0 28px;
   white-space: pre-wrap;
@@ -912,7 +912,7 @@ textarea {
 }
 
 /* notes の本文（.preview__notetext）も pre 要素だが、コードブロックの
-   見た目を当てない。公開側の .note__text と同じ本文表示にする。 */
+   見た目を当てない。記事本文と同じ本文表示にする。 */
 .preview__body pre:not(.preview__notetext) {
   max-width: 100%;
   overflow-x: auto;
