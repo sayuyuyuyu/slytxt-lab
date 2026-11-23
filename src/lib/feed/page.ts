@@ -78,6 +78,17 @@ async function readShell(
   return { shell: await shellResponse.text() };
 }
 
+/** トップページのフィード区画の目印。0件のときは区画ごと取り除く。 */
+const HOME_SECTION_START = "<!--feed:section:start-->";
+const HOME_SECTION_END = "<!--feed:section:end-->";
+
+function withoutHomeSection(shell: string): string {
+  const start = shell.indexOf(HOME_SECTION_START);
+  const end = shell.indexOf(HOME_SECTION_END);
+  if (start < 0 || end < start) return shell;
+  return shell.slice(0, start) + shell.slice(end + HOME_SECTION_END.length);
+}
+
 function missingMarkers(label: string): Response {
   return text(`${label}の外枠に差し込み位置（${FEED_START} … ${FEED_END}）がありません。`, 500);
 }
@@ -118,10 +129,11 @@ export async function handleFeedPage(context: PagesContext<FeedEnv>): Promise<Re
  * フィードの枠にだけ状態を出す。
  */
 export async function handleHomeFeed(context: PagesContext<FeedEnv>): Promise<Response> {
-  let items: string;
+  // null は「投稿が0件」。区画ごと出さない（Articles / Projects の0件時と同じ扱い）。
+  let items: string | null;
   try {
     const { posts } = await readFeedPage(context.env.FEED, { limit: HOME_FEED_SIZE });
-    items = renderFeedItems(posts);
+    items = posts.length === 0 ? null : renderFeedItems(posts);
   } catch (error) {
     console.error("feed: トップページの D1 読み取りに失敗しました", error);
     items = `<p class="feed-empty">フィードを読み込めませんでした。</p>`;
@@ -129,6 +141,7 @@ export async function handleHomeFeed(context: PagesContext<FeedEnv>): Promise<Re
 
   const result = await readShell(context, HOME_SHELL_PATH, "トップページ");
   if ("error" in result) return result.error;
+  if (items === null) return html(withoutHomeSection(result.shell));
   const page = injectFeed(result.shell, items);
   if (page === null) return missingMarkers("トップページ");
   return html(page);

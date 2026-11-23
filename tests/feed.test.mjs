@@ -304,7 +304,7 @@ function fakeContext({
 
 test("feed: ページは雛形に一覧を差し込んで返す", async () => {
   const db = fakeDb([row({ body: "こんにちは" })]);
-  const shell = `<main>${FEED_START}fallback${FEED_END}</main>`;
+  const shell = `<main><!--feed:section:start--><section id="feed-title">Feed</section>${FEED_START}fallback${FEED_END}<!--feed:section:end--></main>`;
   const response = await handleFeedPage(fakeContext({ db, shell }));
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
@@ -370,7 +370,7 @@ test("feed: トップページは最新3件だけを差し込み、続きは All
     row({ id: "p3", body: "3番目の投稿" }),
     row({ id: "p4", body: "4番目の投稿" })
   ];
-  const shell = `<main>${FEED_START}fallback${FEED_END}</main>`;
+  const shell = `<main><!--feed:section:start--><section id="feed-title">Feed</section>${FEED_START}fallback${FEED_END}<!--feed:section:end--></main>`;
   const response = await handleHomeFeed(
     fakeContext({ db: fakeDb(rows), shell, url: "https://slytxt.dev/", shellPath: "/index.html" })
   );
@@ -381,6 +381,20 @@ test("feed: トップページは最新3件だけを差し込み、続きは All
   assert.ok(!body.includes("4番目の投稿"));
   assert.ok(!body.includes("fallback"));
   assert.ok(!body.includes("feed-more"));
+});
+
+test("feed: トップページは投稿が0件ならフィードの区画ごと出さない", async () => {
+  const shell = `<main><h1>slytxt.lab</h1><!--feed:section:start--><section id="feed-title">Feed</section>${FEED_START}<p class="feed-empty">まだ投稿がありません。</p>${FEED_END}<!--feed:section:end--><section id="projects-title">Projects</section></main>`;
+  const response = await handleHomeFeed(
+    fakeContext({ db: fakeDb([]), shell, url: "https://slytxt.dev/", shellPath: "/index.html" })
+  );
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.ok(body.includes("slytxt.lab"));
+  assert.ok(body.includes("projects-title"));
+  assert.ok(!body.includes("feed-title"));
+  assert.ok(!body.includes("まだ投稿がありません"));
+  assert.ok(!body.includes("feed:section"));
 });
 
 test("feed: トップページは D1 が読めなくても全体を返し、枠にだけ状態を出す", async () => {
@@ -403,10 +417,10 @@ test("feed: トップページは D1 が読めなくても全体を返し、枠�
   assert.ok(!body.includes("fallback"));
 });
 
-test("feed: トップページの目印が無ければ 500 を返す", async () => {
+test("feed: 投稿があるのにトップページの目印が無ければ 500 を返す", async () => {
   const response = await handleHomeFeed(
     fakeContext({
-      db: fakeDb([]),
+      db: fakeDb([row({ id: "p1", body: "投稿" })]),
       shell: "<main>no markers</main>",
       url: "https://slytxt.dev/",
       shellPath: "/index.html"
