@@ -22,6 +22,9 @@ const recent = articles.slice(0, 6);
   </section>
   )}
 
+  <!-- フィードの区画。投稿が0件のときは Pages Functions（handleHomeFeed）が
+       区画ごと取り除くので、区画の外側も目印で囲む。 -->
+  <Fragment set:html="<!--feed:section:start-->" />
   <section class="section" aria-labelledby="feed-title" data-motion>
     <div class="container">
       <div class="section-head">
@@ -33,6 +36,7 @@ const recent = articles.slice(0, 6);
       </div>
     </div>
   </section>
+  <Fragment set:html="<!--feed:section:end-->" />
 
   {projects.length > 0 && (
   <section class="section" aria-labelledby="projects-title" data-motion>
