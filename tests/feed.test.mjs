@@ -220,6 +220,45 @@ test("feed: リンクカードは URL と各項目をエスケープして出す
   assert.ok(html.includes('rel="noopener noreferrer"'));
 });
 
+test("feed: リンクカードになった URL は本文に出さない", () => {
+  const html = renderFeedItems([
+    {
+      id: "1",
+      body: "おすすめ https://example.com/ 見てね",
+      createdAt: "2026-11-16T10:00:00.000Z",
+      images: [],
+      link: { url: "https://example.com/", title: "Example", site: "example.com" }
+    }
+  ]);
+  // カードの href として1回だけ現れる。本文側のリンクにはならない。
+  assert.equal(html.split('href="https://example.com/"').length - 1, 1);
+  assert.ok(html.includes("おすすめ"));
+  assert.ok(html.includes("見てね"));
+
+  const onlyUrl = renderFeedItems([
+    {
+      id: "2",
+      body: "https://example.com/",
+      createdAt: "2026-11-16T10:00:00.000Z",
+      images: [],
+      link: { url: "https://example.com/", title: "Example", site: "example.com" }
+    }
+  ]);
+  assert.ok(onlyUrl.includes('class="feed-card"'));
+  assert.ok(!onlyUrl.includes("<p>https://example.com/</p>"));
+
+  // カードが無い投稿では URL は従来どおり本文に残る。
+  const noCard = renderFeedItems([
+    {
+      id: "3",
+      body: "https://example.com/",
+      createdAt: "2026-11-16T10:00:00.000Z",
+      images: []
+    }
+  ]);
+  assert.ok(noCard.includes('<a href="https://example.com/"'));
+});
+
 test("feed: 0件なら空状態、次ページがあれば「もっと見る」を出す", () => {
   assert.match(renderFeedItems([]), /まだ投稿がありません/);
   const html = renderFeedItems(
