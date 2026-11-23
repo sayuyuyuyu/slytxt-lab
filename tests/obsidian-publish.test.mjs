@@ -11,6 +11,7 @@ import {
 import {
   deriveTitle,
   documentBody,
+  extractExtras,
   serializeFrontmatter
 } from "../tools/obsidian-slytxt/src/lib/frontmatter.ts";
 import { deriveDescription, preparePublish } from "../tools/obsidian-slytxt/src/lib/publish-plan.ts";
@@ -70,6 +71,72 @@ test("obsidian: frontmatter は固定順で書き、必要な値だけ引用す�
   ]);
 });
 
+test("obsidian: 再公開のときだけ updated が付き、ノート側の値も落とさない", () => {
+  const first = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文" },
+    "2026-11-24"
+  );
+  assert.equal(first.frontmatter.published, "2026-11-24");
+  assert.equal(first.frontmatter.updated, undefined);
+
+  const again = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", published: "2026-11-01" },
+    "2026-11-24"
+  );
+  assert.equal(again.frontmatter.published, "2026-11-01");
+  assert.equal(again.frontmatter.updated, "2026-11-24");
+
+  const sameDay = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", published: "2026-11-24" },
+    "2026-11-24"
+  );
+  assert.equal(sameDay.frontmatter.updated, undefined);
+
+  const kept = preparePublish(
+    {
+      name: "note",
+      category: "tech",
+      title: "題名",
+      body: "本文",
+      published: "2026-11-01",
+      updated: "2026-11-20"
+    },
+    "2026-11-24"
+  );
+  assert.equal(kept.frontmatter.updated, "2026-11-24");
+
+  const onlyGiven = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", updated: "2026-11-20" },
+    "2026-11-24"
+  );
+  assert.equal(onlyGiven.frontmatter.updated, "2026-11-20");
+});
+
+test("obsidian: 管理外の frontmatter キーは公開ファイルへそのまま残る", () => {
+  const raw = [
+    "title: 題名",
+    "adult: true",
+    "memo: あとで読む",
+    "tags: [a, b]",
+    "aliases:",
+    "  - one",
+    "published: 2026-11-01",
+    "category: tech"
+  ].join("\n");
+  const extras = extractExtras(raw);
+  assert.deepEqual(extras, ["adult: true", "memo: あとで読む", "aliases:", "  - one"]);
+
+  const payload = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", extras },
+    "2026-11-24"
+  );
+  assert.match(payload.content, /^adult: true$/m);
+  assert.match(payload.content, /^memo: あとで読む$/m);
+  // 管理するキーはプラグインの値だけを1回書く。
+  assert.equal(payload.content.match(/^title:/gm).length, 1);
+  assert.equal(payload.content.match(/^published:/gm).length, 1);
+});
+
 test("obsidian: タイトル無しは空文字として明示し、タグは10件まで", () => {
   const yaml = serializeFrontmatter({
     title: "",
@@ -98,6 +165,16 @@ test("obsidian: タイトルは記事は本文から補い、misc は空にす�
   assert.equal(deriveTitle("comic", "", "## 見出しの行\n次の行"), "見出しの行");
   assert.equal(deriveTitle("misc", "", "メモの書き出し"), "");
   assert.equal(deriveTitle("tech", "無題", ""), "無題");
+  // 先頭が埋め込み URL 行・画像だけの行でも、それをタイトルにしない（#774）。
+  assert.equal(
+    deriveTitle("tech", "", "https://www.youtube.com/watch?v=abcdefghijk\n\n本文です。"),
+    "本文です。"
+  );
+  assert.equal(
+    deriveTitle("comic", "", "![](https://media.slytxt.dev/abc.jpg)\n\n漫画の説明。"),
+    "漫画の説明。"
+  );
+  assert.equal(deriveTitle("tech", "", "https://www.youtube.com/watch?v=abcdefghijk"), "無題");
   assert.equal([...deriveTitle("tech", "", "あ".repeat(100))].length, 40);
 });
 

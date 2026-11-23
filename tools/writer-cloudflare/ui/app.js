@@ -807,6 +807,10 @@ async function setupEditor() {
     els.editorRoot.hidden = false;
     els.body.hidden = true;
     document.body.dataset.editor = "wysiwyg";
+    // エディタの準備より先に下書きを開いていたら、その本文を入れ直す。
+    // mount は非同期なので、applyDraft の時点で handle が無いと editorSet が
+    // 何もせず、本文が空のまま表示される（#788）。
+    if (state.current) editorSet(els.body.value);
   } catch (error) {
     console.warn("WYSIWYG エディタを初期化できませんでした。textarea で続けます。", error);
     editorBridge.handle = null;
@@ -879,9 +883,27 @@ function clearEditor() {
  *   負けたローカルコピーは退避キーへ残す（黙って消さない）。
  * サーバーと同内容のローカルコピーは、片付けてサーバー版をそのまま返す。
  */
+/** タイトル・本文・カバー・タグ・説明がすべて空の端末コピーか。 */
+function isEmptyPayload(payload) {
+  if (!payload) return true;
+  return !(
+    String(payload.title ?? "").trim() ||
+    String(payload.body ?? "").trim() ||
+    String(payload.cover ?? "").trim() ||
+    String(payload.description ?? "").trim() ||
+    (payload.tags ?? []).length
+  );
+}
+
 function restoreLocalDraft(serverDraft) {
   const local = readLocal(serverDraft.id);
   if (!local) return serverDraft;
+  // 中身のある下書きに対して、空の端末コピーを復元しない。同期の取りこぼしで
+  // 空の編集画面になるのを防ぐ（#788）。
+  if (isEmptyPayload(local.payload) && !isEmptyPayload(payloadOf(serverDraft))) {
+    removeLocal(serverDraft.id);
+    return serverDraft;
+  }
   if (samePayload(local.payload, payloadOf(serverDraft))) {
     removeLocal(serverDraft.id);
     return serverDraft;
@@ -916,7 +938,10 @@ function restoreLocalDraft(serverDraft) {
 }
 
 async function selectDraft(id) {
-  if (state.current?.id !== id) await flushSave().catch(() => {});
+  // 同じ下書きを開き直すときも先に送る。送らずに読むと、カテゴリ切替などの
+  // 未同期の編集がサーバー側の古い版で画面ごと巻き戻り、タイトル欄が
+  // 再び隠れることがある（#771）。
+  await flushSave().catch(() => {});
   try {
     const { draft } = await api(`/api/drafts/${encodeURIComponent(id)}`);
     const restored = restoreLocalDraft(draft);
