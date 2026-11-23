@@ -8,7 +8,7 @@
  * ページ送りは ?before=<ISO 8601> のカーソル方式。JS が無くても
  * 「もっと見る」のリンクで辿れる。
  */
-import { FEED_PAGE_SIZE, type FeedEnv } from "./types.ts";
+import { FEED_PAGE_SIZE, HOME_FEED_SIZE, type FeedEnv } from "./types.ts";
 import { readFeedPage } from "./store.ts";
 import { FEED_END, FEED_START, injectFeed, renderFeedItems } from "./render.ts";
 
@@ -22,6 +22,7 @@ export type PagesContext<Env> = {
 export type PagesFunction<Env> = (context: PagesContext<Env>) => Response | Promise<Response>;
 
 const SHELL_PATH = "/feed/index.html";
+const HOME_SHELL_PATH = "/index.html";
 
 /** ?before= の値。ISO 8601（UTC）だけを受け付ける。 */
 const CURSOR = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
@@ -57,6 +58,27 @@ export function feedHref(before: string): string {
   return `/feed/?before=${encodeURIComponent(before)}`;
 }
 
+/** ビルド済みの外枠を ASSETS から読む。無ければ理由を返す。 */
+async function readShell(
+  context: PagesContext<FeedEnv>,
+  shellPath: string,
+  label: string
+): Promise<{ shell: string } | { error: Response }> {
+  if (!context.env.ASSETS) {
+    return { error: text(`${label}の外枠を読めません（ASSETS 未設定）。`, 500) };
+  }
+  // ASSETS.fetch は絶対 URL しか受け付けない（相対パスを渡すと Invalid URL）。
+  const shellResponse = await context.env.ASSETS.fetch(new URL(shellPath, context.request.url));
+  if (!shellResponse.ok) {
+    return { error: text(`${label}の外枠が見つかりません（${shellPath}）。`, 500) };
+  }
+  return { shell: await shellResponse.text() };
+}
+
+function missingMarkers(label: string): Response {
+  return text(`${label}の外枠に差し込み位置（${FEED_START} … ${FEED_END}）がありません。`, 500);
+}
+
 export async function handleFeedPage(context: PagesContext<FeedEnv>): Promise<Response> {
   const cursor = beforeFromRequest(context.request);
   if ("error" in cursor) return text(cursor.error, 400);
@@ -76,22 +98,34 @@ export async function handleFeedPage(context: PagesContext<FeedEnv>): Promise<Re
   }
   const { posts, nextBefore } = feed;
 
-  if (!context.env.ASSETS) return text("フィードの外枠を読めません（ASSETS 未設定）。", 500);
-  // ASSETS.fetch は絶対 URL しか受け付けない（相対パスを渡すと Invalid URL）。
-  const shellUrl = new URL(SHELL_PATH, context.request.url);
-  const shellResponse = await context.env.ASSETS.fetch(shellUrl);
-  if (!shellResponse.ok) {
-    return text(`フィードの外枠が見つかりません（${SHELL_PATH}）。`, 500);
-  }
+  const result = await readShell(context, SHELL_PATH, "フィード");
+  if ("error" in result) return result.error;
   const page = injectFeed(
-    await shellResponse.text(),
+    result.shell,
     renderFeedItems(posts, { nextHref: nextBefore ? feedHref(nextBefore) : null })
   );
-  if (page === null) {
-    return text(
-      `フィードの外枠に差し込み位置（${FEED_START} … ${FEED_END}）がありません。`,
-      500
-    );
+  if (page === null) return missingMarkers("フィード");
+  return html(page);
+}
+
+/**
+ * トップページの最新フィード。記事一覧は静的のまま、フィードの枠だけを
+ * D1 から差し込む。/feed/ と違い、D1 が読めなくてもトップ全体は返し、
+ * フィードの枠にだけ状態を出す。
+ */
+export async function handleHomeFeed(context: PagesContext<FeedEnv>): Promise<Response> {
+  let items: string;
+  try {
+    const { posts } = await readFeedPage(context.env.FEED, { limit: HOME_FEED_SIZE });
+    items = renderFeedItems(posts);
+  } catch (error) {
+    console.error("feed: トップページの D1 読み取りに失敗しました", error);
+    items = `<p class="feed-empty">フィードを読み込めませんでした。</p>`;
   }
+
+  const result = await readShell(context, HOME_SHELL_PATH, "トップページ");
+  if ("error" in result) return result.error;
+  const page = injectFeed(result.shell, items);
+  if (page === null) return missingMarkers("トップページ");
   return html(page);
 }

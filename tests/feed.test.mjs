@@ -14,7 +14,7 @@ import {
   injectFeed,
   renderFeedItems
 } from "../src/lib/feed/render.ts";
-import { beforeFromRequest, feedHref, handleFeedPage } from "../src/lib/feed/page.ts";
+import { beforeFromRequest, feedHref, handleFeedPage, handleHomeFeed } from "../src/lib/feed/page.ts";
 
 /** SQL とバインド値を記録し、用意した行を返すだけの D1 代用。 */
 function fakeDb(rows = []) {
@@ -220,7 +220,12 @@ test("feed: before は ISO 8601 だけを受け付け、URL を組み立てる",
 });
 
 /** Pages Functions の context 代用。ASSETS は雛形の HTML を返す。 */
-function fakeContext({ db, shell, url = "https://slytxt.dev/feed/" }) {
+function fakeContext({
+  db,
+  shell,
+  url = "https://slytxt.dev/feed/",
+  shellPath = "/feed/index.html"
+}) {
   return {
     request: new Request(url),
     env: {
@@ -229,7 +234,7 @@ function fakeContext({ db, shell, url = "https://slytxt.dev/feed/" }) {
         async fetch(input) {
           if (!shell) return new Response("not found", { status: 404 });
           // ASSETS には絶対 URL を渡す約束（相対パスは Pages 側で Invalid URL になる）。
-          assert.equal(new URL(String(input)).pathname, "/feed/index.html");
+          assert.equal(new URL(String(input)).pathname, shellPath);
           return new Response(shell, { status: 200 });
         }
       }
@@ -298,6 +303,59 @@ test("feed: 不正な before は 400 を返す", async () => {
   );
   assert.equal(response.status, 400);
   assert.match(await response.text(), /ISO 8601/);
+});
+
+test("feed: トップページは最新3件だけを差し込み、続きは All posts に譲る", async () => {
+  const rows = [
+    row({ id: "p1", body: "いちばん新しい投稿" }),
+    row({ id: "p2", body: "2番目の投稿" }),
+    row({ id: "p3", body: "3番目の投稿" }),
+    row({ id: "p4", body: "4番目の投稿" })
+  ];
+  const shell = `<main>${FEED_START}fallback${FEED_END}</main>`;
+  const response = await handleHomeFeed(
+    fakeContext({ db: fakeDb(rows), shell, url: "https://slytxt.dev/", shellPath: "/index.html" })
+  );
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.ok(body.includes("いちばん新しい投稿"));
+  assert.ok(body.includes("3番目の投稿"));
+  assert.ok(!body.includes("4番目の投稿"));
+  assert.ok(!body.includes("fallback"));
+  assert.ok(!body.includes("feed-more"));
+});
+
+test("feed: トップページは D1 が読めなくても全体を返し、枠にだけ状態を出す", async () => {
+  const broken = {
+    prepare() {
+      throw new Error("D1_ERROR: no such table: feed_posts");
+    }
+  };
+  const response = await handleHomeFeed(
+    fakeContext({
+      db: broken,
+      shell: `<main>${FEED_START}fallback${FEED_END}</main>`,
+      url: "https://slytxt.dev/",
+      shellPath: "/index.html"
+    })
+  );
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.match(body, /フィードを読み込めませんでした/);
+  assert.ok(!body.includes("fallback"));
+});
+
+test("feed: トップページの目印が無ければ 500 を返す", async () => {
+  const response = await handleHomeFeed(
+    fakeContext({
+      db: fakeDb([]),
+      shell: "<main>no markers</main>",
+      url: "https://slytxt.dev/",
+      shellPath: "/index.html"
+    })
+  );
+  assert.equal(response.status, 500);
+  assert.match(await response.text(), /トップページの外枠に差し込み位置/);
 });
 
 test("escapeHtml は5文字を実体参照にする", () => {
