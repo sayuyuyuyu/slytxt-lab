@@ -482,12 +482,6 @@ textarea {
   font-size: 0.8rem;
 }
 
-.editor__meta-note {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  line-height: 1.6;
-}
-
 /* 見出し画像（タイトル欄の上）。余白と角丸は公開側の .article-cover に合わせる。 */
 .editor__cover {
   padding-inline: 0;
