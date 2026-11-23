@@ -432,6 +432,48 @@ samp,
    --------------------------------------------------------------------------- */
 .not-found__terminal {
   max-width: 720px;
+  border: 1px solid var(--border);
+  background: linear-gradient(
+    color-mix(in srgb, var(--surface) 92%, transparent),
+    var(--bg-soft)
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--bg) 60%, transparent),
+    0 40px 80px -60px var(--shadow),
+    0 0 90px -40px var(--glow);
+}
+.not-found__terminal .terminal__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+.not-found__terminal .terminal__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex: none;
+}
+.not-found__terminal .terminal__dot--red {
+  background: var(--accent-red);
+}
+.not-found__terminal .terminal__dot--yellow {
+  background: var(--accent-warn);
+}
+.not-found__terminal .terminal__dot--green {
+  background: var(--accent-5);
+}
+.not-found__terminal .terminal__title {
+  margin-left: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .not-found__body {
   padding: clamp(24px, 4vw, 40px);
