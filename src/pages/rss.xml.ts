@@ -1,11 +1,11 @@
 import rss from "@astrojs/rss";
 import type { APIContext } from "astro";
 import { formatRfc822 } from "@/lib/bookmarks/format";
-import { getAllWriting, getEntryDate, getEntryDescription, getEntryDisplayTitle, getEntryPath } from "@/lib/content";
+import { getAllArticles, getEntryDate, getEntryDescription, getEntryDisplayTitle, getEntryPath } from "@/lib/content";
 import { categoryLabels, site } from "@/lib/site";
 
 export async function GET(context: APIContext) {
-  const articles = await getAllWriting();
+  const articles = await getAllArticles();
   const items = articles.slice(0, 30);
   const siteUrl = context.site ?? "https://slytxt.dev";
   const lastBuildDate =
