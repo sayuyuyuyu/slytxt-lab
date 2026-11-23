@@ -900,7 +900,10 @@ function restoreLocalDraft(serverDraft) {
 }
 
 async function selectDraft(id) {
-  if (state.current?.id !== id) await flushSave().catch(() => {});
+  // 同じ下書きを開き直すときも先に送る。送らずに読むと、カテゴリ切替などの
+  // 未同期の編集がサーバー側の古い版で画面ごと巻き戻り、タイトル欄が
+  // 再び隠れることがある（#771）。
+  await flushSave().catch(() => {});
   try {
     const { draft } = await api(`/api/drafts/${encodeURIComponent(id)}`);
     const restored = restoreLocalDraft(draft);
