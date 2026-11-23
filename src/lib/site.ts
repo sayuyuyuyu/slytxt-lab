@@ -97,7 +97,8 @@ export const pageDescriptions = {
   about: "しらゆ（slytxt）のプロフィール。",
   projects: "しらゆがつくっているものと、いまの進み具合。",
   tags: "記事と Projects をタグから辿れます。",
-  search: "記事とつくったもの、プロフィールを、書いてある言葉から探せます。"
+  search: "記事とつくったもの、プロフィールを、書いてある言葉から探せます。",
+  feed: "短文のフィード。記事にするほどではないメモや写真を置いています。"
 } as const;
 
 export const projectStatusLabels = {
