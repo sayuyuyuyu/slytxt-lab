@@ -46,11 +46,6 @@ export async function getAllArticles(): Promise<ArticleEntry[]> {
   return sortArticles(perCategory.flat());
 }
 
-/** Everything written: all articles. */
-export async function getAllWriting(): Promise<ArticleEntry[]> {
-  return getAllArticles();
-}
-
 export async function getProjects(): Promise<ProjectEntry[]> {
   const entries = await getCollection("projects", isPublished);
   return sortProjects(entries);
