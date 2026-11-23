@@ -7,6 +7,7 @@
  *   <!--feed:start--> …ここを置き換える… <!--feed:end-->
  * 目印が消えたら差し込みが効かなくなるので、check-build でも存在を検証する。
  */
+import { escapeHtml } from "../html.ts";
 import type { FeedImage, FeedLink, FeedPost } from "./types.ts";
 
 export const FEED_START = "<!--feed:start-->";
@@ -14,15 +15,6 @@ export const FEED_END = "<!--feed:end-->";
 
 /** 画像の配信元。R2 の pub/ を tools/media-cloudflare が返す。 */
 export const MEDIA_ORIGIN = "https://media.slytxt.dev";
-
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 const URL_IN_TEXT = /(https?:\/\/[^\s<>"'）)】]+)/g;
 
