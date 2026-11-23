@@ -14,7 +14,7 @@ Obsidian から slytxt-lab へ記事を公開するプラグインです。書�
 
 ## 仕組み
 
-- 記事のパス・ブランチ名・公開 URL は writer と同じ規則です（`src/lib/slug.ts`）。notes だけ `note/` ブランチ、ほかは `write/`。
+- 記事のパス・ブランチ名・公開 URL は writer と同じ規則です（`src/lib/slug.ts`）。ブランチはカテゴリによらず `write/<slug>` です。
 - frontmatter はサイトのスキーマに合わせてキー順を固定し、必要な値だけ引用します（`src/lib/frontmatter.ts`）。
 - GitHub との通信は `src/lib/github.ts` に閉じ込め、HTTP を差し替え可能にしてあります（Obsidian では `requestUrl` を渡す）。手順（ブランチ→ファイル→PR）と失敗時のメッセージはテストで確認しています。
 
