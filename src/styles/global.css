@@ -638,14 +638,6 @@ samp,
   object-fit: cover;
   border-radius: 8px;
 }
-.note-card__thumb {
-  float: right;
-  width: 64px;
-  height: 64px;
-  margin-left: 14px;
-  object-fit: cover;
-  border-radius: 8px;
-}
 .project-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1080,15 +1072,6 @@ samp,
   border: 1px solid var(--border);
   border-radius: 12px;
 }
-.note-cover {
-  display: block;
-  width: 100%;
-  margin-top: 20px;
-  aspect-ratio: 191 / 100;
-  object-fit: cover;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
 /* 画像とキャプション（rehype-figure が生成する） */
 .article-body figure {
   margin-inline: 0;
@@ -1257,59 +1240,6 @@ body:has(.site-header[data-hidden="true"]) .toc {
   font-size: 0.78rem;
 }
 
-/* Notes: plain text, no title. */
-.note__inner {
-  max-width: var(--article-width);
-  padding-block: 40px 64px;
-}
-.note__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
-}
-.note__text {
-  margin: 20px 0 28px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font: 1.03rem/1.95 var(--font-body);
-  color: var(--text);
-}
-.note-card {
-  position: relative;
-  min-width: 0;
-  border-top: 1px solid var(--border);
-  padding: 20px 18px 20px 20px;
-  transition: background-color 0.3s ease;
-}
-.note-card:hover {
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
-}
-.note-card__meta {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
-}
-.note-card__title {
-  margin: 0;
-}
-.note-card__text {
-  display: block;
-  margin-top: 8px;
-  color: var(--text);
-  font-family: var(--font-heading);
-  font-size: 1.05rem;
-  line-height: 1.7;
-  text-decoration: none;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.note-card:hover .note-card__text {
-  color: var(--accent-strong);
-}
 .adult-gate {
   display: none;
   padding: 20px;
