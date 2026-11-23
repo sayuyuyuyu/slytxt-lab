@@ -2,7 +2,7 @@
  * ノート1件から公開に必要な一式（slug・frontmatter・ファイル内容・ブランチ・URL）
  * を組み立てる。通信は含まないので単体で検証できる。
  */
-import { deriveTitle, documentBody, type FrontmatterInput } from "./frontmatter.ts";
+import { deriveTitle, documentBody, isEmbedOnlyLine, type FrontmatterInput } from "./frontmatter.ts";
 import {
   branchName,
   contentPath,
@@ -40,7 +40,7 @@ export function deriveDescription(body: string, limit = 90): string {
   const text = body
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line && !/^https?:\/\/\S+$/.test(line))
+    .filter((line) => line && !isEmbedOnlyLine(line))
     .join(" ")
     .replace(/[#>*_`~\[\]]/g, "")
     .replace(/\s+/g, " ")

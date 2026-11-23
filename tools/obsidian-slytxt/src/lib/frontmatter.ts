@@ -50,6 +50,20 @@ export function documentBody(frontmatter: FrontmatterInput, body: string): strin
 }
 
 /**
+ * 単独で埋め込みになる行か。サイト側の isEmbedOnlyLine（src/lib/entries.ts）と
+ * 同じ判定にし、画像だけの行も除く。本文の先頭が URL や画像でも、それを
+ * タイトルにしないため（#774）。
+ */
+export function isEmbedOnlyLine(line: string): boolean {
+  const text = line.trim();
+  if (/^https?:\/\/\S+$/.test(text)) return true;
+  if (/^<https?:\/\/\S+>$/.test(text)) return true;
+  if (/^!\[[^\]]*\]\(\S*\)$/.test(text)) return true;
+  const link = text.match(/^\[([^\]]+)\]\((\S+)\)$/);
+  return link ? link[1] === link[2] : false;
+}
+
+/**
  * 記事のタイトル。無ければ本文の書き出しで補う。
  * misc（なんか）はタイトルを持たないので空のままにする（writer と同じ）。
  */
@@ -61,7 +75,11 @@ export function deriveTitle(
   const given = (title ?? "").trim();
   if (given && given !== "無題") return given;
   if (category === "misc") return "";
-  const firstLine = body.split("\n").map((line) => line.trim()).find(Boolean) ?? "";
+  const firstLine =
+    body
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line && !isEmbedOnlyLine(line)) ?? "";
   const text = firstLine
     .replace(/[#>*_`~]/g, "")
     .replace(/\s+/g, " ")
