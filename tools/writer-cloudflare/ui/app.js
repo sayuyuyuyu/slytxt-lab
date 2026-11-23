@@ -1609,7 +1609,9 @@ async function setCoverFromFile(file) {
         if (posted) {
           state.cover = posted;
           coverRemoved = false;
-          scheduleSave();
+          // 見出し画像は操作が一区切りなので、間引きを待たずに送る（#737）。
+          // 自分の POST 完了の待ち合わせに入らないよう awaitPosted は外す。
+          flushSave({ awaitPosted: false }).catch(() => {});
         }
       }
     });
@@ -1617,7 +1619,8 @@ async function setCoverFromFile(file) {
     coverRemoved = false;
     setCoverStatus("");
     renderCover();
-    scheduleSave();
+    // 付け外しの直後に公開しても古い cover で出ないよう、すぐ同期する。
+    flushSave().catch(() => {});
     toast("見出し画像を設定しました");
     // blob プレビューはここでは破棄しない。最終 URL が実際に読み込める
     // ようになってから切り替える（keepCoverBlobUntilRemoteReady）。
@@ -1641,7 +1644,7 @@ function removeCover() {
   coverRemoved = true;
   resetCoverDisplay();
   renderCover();
-  scheduleSave();
+  flushSave().catch(() => {});
 }
 
 /* ---- 見出し画像のサイズ制限と切り取り ----
