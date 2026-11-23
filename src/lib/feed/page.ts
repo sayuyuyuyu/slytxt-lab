@@ -9,7 +9,7 @@
  * 「もっと見る」のリンクで辿れる。
  */
 import { FEED_PAGE_SIZE, HOME_FEED_SIZE, type FeedEnv } from "./types.ts";
-import { readFeedPage } from "./store.ts";
+import { decodeFeedCursor, readFeedPage } from "./store.ts";
 import { FEED_END, FEED_START, injectFeed, renderFeedItems } from "./render.ts";
 
 export type PagesContext<Env> = {
@@ -24,8 +24,9 @@ export type PagesFunction<Env> = (context: PagesContext<Env>) => Response | Prom
 const SHELL_PATH = "/feed/index.html";
 const HOME_SHELL_PATH = "/index.html";
 
-/** ?before= の値。ISO 8601（UTC）だけを受け付ける。 */
-const CURSOR = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+/** ?before= の形が違うときの案内。 */
+const CURSOR_HINT =
+  "before はページ送りのカーソル（例 2026-11-16T10:00:00.000Z~01JC0000000000000000000001）で指定してください。";
 
 function html(body: string, status = 200, cache = "public, max-age=60"): Response {
   return new Response(body, {
@@ -47,15 +48,17 @@ function text(body: string, status: number): Response {
   });
 }
 
-export function beforeFromRequest(request: Request): { before: string | null } | { error: string } {
+export function beforeFromRequest(
+  request: Request
+): { before: string | null; beforeId: string | null } | { error: string } {
   const raw = new URL(request.url).searchParams.get("before");
-  if (raw === null) return { before: null };
-  if (!CURSOR.test(raw)) return { error: "before は ISO 8601（例 2026-11-16T10:00:00.000Z）で指定してください。" };
-  return { before: raw };
+  const cursor = decodeFeedCursor(raw);
+  if (cursor === null) return { error: CURSOR_HINT };
+  return cursor;
 }
 
-export function feedHref(before: string): string {
-  return `/feed/?before=${encodeURIComponent(before)}`;
+export function feedHref(cursor: string): string {
+  return `/feed/?before=${encodeURIComponent(cursor)}`;
 }
 
 /** ビルド済みの外枠を ASSETS から読む。無ければ理由を返す。 */
@@ -87,6 +90,7 @@ export async function handleFeedPage(context: PagesContext<FeedEnv>): Promise<Re
   try {
     feed = await readFeedPage(context.env.FEED, {
       before: cursor.before,
+      beforeId: cursor.beforeId,
       limit: FEED_PAGE_SIZE
     });
   } catch (error) {

@@ -8,9 +8,40 @@ import type { FeedDatabase, FeedImage, FeedLink, FeedPost, FeedRow } from "./typ
 const LIST_SQL = `SELECT id, body, created_at, images, link
 FROM feed_posts
 WHERE deleted_at IS NULL
-  AND (?1 IS NULL OR created_at < ?1)
+  AND (?1 IS NULL OR created_at < ?1 OR (created_at = ?1 AND id < ?3))
 ORDER BY created_at DESC, id DESC
 LIMIT ?2`;
+
+/** カーソルの時刻部。ISO 8601（UTC）だけを受け付ける。 */
+const CURSOR_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+
+/** カーソルの ID 部。投稿 ID は ULID 風の 26 文字だが、形はこれで縛らない。 */
+const CURSOR_ID = /^[0-9A-Za-z][0-9A-Za-z_-]{0,63}$/;
+
+/** カーソルの区切り。時刻と ID を1つの ?before= にまとめる。 */
+const CURSOR_SEPARATOR = "~";
+
+/** カーソル。並びのキー（created_at, id）をそのまま持つ。 */
+export type FeedCursor = { before: string | null; beforeId: string | null };
+
+/** 投稿から次ページのカーソルを作る。 */
+export function encodeFeedCursor(post: { createdAt: string; id: string }): string {
+  return `${post.createdAt}${CURSOR_SEPARATOR}${post.id}`;
+}
+
+/**
+ * ?before= をカーソルに戻す。時刻だけの古い形も受け付ける（ID なし）。
+ * 形が合わなければ null。
+ */
+export function decodeFeedCursor(raw: string | null): FeedCursor | null {
+  if (raw === null) return { before: null, beforeId: null };
+  const at = raw.lastIndexOf(CURSOR_SEPARATOR);
+  if (at < 0) return CURSOR_TIME.test(raw) ? { before: raw, beforeId: null } : null;
+  const before = raw.slice(0, at);
+  const beforeId = raw.slice(at + 1);
+  if (!CURSOR_TIME.test(before) || !CURSOR_ID.test(beforeId)) return null;
+  return { before, beforeId };
+}
 
 function parseImages(raw: string): FeedImage[] {
   try {
@@ -59,20 +90,22 @@ export function rowToPost(row: FeedRow): FeedPost {
 }
 
 export type ListOptions = {
-  /** これより前（古い）の投稿だけを返す。?before= のカーソル。 */
+  /** これより前（古い）の投稿だけを返す。?before= のカーソルの時刻部。 */
   before?: string | null;
+  /** 同じ時刻の中で、この ID より小さい投稿だけを返す。カーソルの ID 部。 */
+  beforeId?: string | null;
   limit?: number;
 };
 
 /** 「次がある」を判定するため、limit より1件多く読む。 */
 export async function listFeedPosts(
   db: FeedDatabase,
-  { before = null, limit }: ListOptions = {}
+  { before = null, beforeId = null, limit }: ListOptions = {}
 ): Promise<FeedPost[]> {
   const size = limit ?? 20;
   const { results } = await db
     .prepare(LIST_SQL)
-    .bind(before, size + 1)
+    .bind(before, size + 1, beforeId)
     .all<FeedRow>();
   return (results ?? []).map(rowToPost);
 }
@@ -86,7 +119,10 @@ export async function readFeedPage(
   const rows = await listFeedPosts(db, options);
   const size = options.limit ?? 20;
   const posts = rows.slice(0, size);
-  const nextBefore = rows.length > size ? posts[posts.length - 1].createdAt : null;
+  // ページ末尾の投稿そのものをカーソルにする。時刻が同じ投稿が次にあっても、
+  // ID まで比べるので漏れず、重複もしない。
+  const last = posts[posts.length - 1];
+  const nextBefore = rows.length > size && last ? encodeFeedCursor(last) : null;
   return { posts, nextBefore };
 }
 
