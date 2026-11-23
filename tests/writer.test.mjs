@@ -315,6 +315,25 @@ test("drafts: 手で足したキーとコメントを消さない", async () => 
   assert.match(saved, /title: 元のタイトル/);
 });
 
+test("drafts: カバーは外すと明示したときだけ消える", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  await store.createDraft({ title: "カバーのテスト", category: "tech" });
+  const [summary] = await store.listDrafts();
+  const id = summary.id;
+
+  await store.writeDraft(id, { cover: "/media/cover.jpg" });
+  assert.equal((await store.readDraft(id)).cover, "/media/cover.jpg");
+
+  // 読み込み直しでクライアント側だけカバーを失った場合。空を送っても消さない。
+  const kept = await store.writeDraft(id, { cover: "", body: "本文を書き足した" });
+  assert.equal(kept.cover, "/media/cover.jpg");
+
+  // 外す操作をした場合だけ消える。
+  const removed = await store.writeDraft(id, { cover: "", coverRemoved: true });
+  assert.equal(removed.cover, "");
+});
+
 test("drafts: 同じタイトルで作り続けても衝突しない", async () => {
   // KV には排他作成が無いため、並行作成の衝突回避は保証されない
   // （drafts-kv.mjs のコメント参照）。ここでは順に作った場合の採番を見る。
@@ -453,7 +472,7 @@ test("drafts: 廃止した区分は現在の区分として読む", () => {
   assert.equal(normalizeDraft("z", { category: "journal" }, "").category, "comic");
 });
 
-test("drafts: 見出し画像（cover）が往復し、空にすると消える", async () => {
+test("drafts: 見出し画像（cover）が往復し、外すと消える", async () => {
   const kv = memoryKv();
   const store = createDraftStore(kv);
   const draft = await store.createDraft({ title: "カバー確認" });
@@ -463,7 +482,8 @@ test("drafts: 見出し画像（cover）が往復し、空にすると消える"
   assert.equal(loaded.cover, "https://slytxt.dev/media/abc.png");
   assert.match(kv.map.get(`draft:${draft.id}`), /cover: "https:\/\/slytxt\.dev\/media\/abc\.png"/);
 
-  await store.writeDraft(draft.id, { cover: "" });
+  // 外す操作をしたときだけ消える（空を送るだけでは消さない。#814）。
+  await store.writeDraft(draft.id, { cover: "", coverRemoved: true });
   assert.equal((await store.readDraft(draft.id)).cover, "");
   assert.doesNotMatch(kv.map.get(`draft:${draft.id}`), /cover:/);
 });

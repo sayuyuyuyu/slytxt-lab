@@ -109,6 +109,10 @@ const state = {
   cover: ""
 };
 
+// この画面で見出し画像を外したか。外していないのに空のカバーを送ると、
+// 読み込み直しでクライアント側だけ失ったときにサーバー側まで消してしまう。
+let coverRemoved = false;
+
 const save = {
   status: "idle",
   pending: null,
@@ -374,6 +378,14 @@ async function flushSave({ keepalive = false, awaitPosted = true } = {}) {
 
   const id = state.current.id;
   const payload = collect();
+
+  // 見出し画像を外す操作をしていないのに空なら、サーバーに残っている値を送る。
+  // 読み込み直しなどでクライアント側だけカバーを失ったときに、PUT で
+  // サーバー側まで消さないため。
+  if (!coverRemoved && !payload.cover) {
+    const known = save.lastSent?.payload?.cover || state.current?.cover || "";
+    if (known) payload.cover = known;
+  }
 
   // 前回サーバーへ送った内容と同じなら送らない。
   // ローカルコピーも同じ内容なら片付けて、同期済みの表示に戻す。
@@ -820,6 +832,7 @@ function applyDraft(draft) {
   state.tags = [...(draft.tags ?? [])];
   renderTags();
   state.cover = draft.cover ?? "";
+  coverRemoved = false;
   resetCoverDisplay();
   renderCover();
   editorSet(draft.body);
@@ -842,6 +855,7 @@ function clearEditor() {
   state.tags = [];
   renderTags();
   state.cover = "";
+  coverRemoved = false;
   resetCoverDisplay();
   renderCover();
   els.titleInput.value = "";
@@ -893,7 +907,9 @@ function restoreLocalDraft(serverDraft) {
     category: local.payload.category,
     title: local.payload.title,
     tags: [...(local.payload.tags ?? [])],
-    cover: local.payload.cover ?? "",
+    // ローカル側にカバーが無いときはサーバー側の値を残す。読み込み直しの
+    // 途中でクライアント側だけカバーを失っていても、消さない。
+    cover: local.payload.cover || serverDraft.cover || "",
     description: local.payload.description ?? "",
     body: local.payload.body ?? ""
   };
@@ -994,6 +1010,9 @@ function collect() {
     title: els.titleInput.value.trim(),
     tags: [...state.tags],
     cover: state.cover,
+    // 外した操作をしたときだけ明示する。サーバーはこれが無い空の cover を
+    // 「消さない」と解釈する（読み込み直しで失った値を消さないため）。
+    ...(coverRemoved ? { coverRemoved: true } : {}),
     description: els.publishDescription.value.trim(),
     body: els.body.value
   };
@@ -1564,11 +1583,13 @@ async function setCoverFromFile(file) {
       onPosted: (posted) => {
         if (posted) {
           state.cover = posted;
+          coverRemoved = false;
           scheduleSave();
         }
       }
     });
     if (url) state.cover = url;
+    coverRemoved = false;
     setCoverStatus("");
     renderCover();
     scheduleSave();
@@ -1592,6 +1613,7 @@ async function setCoverFromFile(file) {
 
 function removeCover() {
   state.cover = "";
+  coverRemoved = true;
   resetCoverDisplay();
   renderCover();
   scheduleSave();
