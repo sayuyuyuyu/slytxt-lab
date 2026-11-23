@@ -71,6 +71,47 @@ test("obsidian: frontmatter は固定順で書き、必要な値だけ引用す�
   ]);
 });
 
+test("obsidian: 再公開のときだけ updated が付き、ノート側の値も落とさない", () => {
+  const first = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文" },
+    "2026-11-24"
+  );
+  assert.equal(first.frontmatter.published, "2026-11-24");
+  assert.equal(first.frontmatter.updated, undefined);
+
+  const again = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", published: "2026-11-01" },
+    "2026-11-24"
+  );
+  assert.equal(again.frontmatter.published, "2026-11-01");
+  assert.equal(again.frontmatter.updated, "2026-11-24");
+
+  const sameDay = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", published: "2026-11-24" },
+    "2026-11-24"
+  );
+  assert.equal(sameDay.frontmatter.updated, undefined);
+
+  const kept = preparePublish(
+    {
+      name: "note",
+      category: "tech",
+      title: "題名",
+      body: "本文",
+      published: "2026-11-01",
+      updated: "2026-11-20"
+    },
+    "2026-11-24"
+  );
+  assert.equal(kept.frontmatter.updated, "2026-11-24");
+
+  const onlyGiven = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", updated: "2026-11-20" },
+    "2026-11-24"
+  );
+  assert.equal(onlyGiven.frontmatter.updated, "2026-11-20");
+});
+
 test("obsidian: 管理外の frontmatter キーは公開ファイルへそのまま残る", () => {
   const raw = [
     "title: 題名",

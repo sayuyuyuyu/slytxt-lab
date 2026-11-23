@@ -299,6 +299,9 @@ export default class SlytxtPublishPlugin extends Plugin {
         published: (this.app.metadataCache.getFileCache(file)?.frontmatter?.published as
           | string
           | undefined) ?? undefined,
+        updated: (this.app.metadataCache.getFileCache(file)?.frontmatter?.updated as
+          | string
+          | undefined) ?? undefined,
         extras: extractExtras(frontmatterMatch?.[1] ?? ""),
         body: withoutFrontmatter
       },
