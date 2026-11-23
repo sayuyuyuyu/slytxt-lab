@@ -9,11 +9,11 @@ import {
 import {
   FEED_END,
   FEED_START,
-  escapeHtml,
   formatTimestamp,
   injectFeed,
   renderFeedItems
 } from "../src/lib/feed/render.ts";
+import { escapeHtml } from "../src/lib/html.ts";
 import { beforeFromRequest, feedHref, handleFeedPage, handleHomeFeed } from "../src/lib/feed/page.ts";
 
 /** SQL とバインド値を記録し、用意した行を返すだけの D1 代用。 */
