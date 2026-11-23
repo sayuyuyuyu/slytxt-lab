@@ -16,8 +16,9 @@ CREATE TABLE IF NOT EXISTS feed_posts (
   -- 添付画像。[{"key":"<R2 のキー>","alt":"代替テキスト","width":1280,"height":720}]
   -- R2 は slytxt-writer-media の pub/ に置き、media.slytxt.dev から配信する。
   images TEXT NOT NULL DEFAULT '[]',
-  -- リンクカード。[{"url":"…","title":"…","description":"…","image":"…","site":"…"}]。
-  -- 投稿時にサーバー側で OGP を取得して入れる。取得できなければ null。
+  -- リンクカード。{"url":"…","title":"…","description":"…","image":"…","site":"…"} の
+  -- 単一オブジェクト（配列ではない）。投稿時にサーバー側で OGP を取得して入れる。
+  -- 取得できなければ null。
   link TEXT,
   -- 削除は論理削除。公開側は deleted_at IS NULL だけを読む。
   deleted_at TEXT
