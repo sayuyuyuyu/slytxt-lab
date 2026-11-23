@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createFeedPost,
+  decodeFeedCursor,
   listFeedPosts,
   readFeedPage,
   rowToPost
@@ -94,10 +95,19 @@ test("feed: 壊れた JSON は空として扱い、一覧を止めない", () =>
 
 test("feed: 一覧は before をカーソルに使い、limit+1 件を読む", async () => {
   const db = fakeDb([]);
-  await listFeedPosts(db, { before: "2026-11-16T10:00:00.000Z", limit: 20 });
+  await listFeedPosts(db, {
+    before: "2026-11-16T10:00:00.000Z",
+    beforeId: "01JC0000000000000000000002",
+    limit: 20
+  });
   assert.equal(db.calls.length, 1);
   assert.match(db.calls[0].sql, /deleted_at IS NULL/);
-  assert.deepEqual(db.calls[0].params, ["2026-11-16T10:00:00.000Z", 21]);
+  assert.match(db.calls[0].sql, /created_at = \?1 AND id < \?3/);
+  assert.deepEqual(db.calls[0].params, [
+    "2026-11-16T10:00:00.000Z",
+    21,
+    "01JC0000000000000000000002"
+  ]);
 });
 
 test("feed: 読み込み件数が limit 以下なら次ページは無い", async () => {
@@ -107,7 +117,7 @@ test("feed: 読み込み件数が limit 以下なら次ページは無い", asyn
   assert.equal(page.nextBefore, null);
 });
 
-test("feed: limit を超えたら最後の投稿時刻を次ページのカーソルにする", async () => {
+test("feed: limit を超えたら最後の投稿の時刻と ID を次ページのカーソルにする", async () => {
   const db = fakeDb([
     row(),
     row({ id: "b", created_at: "2026-11-15T10:00:00.000Z" }),
@@ -118,7 +128,39 @@ test("feed: limit を超えたら最後の投稿時刻を次ページのカー�
     page.posts.map((post) => post.id),
     ["01JC0000000000000000000001", "b"]
   );
-  assert.equal(page.nextBefore, "2026-11-15T10:00:00.000Z");
+  assert.equal(page.nextBefore, "2026-11-15T10:00:00.000Z~b");
+  assert.deepEqual(decodeFeedCursor(page.nextBefore), {
+    before: "2026-11-15T10:00:00.000Z",
+    beforeId: "b"
+  });
+});
+
+test("feed: 同時刻の投稿がページ境界に来ても、次ページで漏れない", async () => {
+  // 3件が同じ created_at。2件目までを1ページ目として返す。
+  const same = "2026-11-16T10:00:00.000Z";
+  const rows = [
+    row({ id: "a", created_at: same }),
+    row({ id: "b", created_at: same }),
+    row({ id: "c", created_at: same })
+  ];
+  const first = await readFeedPage(fakeDb(rows), { limit: 2 });
+  assert.deepEqual(
+    first.posts.map((post) => post.id),
+    ["a", "b"]
+  );
+  assert.equal(first.nextBefore, `${same}~b`);
+
+  // カーソルをそのまま次のページに渡すと、残りの c が返る。
+  const cursor = decodeFeedCursor(first.nextBefore);
+  assert.ok(cursor);
+  const secondDb = fakeDb(rows.filter((item) => item.id === "c"));
+  const second = await readFeedPage(secondDb, { ...cursor, limit: 2 });
+  assert.deepEqual(
+    second.posts.map((post) => post.id),
+    ["c"]
+  );
+  assert.equal(second.nextBefore, null);
+  assert.deepEqual(secondDb.calls[0].params, [same, 3, "b"]);
 });
 
 test("feed: データベースが未設定なら空のフィードを返す", async () => {
@@ -206,17 +248,33 @@ test("feed: 時刻は JST で表示し、壊れた値はそのまま出す", () 
   });
 });
 
-test("feed: before は ISO 8601 だけを受け付け、URL を組み立てる", () => {
-  const ok = beforeFromRequest(
-    new Request("https://slytxt.dev/feed/?before=2026-11-16T10:00:00.000Z")
+test("feed: before はカーソルだけを受け付け、URL を組み立てる", () => {
+  const cursor = "2026-11-16T10:00:00.000Z~01JC0000000000000000000001";
+  const ok = beforeFromRequest(new Request(`https://slytxt.dev/feed/?before=${cursor}`));
+  assert.deepEqual(ok, {
+    before: "2026-11-16T10:00:00.000Z",
+    beforeId: "01JC0000000000000000000001"
+  });
+  // 時刻だけの古い形も受け付ける。
+  assert.deepEqual(
+    beforeFromRequest(new Request("https://slytxt.dev/feed/?before=2026-11-16T10:00:00.000Z")),
+    { before: "2026-11-16T10:00:00.000Z", beforeId: null }
   );
-  assert.deepEqual(ok, { before: "2026-11-16T10:00:00.000Z" });
   assert.deepEqual(beforeFromRequest(new Request("https://slytxt.dev/feed/")), {
-    before: null
+    before: null,
+    beforeId: null
   });
   const bad = beforeFromRequest(new Request("https://slytxt.dev/feed/?before=yesterday"));
   assert.ok("error" in bad);
-  assert.equal(feedHref("2026-11-16T10:00:00.000Z"), "/feed/?before=2026-11-16T10%3A00%3A00.000Z");
+  // ID の形が違うカーソルも弾く。
+  assert.ok(
+    "error" in
+      beforeFromRequest(new Request("https://slytxt.dev/feed/?before=2026-11-16T10:00:00.000Z~!"))
+  );
+  assert.equal(
+    feedHref(cursor),
+    "/feed/?before=2026-11-16T10%3A00%3A00.000Z~01JC0000000000000000000001"
+  );
 });
 
 /** Pages Functions の context 代用。ASSETS は雛形の HTML を返す。 */
@@ -302,7 +360,7 @@ test("feed: 不正な before は 400 を返す", async () => {
     })
   );
   assert.equal(response.status, 400);
-  assert.match(await response.text(), /ISO 8601/);
+  assert.match(await response.text(), /ページ送りのカーソル/);
 });
 
 test("feed: トップページは最新3件だけを差し込み、続きは All posts に譲る", async () => {
