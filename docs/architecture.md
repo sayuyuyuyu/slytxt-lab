@@ -22,6 +22,8 @@ Astro（TypeScript）で静的生成し、Cloudflare Pages が配信します。
 
 CSS は `src/styles/global.css` に手で書きます。Tailwind はリセット（preflight）のためだけに入れていて、`@import "tailwindcss" source(none)` でユーティリティの自動生成を止めています。走査を有効にすると、記事本文やスクリプト中の単語（`hidden`、`grid` など）がクラス名として拾われ、未使用のユーティリティが配信 CSS に混ざります。`.container` のように本体のクラス名と衝突してレイアウトを変えた例があるため、ユーティリティを意図的に使うときは `@source` を明示してください（#692 / #693）。
 
+短文フィードの公開一覧（`/feed/`）とトップの最新3件は、Astro がビルドした HTML を雛形にし、`functions/feed/index.ts` と `functions/index.ts` が D1（`FEED`）から読んだ投稿を差し込みます。トップの記事一覧と Projects は静的のままです。
+
 `functions/` の Pages Functions は、X のブックマークを推測不能な URL の下で一覧・RSS・JSON・埋め込み用スクリプトとして配信します。詳細は次の節を見てください。
 
 ### X のブックマーク（Pages Functions）

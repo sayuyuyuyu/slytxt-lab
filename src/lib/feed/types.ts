@@ -56,8 +56,11 @@ export type FeedEnv = {
   ASSETS?: AssetFetcher;
 };
 
-/** ページあたりの件数。 */
+/** /feed/ のページあたりの件数。 */
 export const FEED_PAGE_SIZE = 20;
+
+/** トップページに出す最新件数。全部は /feed/ に譲る。 */
+export const HOME_FEED_SIZE = 3;
 
 /** D1 の行。列名は db/feed/0001_init.sql と対応。 */
 export type FeedRow = {

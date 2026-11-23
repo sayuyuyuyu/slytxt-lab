@@ -418,18 +418,6 @@ samp,
   color: var(--accent-strong);
 }
 
-/* ---------------------------------------------------------------------------
-   Home hero
-   --------------------------------------------------------------------------- */
-.home-hero {
-  padding-block: clamp(36px, 6vw, 68px);
-}
-
-.home-hero__body {
-  padding: clamp(24px, 4vw, 44px);
-}
-
-.home-hero h1,
 .page-title,
 .section-head h2 {
   margin: 0;
@@ -437,46 +425,6 @@ samp,
   font-weight: 500;
   line-height: 1.4;
   text-wrap: balance;
-}
-.home-hero h1 {
-  font-size: clamp(2.1rem, 7vw, 3.6rem);
-  letter-spacing: -0.01em;
-}
-.home-hero__links {
-  margin-top: 24px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 10px;
-  font-size: 0.9rem;
-}
-.home-hero__links a {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 60%, transparent);
-  font-family: var(--font-mono);
-  text-decoration: none;
-}
-.home-hero__links a span {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-}
-.home-hero__links a::before {
-  content: "$";
-  color: var(--accent-5);
-}
-.home-hero__links a::after {
-  content: "_ ";
-  color: var(--accent);
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-.home-hero__links a:hover::after {
-  opacity: 1;
-  animation: cursor-blink 1.05s steps(1) infinite;
 }
 
 /* ---------------------------------------------------------------------------
@@ -857,6 +805,10 @@ samp,
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 12px;
   align-items: start;
+}
+/* トップは最新3件だけなので、空の列を残さず幅いっぱいに並べる。 */
+.feed--home .feed-list {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 .feed-item {
   border: 1px solid var(--border);
@@ -1568,8 +1520,7 @@ html.js [data-motion].is-shown {
 .link-button,
 .pagination a,
 .tag-directory a,
-.tag,
-.home-hero__links a {
+.tag {
   transition:
     transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
     color 0.25s ease,
@@ -1589,11 +1540,6 @@ html.js [data-motion].is-shown {
 .tag-directory a:hover {
   transform: translateX(4px);
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-}
-.home-hero__links a:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  box-shadow: 0 0 22px -10px var(--glow);
 }
 .brand__mark {
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1644,9 +1590,6 @@ html.theme-switching *::after {
   .site-header__inner,
   .article-shell {
     width: calc(100% - 36px);
-  }
-  .home-hero__body {
-    padding: 20px;
   }
   .section {
     padding-block: 36px;
@@ -1829,7 +1772,6 @@ html.konami-on .site-main {
   .article-nav,
   .pagination,
   .listing-tools,
-  .home-hero__links,
   .breadcrumbs,
   .link-button {
     display: none !important;
