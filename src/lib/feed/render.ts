@@ -18,16 +18,29 @@ export const MEDIA_ORIGIN = "https://media.slytxt.dev";
 
 const URL_IN_TEXT = /(https?:\/\/[^\s<>"'）)】]+)/g;
 
-/** 本文中の URL をリンクにする。リンクカードにする URL 自体も本文では残す。 */
+/** 本文中の URL をリンクにする。 */
 function linkify(text: string): string {
   return escapeHtml(text).replace(URL_IN_TEXT, (url) => {
     return `<a href="${url}" rel="noopener noreferrer" target="_blank">${url}</a>`;
   });
 }
 
-/** 改行はそのまま尊重する（Markdown は使わない）。 */
-function renderBody(body: string): string {
-  return body
+/**
+ * 改行はそのまま尊重する（Markdown は使わない）。
+ * リンクカードになった URL は本文に出さない（カード側で辿れるため）。
+ * カード化されなかった URL は従来どおり本文にリンクとして残る。
+ */
+function renderBody(body: string, cardUrl?: string): string {
+  let text = body;
+  if (cardUrl) {
+    text = text.split(cardUrl).join("");
+    // 除去で残った行頭・行末の空白と、連続した空白を整える。
+    text = text
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n[ \t]+/g, "\n")
+      .replace(/[ \t]{2,}/g, " ");
+  }
+  return text
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
@@ -94,7 +107,7 @@ function renderPost(post: FeedPost): string {
   return `<li class="feed-item"><article>
 ${thumb}
 <div class="feed-item__body">
-${renderBody(post.body)}
+${renderBody(post.body, post.link?.url)}
 </div>
 ${thumbs}
 ${renderLink(post.link)}
