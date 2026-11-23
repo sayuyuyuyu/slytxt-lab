@@ -4,6 +4,7 @@ import { FrontmatterModal, type FrontmatterValues } from "./src/frontmatter-moda
 import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/github";
 import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
 import { MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
+import { extractExtras } from "./src/lib/frontmatter";
 import { preparePublish } from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
@@ -285,6 +286,7 @@ export default class SlytxtPublishPlugin extends Plugin {
     }
     const values = this.currentValues(file);
     const body = await this.app.vault.read(file);
+    const frontmatterMatch = body.match(/^---\n([\s\S]*?)\n---/);
     const withoutFrontmatter = body.replace(/^---\n[\s\S]*?\n---\n?/, "");
     const payload = preparePublish(
       {
@@ -297,6 +299,10 @@ export default class SlytxtPublishPlugin extends Plugin {
         published: (this.app.metadataCache.getFileCache(file)?.frontmatter?.published as
           | string
           | undefined) ?? undefined,
+        updated: (this.app.metadataCache.getFileCache(file)?.frontmatter?.updated as
+          | string
+          | undefined) ?? undefined,
+        extras: extractExtras(frontmatterMatch?.[1] ?? ""),
         body: withoutFrontmatter
       },
       todayInTokyo()
