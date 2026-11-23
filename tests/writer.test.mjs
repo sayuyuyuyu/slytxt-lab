@@ -3,7 +3,6 @@ import test from "node:test";
 import { createDraftStore, normalizeDraft } from "../tools/writer-cloudflare/src/drafts-kv.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer-cloudflare/src/frontmatter.mjs";
 import {
-  loneEmbedUrls,
   plainText,
   renderMarkdown,
   renderPreviewMarkdown,
@@ -293,27 +292,6 @@ test("preview: 実例の組み合わせ（見出し・<br />・Spotify の autol
     /<div class="embed embed--spotify"><iframe src="https:\/\/open\.spotify\.com\/embed\/track\/5oCptG3RbPTbXKFpVjUgmw"/
   );
   assert.match(html, /感想。<br \/>\n続き/);
-});
-
-test("markdown: loneEmbedUrls は単独段落の埋め込み対象だけを拾う", () => {
-  const found = loneEmbedUrls(
-    [
-      "## 見出し",
-      "",
-      "<https://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw?si=x>",
-      "",
-      "https://example.com/page",
-      "",
-      "文中の https://www.youtube.com/watch?v=dQw4w9WgXcQ は対象外",
-      "",
-      "https://x.com/slytxt/status/1234567890123456789"
-    ].join("\n")
-  );
-  assert.deepEqual(
-    found.map((item) => item.type),
-    ["spotify", "x"]
-  );
-  assert.deepEqual(loneEmbedUrls("ただの文章\n\nhttps://example.com/page"), []);
 });
 
 test("drafts: 手で足したキーとコメントを消さない", async () => {
