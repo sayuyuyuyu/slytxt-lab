@@ -98,6 +98,16 @@ test("obsidian: タイトルは記事は本文から補い、misc は空にす�
   assert.equal(deriveTitle("comic", "", "## 見出しの行\n次の行"), "見出しの行");
   assert.equal(deriveTitle("misc", "", "メモの書き出し"), "");
   assert.equal(deriveTitle("tech", "無題", ""), "無題");
+  // 先頭が埋め込み URL 行・画像だけの行でも、それをタイトルにしない（#774）。
+  assert.equal(
+    deriveTitle("tech", "", "https://www.youtube.com/watch?v=abcdefghijk\n\n本文です。"),
+    "本文です。"
+  );
+  assert.equal(
+    deriveTitle("comic", "", "![](https://media.slytxt.dev/abc.jpg)\n\n漫画の説明。"),
+    "漫画の説明。"
+  );
+  assert.equal(deriveTitle("tech", "", "https://www.youtube.com/watch?v=abcdefghijk"), "無題");
   assert.equal([...deriveTitle("tech", "", "あ".repeat(100))].length, 40);
 });
 
