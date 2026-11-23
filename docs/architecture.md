@@ -12,7 +12,7 @@
 - 本人は2つの経路で書きます。Cloudflare Access の内側の執筆ツール（write.slytxt.dev）と、Mac / iPhone の Obsidian プラグイン（`tools/obsidian-slytxt/`）です。
 - どちらの経路も GitHub にブランチと Pull Request を作り、マージされると Cloudflare Pages が main をビルドして公開します。下書きの置き場所は経路で違います（writer は KV slytxt-writer-drafts、プラグインは Vault のノート）。
 - 執筆ツールは画像を R2（slytxt-writer-media）へ保存し、公開時に `draft/` から `pub/` へ移します。
-- 健康状態の Worker（status.slytxt.dev）は KV（slytxt-status-data）に最新スナップショットを1件だけ持ち、サイトの About ページが読み取ります。更新は Muse の VM 上のスクリプトが Apple Health の集計を POST します。
+- 健康状態の Worker（status.slytxt.dev）は KV（slytxt-status-data）に最新スナップショットを1件だけ持ちます。更新は Muse の VM 上のスクリプトが Apple Health の集計を POST します。サイト側からは現在読んでいません（About の「いまの状態」は撤去済み）。
 - X のブックマークは Pages Functions が配信し、取得結果は KV（BOOKMARKS）にキャッシュします。
 
 ## 構成要素
@@ -77,7 +77,7 @@ refresh token が失効すると、取得が失敗し続けます。症状は、
 
 ### 健康状態（Worker: slytxt-status）
 
-コードは `tools/status-cloudflare/` です。About ページの「いまの状態」に表示する健康状態スナップショット（心拍・睡眠・歩数など）を、KV（バインディング `STATUS_DATA`、名前空間 slytxt-status-data）のキー `latest` に1件だけ保持します。位置情報は含めません。
+コードは `tools/status-cloudflare/` です。健康状態スナップショット（心拍・睡眠・歩数など）を、KV（バインディング `STATUS_DATA`、名前空間 slytxt-status-data）のキー `latest` に1件だけ保持します。位置情報は含めません。表示先だった About の「いまの状態」は撤去したため、現在サイト側に読み取り元はありません。
 
 `GET /api/status` は公開で、CORS は https://slytxt.dev だけを許可します。`POST /api/status` は Bearer トークン（secret `STATUS_POST_TOKEN`）が一致したときだけ保存します。更新は Muse の VM 上のスクリプトが Apple Health の集計から組み立てて POST します。
 

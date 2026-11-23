@@ -29,6 +29,5 @@ flowchart LR
   writer -->|投稿でブランチ・ファイル・PR を作成| github
   github -->|main へのマージでビルド・デプロイ| pages
   media -->|pub: の画像だけを配信| r2
-  pages -->|About の「いまの状態」が取得| status
   status --> statusKv
   updater -->|POST /api/status（Bearer 認証）| status
