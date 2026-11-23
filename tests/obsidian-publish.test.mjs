@@ -11,6 +11,7 @@ import {
 import {
   deriveTitle,
   documentBody,
+  extractExtras,
   serializeFrontmatter
 } from "../tools/obsidian-slytxt/src/lib/frontmatter.ts";
 import { deriveDescription, preparePublish } from "../tools/obsidian-slytxt/src/lib/publish-plan.ts";
@@ -68,6 +69,31 @@ test("obsidian: frontmatter は固定順で書き、必要な値だけ引用す�
     "cover: https://media.slytxt.dev/a.jpg",
     "---"
   ]);
+});
+
+test("obsidian: 管理外の frontmatter キーは公開ファイルへそのまま残る", () => {
+  const raw = [
+    "title: 題名",
+    "adult: true",
+    "memo: あとで読む",
+    "tags: [a, b]",
+    "aliases:",
+    "  - one",
+    "published: 2026-11-01",
+    "category: tech"
+  ].join("\n");
+  const extras = extractExtras(raw);
+  assert.deepEqual(extras, ["adult: true", "memo: あとで読む", "aliases:", "  - one"]);
+
+  const payload = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", extras },
+    "2026-11-24"
+  );
+  assert.match(payload.content, /^adult: true$/m);
+  assert.match(payload.content, /^memo: あとで読む$/m);
+  // 管理するキーはプラグインの値だけを1回書く。
+  assert.equal(payload.content.match(/^title:/gm).length, 1);
+  assert.equal(payload.content.match(/^published:/gm).length, 1);
 });
 
 test("obsidian: タイトル無しは空文字として明示し、タグは10件まで", () => {
