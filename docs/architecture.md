@@ -12,7 +12,6 @@
 - 本人は2つの経路で書きます。Cloudflare Access の内側の執筆ツール（write.slytxt.dev）と、Mac / iPhone の Obsidian プラグイン（`tools/obsidian-slytxt/`）です。
 - どちらの経路も GitHub にブランチと Pull Request を作り、マージされると Cloudflare Pages が main をビルドして公開します。下書きの置き場所は経路で違います（writer は KV slytxt-writer-drafts、プラグインは Vault のノート）。
 - 執筆ツールは画像を R2（slytxt-writer-media）へ保存し、公開時に `draft/` から `pub/` へ移します。
-- 健康状態の Worker（status.slytxt.dev）は KV（slytxt-status-data）に最新スナップショットを1件だけ持ちます。更新は Muse の VM 上のスクリプトが Apple Health の集計を POST します。サイト側からは現在読んでいません（About の「いまの状態」は撤去済み）。
 - X のブックマークは Pages Functions が配信し、取得結果は KV（BOOKMARKS）にキャッシュします。
 - 短文フィードは D1（slytxt-feed）に置きます。読者は Pages Functions が差し込んだ一覧を読み、投稿は feed.slytxt.dev の Worker が同じ D1 へ書きます。
 
@@ -85,12 +84,6 @@ refresh token が失効すると、取得が失敗し続けます。症状は、
 
 下書きの画像は writer（Cloudflare Access の裏）経由でのみ表示されます。公開された画像だけが Worker `slytxt-media`（media.slytxt.dev、認証なし）から配信され、未公開のキーは URL を当てても 404 になります。旧来の `/media/*` URL は `public/_redirects` で media.slytxt.dev へ 301 リダイレクトします。
 
-### 健康状態（Worker: slytxt-status）
-
-コードは `tools/status-cloudflare/` です。健康状態スナップショット（心拍・睡眠・歩数など）を、KV（バインディング `STATUS_DATA`、名前空間 slytxt-status-data）のキー `latest` に1件だけ保持します。位置情報は含めません。表示先だった About の「いまの状態」は撤去したため、現在サイト側に読み取り元はありません。
-
-`GET /api/status` は公開で、CORS は https://slytxt.dev だけを許可します。`POST /api/status` は Bearer トークン（secret `STATUS_POST_TOKEN`）が一致したときだけ保存します。更新は Muse の VM 上のスクリプトが Apple Health の集計から組み立てて POST します。
-
 ## 公開フロー
 
 ![公開フロー](diagrams/publish-flow.svg)
@@ -108,10 +101,10 @@ writer 固有なのは下書きの KV 同期、画像の `draft/` → `pub/` 付
 ## 認証と秘密情報
 
 - writer は Cloudflare Access（本人のメールアドレスのみ）。Worker 側に独自のトークン認証はありません。
-- status への POST は Bearer トークン、X ブックマークは推測不能な URL と管理トークンで守ります。
+- X ブックマークは推測不能な URL と管理トークンで守ります。
 - GitHub の fine-grained PAT や API キーは各 Worker の secret に登録し、リポジトリには値を書きません（登録方法は `tools/writer-cloudflare/README.md` を参照）。
 
 ## デプロイ
 
 - サイト本体は main へのマージで Cloudflare Pages が自動デプロイします。
-- 4つの Worker（writer / media / status / feed）は `npx wrangler deploy -c tools/<対象>/wrangler.toml` で個別にデプロイします。wrangler はリポジトリの依存には足しません。
+- 3つの Worker（writer / media / feed）は `npx wrangler deploy -c tools/<対象>/wrangler.toml` で個別にデプロイします。wrangler はリポジトリの依存には足しません。
