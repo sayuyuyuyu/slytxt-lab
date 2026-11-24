@@ -23,7 +23,7 @@ import { plainText, textLength, truncateText } from "./markdown.mjs";
 import { today } from "./date.mjs";
 
 export const CATEGORIES = ["tech", "misc", "comic", "game", "anime"];
-export const CATEGORY_LABELS = { tech: "Tech", misc: "なんか", comic: "Comic", game: "Game", anime: "Anime" };
+export const CATEGORY_LABELS = { tech: "Tech", misc: "Journal", comic: "Comic", game: "Game", anime: "Anime" };
 
 /** 廃止した区分から現在の区分への読み替え。既存の下書きを壊さないため。 */
 const LEGACY_CATEGORIES = { life: "misc", journal: "comic", notes: "misc" };

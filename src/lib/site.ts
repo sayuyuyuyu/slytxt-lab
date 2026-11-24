@@ -12,7 +12,7 @@ export const site = {
 
 export const categoryLabels = {
   tech: "Tech",
-  misc: "なんか",
+  misc: "Journal",
   comic: "Comic",
   game: "Game",
   anime: "Anime",

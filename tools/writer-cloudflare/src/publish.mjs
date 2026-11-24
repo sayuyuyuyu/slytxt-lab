@@ -94,7 +94,7 @@ export function articleSlug(raw, fallbackDate = today()) {
 
 /**
  * 公開時のタイトル。記事はタイトルが無ければ本文の書き出しで補う。
- * misc（なんか）はタイトル不要なので、付いていなければ空のままにする
+ * misc（Journal）はタイトル不要なので、付いていなければ空のままにする
  * （本文の書き出しで代用しない。表示名はサイト側が本文の書き出しから作る）。
  */
 function deriveTitle(draft, body) {

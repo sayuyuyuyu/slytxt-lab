@@ -47,7 +47,7 @@ test("writer: 作成→編集→自動保存→カテゴリ切替→タイトル
   await page.locator("#publishOpen").click();
   await expect(page.locator("#publishPanel")).toBeVisible();
   await expect(page.locator("#publishTitleRow")).toBeHidden();
-  await expect(page.locator("#publishCategory")).toHaveText("なんか");
+  await expect(page.locator("#publishCategory")).toHaveText("Journal");
   await page.locator("#publishCancel").click();
   await expect(page.locator("#publishPanel")).toBeHidden();
 

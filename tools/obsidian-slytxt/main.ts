@@ -477,24 +477,41 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   webp: "image/webp"
 };
 
-/** 端末のファイル選択を開き、画像1枚の中身を返す。キャンセル時は null。 */
+/**
+ * 端末のファイル選択を開き、画像1枚の中身を返す。キャンセル時は null。
+ *
+ * - input は DOM に挿さないと開かない環境がある（iOS の WKWebView）。
+ * - ボタンのクリックと同じタスクで click() を呼ぶ（ユーザー操作の扱いが
+ *   切れると、モバイルでファイル選択が開かない）。
+ */
 function pickImageFile(): Promise<{ bytes: ArrayBuffer; mime: string } | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/jpeg,image/png,image/gif,image/webp";
+    input.accept = "image/*";
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    input.style.top = "0";
+    input.setAttribute("aria-hidden", "true");
+    document.body.appendChild(input);
+
+    const done = (value: { bytes: ArrayBuffer; mime: string } | null) => {
+      input.remove();
+      resolve(value);
+    };
+
     input.addEventListener("change", () => {
       const file = input.files?.[0];
       if (!file) {
-        resolve(null);
+        done(null);
         return;
       }
       void file
         .arrayBuffer()
-        .then((bytes) => resolve({ bytes, mime: file.type }))
-        .catch(() => resolve(null));
+        .then((bytes) => done({ bytes, mime: file.type || "image/jpeg" }))
+        .catch(() => done(null));
     });
-    input.addEventListener("cancel", () => resolve(null));
+    input.addEventListener("cancel", () => done(null));
     input.click();
   });
 }
