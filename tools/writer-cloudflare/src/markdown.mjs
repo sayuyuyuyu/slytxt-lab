@@ -431,24 +431,6 @@ export function linkCardHtml({ url }) {
   return `<a class="link-card" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"><span class="link-card__body"><span class="link-card__title">${escapeHtml(url)}</span><span class="link-card__host">${escapeHtml(host)}</span></span></a>`;
 }
 
-/**
- * 本文から「単独段落の埋め込み対象 URL」を拾う。
- * 公開側の埋め込み判定（段落が URL 1つだけ）と同じ条件で、空行で区切った
- * 段落が URL 単独行（山括弧の autolink 形式を含む）のときだけ対象にする。
- * 一般 URL（type: "link"）は含めない。notes の注意表示に使う。
- */
-export function loneEmbedUrls(source) {
-  const found = [];
-  for (const block of String(source ?? "").split(/\n[ \t]*\n/)) {
-    const line = block.trim();
-    if (line === "" || line.includes("\n")) continue;
-    const autolink = line.match(/^<(https?:\/\/[^>\s]+)>$/);
-    const classified = classifyEmbedUrl(autolink ? autolink[1] : line);
-    if (classified && classified.type !== "link") found.push(classified);
-  }
-  return found;
-}
-
 /** URL から埋め込み HTML を作る。埋め込み対象でなければ null。 */
 export function embedHtmlForUrl(url) {
   const classified = classifyEmbedUrl(url);

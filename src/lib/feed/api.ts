@@ -8,7 +8,7 @@
  * 書き込みは writer と同じ作法で、独自ヘッダ x-slytxt-client と同一オリジン
  * だけを許可する（Cloudflare Access が入口を守る前提の二重の防御）。
  */
-import { createFeedPost, deleteFeedPost, readFeedPage } from "./store.ts";
+import { createFeedPost, decodeFeedCursor, deleteFeedPost, readFeedPage } from "./store.ts";
 import {
   IMAGE_TYPES,
   MAX_BODY_LENGTH,
@@ -76,7 +76,6 @@ export function writeAllowed(request: Request): boolean {
   }
 }
 
-const CURSOR = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 async function readJson(request: Request, limit = 100_000): Promise<unknown> {
@@ -160,12 +159,16 @@ async function createPost(request: Request, env: FeedApiEnv): Promise<Response> 
 }
 
 async function listPosts(request: Request, env: FeedApiEnv): Promise<Response> {
-  const raw = new URL(request.url).searchParams.get("before");
-  if (raw !== null && !CURSOR.test(raw)) {
-    return error("before は ISO 8601 で指定してください。", 400);
+  const cursor = decodeFeedCursor(new URL(request.url).searchParams.get("before"));
+  if (cursor === null) {
+    return error(
+      "before はページ送りのカーソル（例 2026-11-16T10:00:00.000Z~01JC0000000000000000000001）で指定してください。",
+      400
+    );
   }
   const { posts, nextBefore } = await readFeedPage(env.FEED, {
-    before: raw,
+    before: cursor.before,
+    beforeId: cursor.beforeId,
     limit: FEED_PAGE_SIZE
   });
   return json({ posts, nextBefore });
@@ -173,7 +176,7 @@ async function listPosts(request: Request, env: FeedApiEnv): Promise<Response> {
 
 const POST_ID = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 
-async function deletePost(request: Request, env: FeedApiEnv, id: string): Promise<Response> {
+async function deletePost(env: FeedApiEnv, id: string): Promise<Response> {
   if (!env.FEED) return error("フィードのデータベース（D1）が未設定です。", 500);
   if (!POST_ID.test(id)) return error("投稿 ID が不正です。", 400);
   const removed = await deleteFeedPost(env.FEED, id, new Date().toISOString());
@@ -190,7 +193,7 @@ export async function handleFeedApi({ request, env }: FeedApiContext): Promise<R
   }
 
   const post = pathname.match(/^\/api\/posts\/([^/]+)$/);
-  if (post && method === "DELETE") return deletePost(request, env, post[1]);
+  if (post && method === "DELETE") return deletePost(env, post[1]);
 
   if (pathname === "/api/posts" && method === "GET") return listPosts(request, env);
   if (pathname === "/api/posts" && method === "POST") return createPost(request, env);

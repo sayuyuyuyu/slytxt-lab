@@ -92,12 +92,13 @@ export const articlesIndex: ArticleSection = {
   emptyDescription: "まだありません。長い文章がここに並びます。"
 };
 
-/** Descriptions for the pages outside the article sections, shared by each page and the home terminal. */
+/** Descriptions for the pages outside the article sections, shared by each page. */
 export const pageDescriptions = {
   about: "しらゆ（slytxt）のプロフィール。",
   projects: "しらゆがつくっているものと、いまの進み具合。",
   tags: "記事と Projects をタグから辿れます。",
-  search: "記事とつくったもの、プロフィールを、書いてある言葉から探せます。"
+  search: "記事とつくったもの、プロフィールを、書いてある言葉から探せます。",
+  feed: "短文のフィード。記事にするほどではないメモや写真を置いています。"
 } as const;
 
 export const projectStatusLabels = {
@@ -110,7 +111,7 @@ export const projectStatusLabels = {
 
 export type NavItem = { href: string; label: string; children?: NavItem[] };
 
-// The menu is a small tree: Articles holds its two collections, and the rest
+// The menu is a small tree: Articles holds its collections, and the rest
 // sit beside it. Lists of writing come first, then the ways to browse them.
 export const navGroups: { label: string; items: NavItem[] }[] = [
   {

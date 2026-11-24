@@ -1,13 +1,27 @@
 import { App, MarkdownView, Notice, Plugin, TFile, requestUrl, type Editor } from "obsidian";
 import { EmbedModal } from "./src/embed-modal";
-import { FrontmatterModal, type FrontmatterValues } from "./src/frontmatter-modal";
 import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/github";
 import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
-import { MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
-import { preparePublish } from "./src/lib/publish-plan";
+import { MAX_COVER_BYTES, MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
+import { extractExtras } from "./src/lib/frontmatter";
+import {
+  deriveDescription,
+  firstImageSource,
+  preparePublish,
+  splitHeadingTitle
+} from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
 import { DEFAULT_SETTINGS, SlytxtSettingTab, type SlytxtSettings } from "./src/settings";
+
+/** ノートの frontmatter にある公開の項目。ノート画面のプロパティ欄で編集する。 */
+type NoteValues = {
+  category: PublishCategory;
+  title: string;
+  tags: string[];
+  description: string;
+  cover: string;
+};
 
 export default class SlytxtPublishPlugin extends Plugin {
   settings: SlytxtSettings = DEFAULT_SETTINGS;
@@ -15,17 +29,6 @@ export default class SlytxtPublishPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
     this.addSettingTab(new SlytxtSettingTab(this.app, this));
-
-    this.addCommand({
-      id: "edit-frontmatter",
-      name: "公開の項目（タイトル・タグ・説明・カバー）を入力",
-      checkCallback: (checking) => {
-        const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== "md") return false;
-        if (!checking) void this.openFrontmatterModal(file);
-        return true;
-      }
-    });
 
     this.addCommand({
       id: "publish-pull-request",
@@ -97,6 +100,17 @@ export default class SlytxtPublishPlugin extends Plugin {
       void this.insertUploadedImage(view.editor);
     });
 
+    // ノートを開いたら、公開の項目がノート上部のプロパティに最初から
+    // 出ているようにする。コマンドを呼ばなくても、その画面の中で
+    // 見て直せることが目的（2026-11-24 本人の指示）。
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        if (file && file.extension === "md") {
+          void this.seedFrontmatterIfNeeded(file);
+        }
+      })
+    );
+
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
         menu.addItem((item) => {
@@ -131,14 +145,6 @@ export default class SlytxtPublishPlugin extends Plugin {
         });
         menu.addItem((item) => {
           item
-            .setTitle("公開の項目を入力")
-            .setIcon("settings-2")
-            .onClick(() => {
-              void this.openFrontmatterModal(file);
-            });
-        });
-        menu.addItem((item) => {
-          item
             .setTitle("公開の項目をノートに追加")
             .setIcon("list-plus")
             .onClick(() => {
@@ -158,16 +164,49 @@ export default class SlytxtPublishPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  /** 公開の項目（タイトル・カテゴリ・タグ・説明・カバー）を frontmatter に用意し、ノート上部のプロパティ欄で直接編集できるようにする。 */
-  private async seedFrontmatter(file: TFile): Promise<void> {
+  /**
+   * 公開の項目を frontmatter に用意する。空欄のまま並べるのではなく、
+   * 本文から決められる値はその場で入れる（タイトルは最初の見出し、
+   * 説明は書き出し、カバーは本文の最初の画像が URL の場合）。
+   * 既に入っている値は上書きしない。
+   */
+  private async seedFrontmatter(file: TFile, options: { silent?: boolean } = {}): Promise<void> {
+    const raw = await this.app.vault.read(file);
+    const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
     await this.app.fileManager.processFrontMatter(file, (front) => {
-      if (front.title === undefined) front.title = "";
       if (front.category === undefined) front.category = this.settings.defaultCategory;
       if (front.tags === undefined) front.tags = [];
-      if (front.description === undefined) front.description = "";
-      if (front.cover === undefined) front.cover = "";
+      if (!String(front.title ?? "").trim()) {
+        // カテゴリが misc のときは公開記事ではタイトルを使わないが、
+        // ノート上では「見出し＝タイトル」の見え方を優先して入れておく。
+        const heading = splitHeadingTitle(bodyText);
+        front.title = heading ? heading.heading : String(front.title ?? "");
+      }
+      if (!String(front.description ?? "").trim()) {
+        front.description = deriveDescription(bodyText);
+      }
+      if (!String(front.cover ?? "").trim()) {
+        const source = firstImageSource(bodyText);
+        front.cover =
+          source && /^https?:\/\//.test(source) ? source : String(front.cover ?? "");
+      }
     });
-    new Notice("公開の項目をノート上部のプロパティに追加しました。");
+    if (!options.silent) {
+      new Notice("公開の項目をノート上部のプロパティに追加しました。");
+    }
+  }
+
+  /** ノートを開いたとき用：不足している項目を静かに補う（1セッションに1回だけ）。 */
+  private readonly filledOnOpen = new Set<string>();
+
+  private async seedFrontmatterIfNeeded(file: TFile): Promise<void> {
+    if (this.filledOnOpen.has(file.path)) return;
+    this.filledOnOpen.add(file.path);
+    try {
+      await this.seedFrontmatter(file, { silent: true });
+    } catch {
+      // 補うのに失敗してもノート自体は開ける。公開時に項目は自動で補われる。
+    }
   }
 
   /** 画像を選ばせてアップロードし、カーソル位置へ Markdown 画像として差し込む。 */
@@ -206,8 +245,8 @@ export default class SlytxtPublishPlugin extends Plugin {
     }).open();
   }
 
-  /** 現在の frontmatter からモーダルの初期値を決める。 */
-  private currentValues(file: TFile): FrontmatterValues {
+  /** 現在の frontmatter から公開の項目を読む。 */
+  private currentValues(file: TFile): NoteValues {
     const cache = this.app.metadataCache.getFileCache(file);
     const front = cache?.frontmatter ?? {};
     const tags = Array.isArray(front.tags)
@@ -225,51 +264,26 @@ export default class SlytxtPublishPlugin extends Plugin {
     };
   }
 
-  private async openFrontmatterModal(file: TFile): Promise<void> {
-    const initial = this.currentValues(file);
-    const raw = await this.app.vault.read(file);
-    const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
-    new FrontmatterModal(
-      this.app,
-      initial,
-      (values) => {
-        void this.app.fileManager.processFrontMatter(file, (front) => {
-          front.title = values.title;
-          front.description = values.description;
-          front.tags = values.tags;
-          front.cover = values.cover;
-          front.category = values.category;
-        });
-      },
-      {
-        bodyText,
-        onUploadCover: async () => {
-          try {
-            return await this.uploadCoverFor(file);
-          } catch (error) {
-            new Notice(error instanceof Error ? error.message : String(error), 12000);
-            return "";
-          }
-        }
-      }
-    ).open();
-  }
-
-  /** 画像ファイルを選ばせて media Worker へ上げ、frontmatter の cover に URL を差す。 */
-  private async uploadCoverFor(file: TFile): Promise<string> {
+  /** 画像を選ばせてアップロードし、公開 URL を返す（frontmatter にはまだ書かない）。 */
+  private async pickAndUploadCover(): Promise<string> {
     if (!this.settings.uploadToken) {
       throw new MediaError("設定でアップロード用トークンを登録してください。");
     }
     const picked = await pickImageFile();
     if (!picked) throw new MediaError("画像が選ばれませんでした。");
     new Notice("カバー画像をアップロードしています…");
-    const url = await uploadCover(
+    return uploadCover(
       this.mediaRequest(),
       this.settings.uploadToken,
       picked.bytes,
       picked.mime,
       crypto.randomUUID()
     );
+  }
+
+  /** 画像ファイルを選ばせて media Worker へ上げ、frontmatter の cover に URL を差す。 */
+  private async uploadCoverFor(file: TFile): Promise<string> {
+    const url = await this.pickAndUploadCover();
     await this.app.fileManager.processFrontMatter(file, (front) => {
       front.cover = url;
     });
@@ -277,15 +291,51 @@ export default class SlytxtPublishPlugin extends Plugin {
     return url;
   }
 
-  /** ノートの frontmatter と本文から PR を作る。 */
+  /**
+   * カバー未指定のときの自動カバー。本文の最初の画像が URL ならそのまま、
+   * Vault 内のファイルならアップロードして URL にする。
+   * 取れない場合は空文字（カバーなしで公開する）。
+   */
+  private async resolveAutoCover(file: TFile, bodyText: string): Promise<string> {
+    const source = firstImageSource(bodyText);
+    if (!source) return "";
+    if (/^https?:\/\//.test(source)) return source;
+    if (!this.settings.uploadToken) return "";
+    try {
+      const target = this.app.metadataCache.getFirstLinkpathDest(source, file.path);
+      if (!target) return "";
+      const mime = MIME_BY_EXTENSION[target.extension.toLowerCase()];
+      if (!mime) return "";
+      const bytes = await this.app.vault.readBinary(target);
+      if (bytes.byteLength === 0 || bytes.byteLength > MAX_COVER_BYTES) return "";
+      return await uploadCover(
+        this.mediaRequest(),
+        this.settings.uploadToken,
+        bytes,
+        mime,
+        crypto.randomUUID()
+      );
+    } catch {
+      return "";
+    }
+  }
+
+  /**
+   * ノートの frontmatter と本文から PR を作る。画面遷移はしない。
+   * 未指定の項目は本文から補う：タイトルは最初の見出し、カバーは
+   * 本文の最初の画像、説明は書き出し。使った値はノートにも残す。
+   */
   private async publish(file: TFile): Promise<void> {
     if (!this.settings.token) {
       new Notice("設定で GitHub トークンを登録してください。");
       return;
     }
     const values = this.currentValues(file);
-    const body = await this.app.vault.read(file);
-    const withoutFrontmatter = body.replace(/^---\n[\s\S]*?\n---\n?/, "");
+    const raw = await this.app.vault.read(file);
+    const frontmatterMatch = raw.match(/^---\n([\s\S]*?)\n---/);
+    const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
+    const cover = values.cover || (await this.resolveAutoCover(file, bodyText));
+    const cache = this.app.metadataCache.getFileCache(file);
     const payload = preparePublish(
       {
         name: file.basename,
@@ -293,11 +343,11 @@ export default class SlytxtPublishPlugin extends Plugin {
         title: values.title,
         description: values.description,
         tags: values.tags,
-        cover: values.cover || undefined,
-        published: (this.app.metadataCache.getFileCache(file)?.frontmatter?.published as
-          | string
-          | undefined) ?? undefined,
-        body: withoutFrontmatter
+        ...(cover ? { cover } : {}),
+        published: (cache?.frontmatter?.published as string | undefined) ?? undefined,
+        updated: (cache?.frontmatter?.updated as string | undefined) ?? undefined,
+        extras: extractExtras(frontmatterMatch?.[1] ?? ""),
+        body: bodyText
       },
       todayInTokyo()
     );
@@ -309,6 +359,13 @@ export default class SlytxtPublishPlugin extends Plugin {
         slug: payload.slug,
         title: payload.title,
         content: payload.content
+      });
+      await this.app.fileManager.processFrontMatter(file, (front) => {
+        front.title = payload.frontmatter.title;
+        front.description = payload.frontmatter.description;
+        front.tags = values.tags;
+        front.cover = cover;
+        front.category = values.category;
       });
       new Notice(
         result.autoMerge
@@ -359,6 +416,14 @@ export default class SlytxtPublishPlugin extends Plugin {
     };
   }
 }
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp"
+};
 
 /** 端末のファイル選択を開き、画像1枚の中身を返す。キャンセル時は null。 */
 function pickImageFile(): Promise<{ bytes: ArrayBuffer; mime: string } | null> {

@@ -482,12 +482,6 @@ textarea {
   font-size: 0.8rem;
 }
 
-.editor__meta-note {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  line-height: 1.6;
-}
-
 /* 見出し画像（タイトル欄の上）。余白と角丸は公開側の .article-cover に合わせる。 */
 .editor__cover {
   padding-inline: 0;
@@ -740,7 +734,7 @@ textarea {
 }
 
 /* 記事は公開側のヒーロー（.container = --content-width 幅）に合わせ、
-   本文だけを --article-width に絞る。notes は全体を --article-width にしたまま。 */
+   本文だけを --article-width に絞る。 */
 .preview__article--article {
   width: min(100% - 48px, var(--content-width));
   max-width: none;
@@ -811,27 +805,6 @@ textarea {
   object-fit: cover;
   border: 1px solid var(--border);
   border-radius: 12px;
-}
-
-/* notes で埋め込みできない URL があるときの注意（app.js が出し分ける）。 */
-.preview__warning {
-  margin: 24px 0 0;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  line-height: 1.7;
-}
-
-/* notes は公開側がプレーンテキスト表示（.note__text と同じ値）。 */
-.preview__notetext {
-  margin: 20px 0 28px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font: 1.03rem/1.95 var(--font-body);
-  color: var(--text);
 }
 
 .preview__body {
@@ -911,9 +884,8 @@ textarea {
   height: auto;
 }
 
-/* notes の本文（.preview__notetext）も pre 要素だが、コードブロックの
-   見た目を当てない。公開側の .note__text と同じ本文表示にする。 */
-.preview__body pre:not(.preview__notetext) {
+/* コードブロックの見た目。 */
+.preview__body pre {
   max-width: 100%;
   overflow-x: auto;
   padding: 18px;

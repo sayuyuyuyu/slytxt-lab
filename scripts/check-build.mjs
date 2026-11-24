@@ -314,8 +314,9 @@ for (const file of htmlFiles) {
       else if (ref) issues.push(`${relative}: label for references missing id "${ref}"`);
     }
   }
-  // /feed/ は静的ビルドの雛形で、一覧は Pages Functions が目印の間に差し込む。
-  if (relative === "feed/index.html") {
+  // /feed/ とトップは静的ビルドの雛形で、一覧は Pages Functions が
+  // 目印の間に差し込む。
+  if (relative === "feed/index.html" || relative === "index.html") {
     for (const marker of ["<!--feed:start-->", "<!--feed:end-->"])
       if (html.includes(marker)) checkedFeedMarkers++;
       else issues.push(`${relative}: missing ${marker}`);

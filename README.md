@@ -10,20 +10,26 @@
 
 ## 開発
 
-前提は Node.js 22 以降と pnpm です。
+前提は Node.js 22 以降と pnpm です。pnpm の版は `package.json` の `packageManager`（10.14.0）に従います。
 
 ```bash
 pnpm install
-pnpm dev          # 開発サーバー
-pnpm run verify   # 型チェック・テスト・ビルド・生成物のリンク検証
-pnpm test:e2e     # Playwright で主要フローを確認（手順は e2e/README.md）
+pnpm dev            # 開発サーバー
+pnpm run verify     # 型チェック・テスト・ビルド・生成物のリンク検証
+./scripts/verify.sh # 同じ検証。pnpm が無い環境では node_modules の実行ファイルで代用する
+pnpm test:e2e       # Playwright で主要フローを確認（手順は e2e/README.md）
 ```
 
 検索インデックス（Pagefind）は `pnpm build` のときに `dist/pagefind` へ生成されるので、検索の動作確認はビルド後に `pnpm preview` で行います。本番 URL は環境変数 `SITE_URL`（既定は `https://slytxt.dev`）で指定します。
 
 ## 執筆と公開
 
-執筆は Cloudflare 版のエディタ（<https://write.slytxt.dev>、コードは `tools/writer-cloudflare/`）で行います。認証は Cloudflare Access（本人のメールアドレスのみ許可）です。書いて投稿ボタンを押すと、ファイル作成・ブランチ・Pull Request・CI 待ち・マージまで進みます（マージの条件は CI の成功のみ）。流れの詳細は [アーキテクチャ](docs/architecture.md) と `tools/writer-cloudflare/README.md` を参照してください。
+執筆の経路は2つあります。どちらも `src/content/<カテゴリ>/<slug>.md` を Pull Request で作り、`main` へのマージで Cloudflare Pages がビルドして公開する点は同じです。
+
+- **Obsidian プラグイン**（[tools/obsidian-slytxt](tools/obsidian-slytxt/README.md)）— writer の置き換え先です。ノートから「PR を作る（公開）」でブランチと Pull Request を作り、自動マージ（squash）を設定します。CI が通ればそのまま公開されます。Mac では本番反映まで確認済みで、iPhone への導入が残っています。
+- **writer**（<https://write.slytxt.dev>、[tools/writer-cloudflare](tools/writer-cloudflare/README.md)）— 現行の本体です。認証は Cloudflare Access（本人のメールアドレスのみ許可）。下書きを端末と KV に持ち、投稿ボタンからファイル作成・ブランチ・Pull Request・CI 待ち・マージまで進みます。
+
+共通部分と writer 固有の部分の切り分けは [アーキテクチャ](docs/architecture.md) の「公開フロー」を参照してください。
 
 ## ドキュメント
 
@@ -32,10 +38,17 @@ pnpm test:e2e     # Playwright で主要フローを確認（手順は e2e/READM
 - [短文フィード](db/feed/README.md) — D1 に置く短文と公開一覧（`/feed/`）。投稿画面は [feed-cloudflare](tools/feed-cloudflare/README.md)
 - [Obsidian プラグイン](tools/obsidian-slytxt/README.md) — Obsidian から PR で公開する
 - [公開メディア配信](tools/media-cloudflare/README.md) — media.slytxt.dev の Worker
-- [健康状態の受け口](tools/status-cloudflare/README.md) — status.slytxt.dev の Worker
 - [E2E テスト](e2e/README.md) — Playwright の手順
 - [作業方針](AGENTS.md) — ブランチ運用と UI・文章の規約
 
 ## 開発フロー
 
 `main` への直接 push は禁止です。変更は作業ブランチから Pull Request を作成し、CI が通ってからマージします。
+
+```bash
+./scripts/merge-pr.sh <PR番号>   # main の取り込み直し → ci 待ち → squash merge
+```
+
+`main` の branch protection は strict で、必須チェックは `ci` だけです。main が進むと PR の required check が「expected」のままになり merge が弾かれるため、上のスクリプトは先に `gh pr update-branch` します。
+
+既知の失敗: `Workers Builds: slytxt-feed` はすべての PR で赤になります（Cloudflare 側のビルド設定の問題で、必須チェックではありません）。`ci` と `Cloudflare Pages` が通っていればマージできます。

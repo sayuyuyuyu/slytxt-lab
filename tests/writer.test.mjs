@@ -3,7 +3,6 @@ import test from "node:test";
 import { createDraftStore, normalizeDraft } from "../tools/writer-cloudflare/src/drafts-kv.mjs";
 import { parseFrontmatter, stringifyFrontmatter } from "../tools/writer-cloudflare/src/frontmatter.mjs";
 import {
-  loneEmbedUrls,
   plainText,
   renderMarkdown,
   renderPreviewMarkdown,
@@ -295,27 +294,6 @@ test("preview: 実例の組み合わせ（見出し・<br />・Spotify の autol
   assert.match(html, /感想。<br \/>\n続き/);
 });
 
-test("markdown: loneEmbedUrls は単独段落の埋め込み対象だけを拾う", () => {
-  const found = loneEmbedUrls(
-    [
-      "## 見出し",
-      "",
-      "<https://open.spotify.com/track/5oCptG3RbPTbXKFpVjUgmw?si=x>",
-      "",
-      "https://example.com/page",
-      "",
-      "文中の https://www.youtube.com/watch?v=dQw4w9WgXcQ は対象外",
-      "",
-      "https://x.com/slytxt/status/1234567890123456789"
-    ].join("\n")
-  );
-  assert.deepEqual(
-    found.map((item) => item.type),
-    ["spotify", "x"]
-  );
-  assert.deepEqual(loneEmbedUrls("ただの文章\n\nhttps://example.com/page"), []);
-});
-
 test("drafts: 手で足したキーとコメントを消さない", async () => {
   const kv = memoryKv();
   const store = createDraftStore(kv);
@@ -335,6 +313,25 @@ test("drafts: 手で足したキーとコメントを消さない", async () => 
   assert.match(saved, /slug: my-slug/);
   assert.match(saved, /書き直した本文/);
   assert.match(saved, /title: 元のタイトル/);
+});
+
+test("drafts: カバーは外すと明示したときだけ消える", async () => {
+  const kv = memoryKv();
+  const store = createDraftStore(kv);
+  await store.createDraft({ title: "カバーのテスト", category: "tech" });
+  const [summary] = await store.listDrafts();
+  const id = summary.id;
+
+  await store.writeDraft(id, { cover: "/media/cover.jpg" });
+  assert.equal((await store.readDraft(id)).cover, "/media/cover.jpg");
+
+  // 読み込み直しでクライアント側だけカバーを失った場合。空を送っても消さない。
+  const kept = await store.writeDraft(id, { cover: "", body: "本文を書き足した" });
+  assert.equal(kept.cover, "/media/cover.jpg");
+
+  // 外す操作をした場合だけ消える。
+  const removed = await store.writeDraft(id, { cover: "", coverRemoved: true });
+  assert.equal(removed.cover, "");
 });
 
 test("drafts: 同じタイトルで作り続けても衝突しない", async () => {
@@ -475,7 +472,7 @@ test("drafts: 廃止した区分は現在の区分として読む", () => {
   assert.equal(normalizeDraft("z", { category: "journal" }, "").category, "comic");
 });
 
-test("drafts: 見出し画像（cover）が往復し、空にすると消える", async () => {
+test("drafts: 見出し画像（cover）が往復し、外すと消える", async () => {
   const kv = memoryKv();
   const store = createDraftStore(kv);
   const draft = await store.createDraft({ title: "カバー確認" });
@@ -485,7 +482,8 @@ test("drafts: 見出し画像（cover）が往復し、空にすると消える"
   assert.equal(loaded.cover, "https://slytxt.dev/media/abc.png");
   assert.match(kv.map.get(`draft:${draft.id}`), /cover: "https:\/\/slytxt\.dev\/media\/abc\.png"/);
 
-  await store.writeDraft(draft.id, { cover: "" });
+  // 外す操作をしたときだけ消える（空を送るだけでは消さない。#814）。
+  await store.writeDraft(draft.id, { cover: "", coverRemoved: true });
   assert.equal((await store.readDraft(draft.id)).cover, "");
   assert.doesNotMatch(kv.map.get(`draft:${draft.id}`), /cover:/);
 });

@@ -9,10 +9,11 @@
 図の要素と接続関係は次のとおりです（図のソースは `docs/diagrams/overview.mmd`、Mermaid 記法。SVG は Ondine で生成したもので、再生成は `npx ondine docs/diagrams/*.mmd` です）。
 
 - 読者は Cloudflare Pages のサイト（slytxt.dev）を閲覧し、公開済み画像は media.slytxt.dev から受け取ります。
-- 本人は Cloudflare Access を通して執筆ツール（write.slytxt.dev）を使います。
-- 執筆ツールは下書きを KV（slytxt-writer-drafts）へ同期し、画像を R2（slytxt-writer-media）へ保存します。投稿すると GitHub にブランチと Pull Request を作り、マージされると Cloudflare Pages が main をビルドして公開します。
-- 健康状態の Worker（status.slytxt.dev）は KV（slytxt-status-data）に最新スナップショットを1件だけ持ち、サイトの About ページが読み取ります。更新は Muse の VM 上のスクリプトが Apple Health の集計を POST します。
+- 本人は2つの経路で書きます。Cloudflare Access の内側の執筆ツール（write.slytxt.dev）と、Mac / iPhone の Obsidian プラグイン（`tools/obsidian-slytxt/`）です。
+- どちらの経路も GitHub にブランチと Pull Request を作り、マージされると Cloudflare Pages が main をビルドして公開します。下書きの置き場所は経路で違います（writer は KV slytxt-writer-drafts、プラグインは Vault のノート）。
+- 執筆ツールは画像を R2（slytxt-writer-media）へ保存し、公開時に `draft/` から `pub/` へ移します。
 - X のブックマークは Pages Functions が配信し、取得結果は KV（BOOKMARKS）にキャッシュします。
+- 短文フィードは D1（slytxt-feed）に置きます。読者は Pages Functions が差し込んだ一覧を読み、投稿は feed.slytxt.dev の Worker が同じ D1 へ書きます。
 
 ## 構成要素
 
@@ -22,7 +23,18 @@ Astro（TypeScript）で静的生成し、Cloudflare Pages が配信します。
 
 CSS は `src/styles/global.css` に手で書きます。Tailwind はリセット（preflight）のためだけに入れていて、`@import "tailwindcss" source(none)` でユーティリティの自動生成を止めています。走査を有効にすると、記事本文やスクリプト中の単語（`hidden`、`grid` など）がクラス名として拾われ、未使用のユーティリティが配信 CSS に混ざります。`.container` のように本体のクラス名と衝突してレイアウトを変えた例があるため、ユーティリティを意図的に使うときは `@source` を明示してください（#692 / #693）。
 
-`functions/` の Pages Functions は、X のブックマークを推測不能な URL の下で一覧・RSS・JSON・埋め込み用スクリプトとして配信します。詳細は次の節を見てください。
+短文フィードの公開一覧（`/feed/`）とトップの最新3件は、Astro がビルドした HTML を雛形にし、`functions/feed/index.ts` と `functions/index.ts` が D1（`FEED`）から読んだ投稿を差し込みます。トップの記事一覧と Projects は静的のままです。
+
+`functions/` の Pages Functions は、短文フィードの一覧と、X のブックマークの配信を担当します。詳細は次の節を見てください。
+
+### 短文フィード（D1 と Pages Functions、Worker: slytxt-feed）
+
+記事未満の短文は、Git ではなく D1（データベース `slytxt-feed`、バインディング `FEED`）に置きます。テーブルは `db/feed/0001_init.sql`、データの形とローカル実行の手順は `db/feed/README.md` です。
+
+- 読み取りは Pages Functions です。`functions/feed/index.ts` が `/feed/` の一覧を、`functions/index.ts` がトップページの最新3件を、Astro がビルドした HTML の目印の間に差し込みます。HTML の組み立ては `src/lib/feed/`（`render.ts` / `page.ts`）にまとめています。
+- 書き込みは Worker `slytxt-feed`（feed.slytxt.dev、コードは `tools/feed-cloudflare/`）です。投稿画面（PWA）と API を持ち、Cloudflare Access で本人だけに絞ります。入口は `src/index.mjs`、処理本体は `src/lib/feed/api.ts` と `src/lib/feed/compose.ts` を共有します。
+- 添付画像は R2 `slytxt-writer-media` の `pub/` に置き、公開 URL は media Worker が配信します（メディアの節と同じ）。
+- リンクカードは投稿時にサーバーが OGP を取り、`link` 列に単一オブジェクトの JSON で保存します。削除は論理削除で、公開側は `deleted_at IS NULL` だけを読みます。
 
 ### X のブックマーク（Pages Functions）
 
@@ -72,31 +84,27 @@ refresh token が失効すると、取得が失敗し続けます。症状は、
 
 下書きの画像は writer（Cloudflare Access の裏）経由でのみ表示されます。公開された画像だけが Worker `slytxt-media`（media.slytxt.dev、認証なし）から配信され、未公開のキーは URL を当てても 404 になります。旧来の `/media/*` URL は `public/_redirects` で media.slytxt.dev へ 301 リダイレクトします。
 
-### 健康状態（Worker: slytxt-status）
-
-コードは `tools/status-cloudflare/` です。About ページの「いまの状態」に表示する健康状態スナップショット（心拍・睡眠・歩数など）を、KV（バインディング `STATUS_DATA`、名前空間 slytxt-status-data）のキー `latest` に1件だけ保持します。位置情報は含めません。
-
-`GET /api/status` は公開で、CORS は https://slytxt.dev だけを許可します。`POST /api/status` は Bearer トークン（secret `STATUS_POST_TOKEN`）が一致したときだけ保存します。更新は Muse の VM 上のスクリプトが Apple Health の集計から組み立てて POST します。
-
 ## 公開フロー
 
 ![公開フロー](diagrams/publish-flow.svg)
 
-図のソースは `docs/diagrams/publish-flow.mmd`（Mermaid 記法）です。手順は次のとおりです。
+図のソースは `docs/diagrams/publish-flow.mmd`（Mermaid 記法）で、この図は writer の経路を描いたものです。手順は次のとおりです。
 
-1. 書く — 本文は localStorage へ即時保存され、KV へ裏で同期されます。
-2. 投稿 — writer が GitHub REST API で作業ブランチを作り、記事ファイルを `src/content/<カテゴリ>/<slug>.md` として作成して Pull Request を開きます。公開済み記事の一覧から開いて再編集した場合は、同じカテゴリなら同じファイルへの更新 PR になります。カテゴリを変えた場合は、新しいカテゴリへの書き出しと元カテゴリの削除を同じ PR で行う移動になります。どちらも公開日は元の記事から引き継がれ、更新日は再編集日に更新されます。このとき画像は R2 の `draft/` から `pub/` へ移され、本文中の URL は media.slytxt.dev へ付け替えられます。
+1. 書く — 保存先は経路で違います。writer は本文を localStorage へ即時保存し、KV へ裏で同期します。Obsidian プラグインは Vault のノートをそのまま下書きにし、KV への同期はしません。
+2. 投稿 — GitHub REST API で作業ブランチを作り、記事ファイルを `src/content/<カテゴリ>/<slug>.md` として作成して Pull Request を開きます。writer で公開済み記事の一覧から開いて再編集した場合は、同じカテゴリなら同じファイルへの更新 PR になります。カテゴリを変えた場合は、新しいカテゴリへの書き出しと元カテゴリの削除を同じ PR で行う移動になります。どちらも公開日は元の記事から引き継がれ、更新日は再編集日に更新されます。writer ではこのとき画像を R2 の `draft/` から `pub/` へ移し、本文中の URL を media.slytxt.dev へ付け替えます。
 3. CI — Pull Request の CI（チェック名 `ci`）が成功することだけがマージの条件です。Cloudflare Pages のプレビュー結果は条件に入りません。
-4. マージと見届け — CI の成功後、マージと後片付けは UI のポーリングと Cron の見届け（毎分）の両方が駆動し、どちらが先に進めても冪等に収束します。結果は KV に `publish-result:` キーで残り、次回 writer を開いたときに通知され、公開できた下書きは一覧から消えます。
+4. マージ — 駆動するのは経路で違います。writer は UI のポーリングと Cron の見届け（毎分）の両方が進め、どちらが先でも冪等に収束します。結果は KV に `publish-result:` キーで残り、次回 writer を開いたときに通知され、公開できた下書きは一覧から消えます。Obsidian プラグインは PR に自動マージ（squash）を設定し、設定できなかった場合だけ GitHub で手動マージします。
 5. 公開 — main へのマージで Cloudflare Pages がビルドし、slytxt.dev に反映されます。
+
+writer 固有なのは下書きの KV 同期、画像の `draft/` → `pub/` 付け替え、`publish-result:` の見届けです。PR を作って CI の成功でマージされ、Pages が公開する部分は両経路で共通です。
 
 ## 認証と秘密情報
 
 - writer は Cloudflare Access（本人のメールアドレスのみ）。Worker 側に独自のトークン認証はありません。
-- status への POST は Bearer トークン、X ブックマークは推測不能な URL と管理トークンで守ります。
+- X ブックマークは推測不能な URL と管理トークンで守ります。
 - GitHub の fine-grained PAT や API キーは各 Worker の secret に登録し、リポジトリには値を書きません（登録方法は `tools/writer-cloudflare/README.md` を参照）。
 
 ## デプロイ
 
 - サイト本体は main へのマージで Cloudflare Pages が自動デプロイします。
-- 3つの Worker（writer / media / status）は `npx wrangler deploy -c tools/<対象>/wrangler.toml` で個別にデプロイします。wrangler はリポジトリの依存には足しません。
+- 3つの Worker（writer / media / feed）は `npx wrangler deploy -c tools/<対象>/wrangler.toml` で個別にデプロイします。wrangler はリポジトリの依存には足しません。

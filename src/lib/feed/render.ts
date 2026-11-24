@@ -7,6 +7,7 @@
  *   <!--feed:start--> …ここを置き換える… <!--feed:end-->
  * 目印が消えたら差し込みが効かなくなるので、check-build でも存在を検証する。
  */
+import { escapeHtml } from "../html.ts";
 import type { FeedImage, FeedLink, FeedPost } from "./types.ts";
 
 export const FEED_START = "<!--feed:start-->";
@@ -15,27 +16,31 @@ export const FEED_END = "<!--feed:end-->";
 /** 画像の配信元。R2 の pub/ を tools/media-cloudflare が返す。 */
 export const MEDIA_ORIGIN = "https://media.slytxt.dev";
 
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 const URL_IN_TEXT = /(https?:\/\/[^\s<>"'）)】]+)/g;
 
-/** 本文中の URL をリンクにする。リンクカードにする URL 自体も本文では残す。 */
+/** 本文中の URL をリンクにする。 */
 function linkify(text: string): string {
   return escapeHtml(text).replace(URL_IN_TEXT, (url) => {
     return `<a href="${url}" rel="noopener noreferrer" target="_blank">${url}</a>`;
   });
 }
 
-/** 改行はそのまま尊重する（Markdown は使わない）。 */
-function renderBody(body: string): string {
-  return body
+/**
+ * 改行はそのまま尊重する（Markdown は使わない）。
+ * リンクカードになった URL は本文に出さない（カード側で辿れるため）。
+ * カード化されなかった URL は従来どおり本文にリンクとして残る。
+ */
+function renderBody(body: string, cardUrl?: string): string {
+  let text = body;
+  if (cardUrl) {
+    text = text.split(cardUrl).join("");
+    // 除去で残った行頭・行末の空白と、連続した空白を整える。
+    text = text
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n[ \t]+/g, "\n")
+      .replace(/[ \t]{2,}/g, " ");
+  }
+  return text
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
@@ -81,7 +86,7 @@ function renderLink(link: FeedLink | undefined): string {
   )}" target="_blank" rel="noopener noreferrer">${parts}</a>`;
 }
 
-/** 投稿時刻を JST の「2026年11月16日 19:30」表記にする。 */
+/** 投稿時刻を JST の「2026/11/16 19:30」表記にする。 */
 export function formatTimestamp(iso: string): { label: string; datetime: string } {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return { label: iso, datetime: iso };
@@ -102,7 +107,7 @@ function renderPost(post: FeedPost): string {
   return `<li class="feed-item"><article>
 ${thumb}
 <div class="feed-item__body">
-${renderBody(post.body)}
+${renderBody(post.body, post.link?.url)}
 </div>
 ${thumbs}
 ${renderLink(post.link)}

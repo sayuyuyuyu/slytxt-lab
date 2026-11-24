@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createFeedPost,
+  decodeFeedCursor,
   listFeedPosts,
   readFeedPage,
   rowToPost
@@ -9,12 +10,12 @@ import {
 import {
   FEED_END,
   FEED_START,
-  escapeHtml,
   formatTimestamp,
   injectFeed,
   renderFeedItems
 } from "../src/lib/feed/render.ts";
-import { beforeFromRequest, feedHref, handleFeedPage } from "../src/lib/feed/page.ts";
+import { escapeHtml } from "../src/lib/html.ts";
+import { beforeFromRequest, feedHref, handleFeedPage, handleHomeFeed } from "../src/lib/feed/page.ts";
 
 /** SQL とバインド値を記録し、用意した行を返すだけの D1 代用。 */
 function fakeDb(rows = []) {
@@ -94,10 +95,19 @@ test("feed: 壊れた JSON は空として扱い、一覧を止めない", () =>
 
 test("feed: 一覧は before をカーソルに使い、limit+1 件を読む", async () => {
   const db = fakeDb([]);
-  await listFeedPosts(db, { before: "2026-11-16T10:00:00.000Z", limit: 20 });
+  await listFeedPosts(db, {
+    before: "2026-11-16T10:00:00.000Z",
+    beforeId: "01JC0000000000000000000002",
+    limit: 20
+  });
   assert.equal(db.calls.length, 1);
   assert.match(db.calls[0].sql, /deleted_at IS NULL/);
-  assert.deepEqual(db.calls[0].params, ["2026-11-16T10:00:00.000Z", 21]);
+  assert.match(db.calls[0].sql, /created_at = \?1 AND id < \?3/);
+  assert.deepEqual(db.calls[0].params, [
+    "2026-11-16T10:00:00.000Z",
+    21,
+    "01JC0000000000000000000002"
+  ]);
 });
 
 test("feed: 読み込み件数が limit 以下なら次ページは無い", async () => {
@@ -107,7 +117,7 @@ test("feed: 読み込み件数が limit 以下なら次ページは無い", asyn
   assert.equal(page.nextBefore, null);
 });
 
-test("feed: limit を超えたら最後の投稿時刻を次ページのカーソルにする", async () => {
+test("feed: limit を超えたら最後の投稿の時刻と ID を次ページのカーソルにする", async () => {
   const db = fakeDb([
     row(),
     row({ id: "b", created_at: "2026-11-15T10:00:00.000Z" }),
@@ -118,7 +128,39 @@ test("feed: limit を超えたら最後の投稿時刻を次ページのカー�
     page.posts.map((post) => post.id),
     ["01JC0000000000000000000001", "b"]
   );
-  assert.equal(page.nextBefore, "2026-11-15T10:00:00.000Z");
+  assert.equal(page.nextBefore, "2026-11-15T10:00:00.000Z~b");
+  assert.deepEqual(decodeFeedCursor(page.nextBefore), {
+    before: "2026-11-15T10:00:00.000Z",
+    beforeId: "b"
+  });
+});
+
+test("feed: 同時刻の投稿がページ境界に来ても、次ページで漏れない", async () => {
+  // 3件が同じ created_at。2件目までを1ページ目として返す。
+  const same = "2026-11-16T10:00:00.000Z";
+  const rows = [
+    row({ id: "a", created_at: same }),
+    row({ id: "b", created_at: same }),
+    row({ id: "c", created_at: same })
+  ];
+  const first = await readFeedPage(fakeDb(rows), { limit: 2 });
+  assert.deepEqual(
+    first.posts.map((post) => post.id),
+    ["a", "b"]
+  );
+  assert.equal(first.nextBefore, `${same}~b`);
+
+  // カーソルをそのまま次のページに渡すと、残りの c が返る。
+  const cursor = decodeFeedCursor(first.nextBefore);
+  assert.ok(cursor);
+  const secondDb = fakeDb(rows.filter((item) => item.id === "c"));
+  const second = await readFeedPage(secondDb, { ...cursor, limit: 2 });
+  assert.deepEqual(
+    second.posts.map((post) => post.id),
+    ["c"]
+  );
+  assert.equal(second.nextBefore, null);
+  assert.deepEqual(secondDb.calls[0].params, [same, 3, "b"]);
 });
 
 test("feed: データベースが未設定なら空のフィードを返す", async () => {
@@ -178,6 +220,45 @@ test("feed: リンクカードは URL と各項目をエスケープして出す
   assert.ok(html.includes('rel="noopener noreferrer"'));
 });
 
+test("feed: リンクカードになった URL は本文に出さない", () => {
+  const html = renderFeedItems([
+    {
+      id: "1",
+      body: "おすすめ https://example.com/ 見てね",
+      createdAt: "2026-11-16T10:00:00.000Z",
+      images: [],
+      link: { url: "https://example.com/", title: "Example", site: "example.com" }
+    }
+  ]);
+  // カードの href として1回だけ現れる。本文側のリンクにはならない。
+  assert.equal(html.split('href="https://example.com/"').length - 1, 1);
+  assert.ok(html.includes("おすすめ"));
+  assert.ok(html.includes("見てね"));
+
+  const onlyUrl = renderFeedItems([
+    {
+      id: "2",
+      body: "https://example.com/",
+      createdAt: "2026-11-16T10:00:00.000Z",
+      images: [],
+      link: { url: "https://example.com/", title: "Example", site: "example.com" }
+    }
+  ]);
+  assert.ok(onlyUrl.includes('class="feed-card"'));
+  assert.ok(!onlyUrl.includes("<p>https://example.com/</p>"));
+
+  // カードが無い投稿では URL は従来どおり本文に残る。
+  const noCard = renderFeedItems([
+    {
+      id: "3",
+      body: "https://example.com/",
+      createdAt: "2026-11-16T10:00:00.000Z",
+      images: []
+    }
+  ]);
+  assert.ok(noCard.includes('<a href="https://example.com/"'));
+});
+
 test("feed: 0件なら空状態、次ページがあれば「もっと見る」を出す", () => {
   assert.match(renderFeedItems([]), /まだ投稿がありません/);
   const html = renderFeedItems(
@@ -206,21 +287,42 @@ test("feed: 時刻は JST で表示し、壊れた値はそのまま出す", () 
   });
 });
 
-test("feed: before は ISO 8601 だけを受け付け、URL を組み立てる", () => {
-  const ok = beforeFromRequest(
-    new Request("https://slytxt.dev/feed/?before=2026-11-16T10:00:00.000Z")
+test("feed: before はカーソルだけを受け付け、URL を組み立てる", () => {
+  const cursor = "2026-11-16T10:00:00.000Z~01JC0000000000000000000001";
+  const ok = beforeFromRequest(new Request(`https://slytxt.dev/feed/?before=${cursor}`));
+  assert.deepEqual(ok, {
+    before: "2026-11-16T10:00:00.000Z",
+    beforeId: "01JC0000000000000000000001"
+  });
+  // 時刻だけの古い形も受け付ける。
+  assert.deepEqual(
+    beforeFromRequest(new Request("https://slytxt.dev/feed/?before=2026-11-16T10:00:00.000Z")),
+    { before: "2026-11-16T10:00:00.000Z", beforeId: null }
   );
-  assert.deepEqual(ok, { before: "2026-11-16T10:00:00.000Z" });
   assert.deepEqual(beforeFromRequest(new Request("https://slytxt.dev/feed/")), {
-    before: null
+    before: null,
+    beforeId: null
   });
   const bad = beforeFromRequest(new Request("https://slytxt.dev/feed/?before=yesterday"));
   assert.ok("error" in bad);
-  assert.equal(feedHref("2026-11-16T10:00:00.000Z"), "/feed/?before=2026-11-16T10%3A00%3A00.000Z");
+  // ID の形が違うカーソルも弾く。
+  assert.ok(
+    "error" in
+      beforeFromRequest(new Request("https://slytxt.dev/feed/?before=2026-11-16T10:00:00.000Z~!"))
+  );
+  assert.equal(
+    feedHref(cursor),
+    "/feed/?before=2026-11-16T10%3A00%3A00.000Z~01JC0000000000000000000001"
+  );
 });
 
 /** Pages Functions の context 代用。ASSETS は雛形の HTML を返す。 */
-function fakeContext({ db, shell, url = "https://slytxt.dev/feed/" }) {
+function fakeContext({
+  db,
+  shell,
+  url = "https://slytxt.dev/feed/",
+  shellPath = "/feed/index.html"
+}) {
   return {
     request: new Request(url),
     env: {
@@ -229,7 +331,7 @@ function fakeContext({ db, shell, url = "https://slytxt.dev/feed/" }) {
         async fetch(input) {
           if (!shell) return new Response("not found", { status: 404 });
           // ASSETS には絶対 URL を渡す約束（相対パスは Pages 側で Invalid URL になる）。
-          assert.equal(new URL(String(input)).pathname, "/feed/index.html");
+          assert.equal(new URL(String(input)).pathname, shellPath);
           return new Response(shell, { status: 200 });
         }
       }
@@ -241,7 +343,7 @@ function fakeContext({ db, shell, url = "https://slytxt.dev/feed/" }) {
 
 test("feed: ページは雛形に一覧を差し込んで返す", async () => {
   const db = fakeDb([row({ body: "こんにちは" })]);
-  const shell = `<main>${FEED_START}fallback${FEED_END}</main>`;
+  const shell = `<main><!--feed:section:start--><section id="feed-title">Feed</section>${FEED_START}fallback${FEED_END}<!--feed:section:end--></main>`;
   const response = await handleFeedPage(fakeContext({ db, shell }));
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /text\/html/);
@@ -297,7 +399,74 @@ test("feed: 不正な before は 400 を返す", async () => {
     })
   );
   assert.equal(response.status, 400);
-  assert.match(await response.text(), /ISO 8601/);
+  assert.match(await response.text(), /ページ送りのカーソル/);
+});
+
+test("feed: トップページは最新3件だけを差し込み、続きは All posts に譲る", async () => {
+  const rows = [
+    row({ id: "p1", body: "いちばん新しい投稿" }),
+    row({ id: "p2", body: "2番目の投稿" }),
+    row({ id: "p3", body: "3番目の投稿" }),
+    row({ id: "p4", body: "4番目の投稿" })
+  ];
+  const shell = `<main><!--feed:section:start--><section id="feed-title">Feed</section>${FEED_START}fallback${FEED_END}<!--feed:section:end--></main>`;
+  const response = await handleHomeFeed(
+    fakeContext({ db: fakeDb(rows), shell, url: "https://slytxt.dev/", shellPath: "/index.html" })
+  );
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.ok(body.includes("いちばん新しい投稿"));
+  assert.ok(body.includes("3番目の投稿"));
+  assert.ok(!body.includes("4番目の投稿"));
+  assert.ok(!body.includes("fallback"));
+  assert.ok(!body.includes("feed-more"));
+});
+
+test("feed: トップページは投稿が0件ならフィードの区画ごと出さない", async () => {
+  const shell = `<main><h1>slytxt.lab</h1><!--feed:section:start--><section id="feed-title">Feed</section>${FEED_START}<p class="feed-empty">まだ投稿がありません。</p>${FEED_END}<!--feed:section:end--><section id="projects-title">Projects</section></main>`;
+  const response = await handleHomeFeed(
+    fakeContext({ db: fakeDb([]), shell, url: "https://slytxt.dev/", shellPath: "/index.html" })
+  );
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.ok(body.includes("slytxt.lab"));
+  assert.ok(body.includes("projects-title"));
+  assert.ok(!body.includes("feed-title"));
+  assert.ok(!body.includes("まだ投稿がありません"));
+  assert.ok(!body.includes("feed:section"));
+});
+
+test("feed: トップページは D1 が読めなくても全体を返し、枠にだけ状態を出す", async () => {
+  const broken = {
+    prepare() {
+      throw new Error("D1_ERROR: no such table: feed_posts");
+    }
+  };
+  const response = await handleHomeFeed(
+    fakeContext({
+      db: broken,
+      shell: `<main>${FEED_START}fallback${FEED_END}</main>`,
+      url: "https://slytxt.dev/",
+      shellPath: "/index.html"
+    })
+  );
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.match(body, /フィードを読み込めませんでした/);
+  assert.ok(!body.includes("fallback"));
+});
+
+test("feed: 投稿があるのにトップページの目印が無ければ 500 を返す", async () => {
+  const response = await handleHomeFeed(
+    fakeContext({
+      db: fakeDb([row({ id: "p1", body: "投稿" })]),
+      shell: "<main>no markers</main>",
+      url: "https://slytxt.dev/",
+      shellPath: "/index.html"
+    })
+  );
+  assert.equal(response.status, 500);
+  assert.match(await response.text(), /トップページの外枠に差し込み位置/);
 });
 
 test("escapeHtml は5文字を実体参照にする", () => {

@@ -6,6 +6,7 @@ import {
   getEntryDescription,
   getEntryDisplayTitle,
   getEntryPreview,
+  sortEntries,
   toPlainText,
 } from "../src/lib/entries.ts";
 
@@ -155,4 +156,26 @@ test("entries by tag matches on the slugified tag", () => {
   assert.deepEqual(getEntriesByTag(all, "ジャンプ感想"), [journal]);
   assert.deepEqual(getEntriesByTag(all, "c"), [other]);
   assert.deepEqual(getEntriesByTag(all, "missing"), []);
+});
+
+test("entries: 記事と Projects を混ぜて日付の新しい順に並べる", () => {
+  const article = entry({
+    id: "old.md",
+    collection: "tech",
+    data: { published: new Date("2026-11-01T00:00:00Z"), tags: [] }
+  });
+  const fresh = entry({
+    id: "new.md",
+    collection: "tech",
+    data: { published: new Date("2026-11-20T00:00:00Z"), tags: [] }
+  });
+  const project = entry({
+    id: "project.md",
+    collection: "projects",
+    data: { started: new Date("2026-11-10T00:00:00Z"), tags: [] }
+  });
+  assert.deepEqual(
+    sortEntries([article, project, fresh]).map((item) => item.id),
+    ["new.md", "project.md", "old.md"]
+  );
 });

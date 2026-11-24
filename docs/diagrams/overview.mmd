@@ -3,17 +3,17 @@ flowchart LR
   author["本人（ブラウザ）"]
   access["Cloudflare Access<br/>本人のメールアドレスのみ許可"]
   pages["Cloudflare Pages<br/>slytxt.dev<br/>Astro 静的サイト"]
-  functions["Pages Functions<br/>X ブックマーク配信"]
+  functions["Pages Functions<br/>フィード・X ブックマーク配信"]
   bmKv[("KV<br/>BOOKMARKS")]
   xapi["X API"]
   writer["Worker: slytxt-writer<br/>write.slytxt.dev<br/>執筆ツール"]
+  feedWorker["Worker: slytxt-feed<br/>feed.slytxt.dev<br/>短文の投稿"]
+  obsidian["Obsidian プラグイン<br/>slytxt publish<br/>Mac / iPhone"]
   draftsKv[("KV<br/>slytxt-writer-drafts")]
+  feedD1[("D1<br/>slytxt-feed")]
   r2[("R2: slytxt-writer-media<br/>非公開バケット")]
   media["Worker: slytxt-media<br/>media.slytxt.dev"]
   github["GitHub: sayuyuyuyu/slytxt-lab<br/>ブランチ / PR / CI"]
-  status["Worker: slytxt-status<br/>status.slytxt.dev"]
-  statusKv[("KV<br/>slytxt-status-data")]
-  updater["更新スクリプト<br/>Muse の VM（Apple Health 集計）"]
 
   reader -->|記事・ページの閲覧| pages
   reader -->|公開済み画像| media
@@ -21,11 +21,14 @@ flowchart LR
   functions --> bmKv
   functions -->|OAuth・ブックマーク取得| xapi
   author --> access --> writer
+  author -->|ノートから PR を作る| obsidian
+  obsidian -->|ブランチ・ファイル・PR を作成| github
+  author -->|短文を投稿| feedWorker
+  feedWorker -->|投稿を保存| feedD1
+  feedWorker -->|画像を pub/ に置く| r2
+  pages -->|/feed/ の一覧と最新3件を読む| feedD1
   writer -->|下書きの同期| draftsKv
   writer -->|画像は下書き時 draft: 公開時 pub:| r2
   writer -->|投稿でブランチ・ファイル・PR を作成| github
   github -->|main へのマージでビルド・デプロイ| pages
   media -->|pub: の画像だけを配信| r2
-  pages -->|About の「いまの状態」が取得| status
-  status --> statusKv
-  updater -->|POST /api/status（Bearer 認証）| status

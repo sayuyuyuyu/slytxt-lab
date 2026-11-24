@@ -10,10 +10,14 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 90_000,
   expect: { timeout: 15_000 },
+  // writer の自動保存はタイマーとネットワークに依存し、CI の遅いディスクでは
+  // 数秒ずれることがある（#771 / #788 の再現もこの揺れだった）。手元では
+  // 通るのに CI だけ落ちる状態を避けるため、CI だけ再試行する。
+  retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: [["list"]],
   use: {
-    trace: "retain-on-failure",
+    trace: "on-first-retry",
     // writer の本文編集で、URL の貼り付け（本人の実利用経路）を使うため。
     permissions: ["clipboard-write"]
   },

@@ -1,4 +1,9 @@
 import {
+  resolveCoverForSave,
+  resolveLocalRestore,
+  samePayload
+} from "/draft-merge.mjs";
+import {
   plainText,
   renderPreviewMarkdown,
   textLength,
@@ -108,6 +113,10 @@ const state = {
   tags: [],
   cover: ""
 };
+
+// この画面で見出し画像を外したか。外していないのに空のカバーを送ると、
+// 読み込み直しでクライアント側だけ失ったときにサーバー側まで消してしまう。
+let coverRemoved = false;
 
 const save = {
   status: "idle",
@@ -296,22 +305,6 @@ function removeLocal(id) {
   }
 }
 
-function samePayload(a, b) {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-/** サーバーから読んだ下書きを、collect() と同じ形の payload にする。 */
-function payloadOf(draft) {
-  return {
-    category: draft.category,
-    title: draft.title && draft.title !== "無題" ? draft.title.trim() : "",
-    tags: [...(draft.tags ?? [])],
-    cover: draft.cover ?? "",
-    description: String(draft.description ?? "").trim(),
-    body: draft.body ?? ""
-  };
-}
-
 /** 現在の下書きについて、保存状態の表示を実態に合わせ直す。 */
 function refreshSaveStatus() {
   if (!state.current) {
@@ -374,6 +367,13 @@ async function flushSave({ keepalive = false, awaitPosted = true } = {}) {
 
   const id = state.current.id;
   const payload = collect();
+
+  // 見出し画像を外す操作をしていないのに空なら、サーバーに残っている値を送る。
+  payload.cover = resolveCoverForSave({
+    cover: payload.cover,
+    coverRemoved,
+    knownCover: save.lastSent?.payload?.cover || state.current?.cover || ""
+  });
 
   // 前回サーバーへ送った内容と同じなら送らない。
   // ローカルコピーも同じ内容なら片付けて、同期済みの表示に戻す。
@@ -795,6 +795,10 @@ async function setupEditor() {
     els.editorRoot.hidden = false;
     els.body.hidden = true;
     document.body.dataset.editor = "wysiwyg";
+    // エディタの準備より先に下書きを開いていたら、その本文を入れ直す。
+    // mount は非同期なので、applyDraft の時点で handle が無いと editorSet が
+    // 何もせず、本文が空のまま表示される（#788）。
+    if (state.current) editorSet(els.body.value);
   } catch (error) {
     console.warn("WYSIWYG エディタを初期化できませんでした。textarea で続けます。", error);
     editorBridge.handle = null;
@@ -820,6 +824,7 @@ function applyDraft(draft) {
   state.tags = [...(draft.tags ?? [])];
   renderTags();
   state.cover = draft.cover ?? "";
+  coverRemoved = false;
   resetCoverDisplay();
   renderCover();
   editorSet(draft.body);
@@ -842,6 +847,7 @@ function clearEditor() {
   state.tags = [];
   renderTags();
   state.cover = "";
+  coverRemoved = false;
   resetCoverDisplay();
   renderCover();
   els.titleInput.value = "";
@@ -867,15 +873,8 @@ function clearEditor() {
  */
 function restoreLocalDraft(serverDraft) {
   const local = readLocal(serverDraft.id);
-  if (!local) return serverDraft;
-  if (samePayload(local.payload, payloadOf(serverDraft))) {
-    removeLocal(serverDraft.id);
-    return serverDraft;
-  }
-  const localIsNewer =
-    local.base === serverDraft.updated ||
-    String(local.savedAt ?? "") > String(serverDraft.updated ?? "");
-  if (!localIsNewer) {
+  const decision = resolveLocalRestore({ serverDraft, local });
+  if (decision.backupLocal && local) {
     try {
       localStorage.setItem(
         `${LOCAL_BACKUP_PREFIX}${serverDraft.id}`,
@@ -884,23 +883,30 @@ function restoreLocalDraft(serverDraft) {
     } catch {
       // 退避できなくても、サーバー側の表示は進める。
     }
-    removeLocal(serverDraft.id);
-    toast("サーバー側に新しい内容があるため、そちらを表示しました。");
-    return serverDraft;
   }
+  if (decision.removeLocal) removeLocal(serverDraft.id);
+  if (decision.backupLocal) {
+    toast("サーバー側に新しい内容があるため、そちらを表示しました。");
+  }
+  if (!decision.useLocal || !local) return serverDraft;
   return {
     ...serverDraft,
     category: local.payload.category,
     title: local.payload.title,
     tags: [...(local.payload.tags ?? [])],
-    cover: local.payload.cover ?? "",
+    // ローカル側にカバーが無いときはサーバー側の値を残す。読み込み直しの
+    // 途中でクライアント側だけカバーを失っていても、消さない。
+    cover: local.payload.cover || serverDraft.cover || "",
     description: local.payload.description ?? "",
     body: local.payload.body ?? ""
   };
 }
 
 async function selectDraft(id) {
-  if (state.current?.id !== id) await flushSave().catch(() => {});
+  // 同じ下書きを開き直すときも先に送る。送らずに読むと、カテゴリ切替などの
+  // 未同期の編集がサーバー側の古い版で画面ごと巻き戻り、タイトル欄が
+  // 再び隠れることがある（#771）。
+  await flushSave().catch(() => {});
   try {
     const { draft } = await api(`/api/drafts/${encodeURIComponent(id)}`);
     const restored = restoreLocalDraft(draft);
@@ -994,6 +1000,9 @@ function collect() {
     title: els.titleInput.value.trim(),
     tags: [...state.tags],
     cover: state.cover,
+    // 外した操作をしたときだけ明示する。サーバーはこれが無い空の cover を
+    // 「消さない」と解釈する（読み込み直しで失った値を消さないため）。
+    ...(coverRemoved ? { coverRemoved: true } : {}),
     description: els.publishDescription.value.trim(),
     body: els.body.value
   };
@@ -1564,14 +1573,19 @@ async function setCoverFromFile(file) {
       onPosted: (posted) => {
         if (posted) {
           state.cover = posted;
-          scheduleSave();
+          coverRemoved = false;
+          // 見出し画像は操作が一区切りなので、間引きを待たずに送る（#737）。
+          // 自分の POST 完了の待ち合わせに入らないよう awaitPosted は外す。
+          flushSave({ awaitPosted: false }).catch(() => {});
         }
       }
     });
     if (url) state.cover = url;
+    coverRemoved = false;
     setCoverStatus("");
     renderCover();
-    scheduleSave();
+    // 付け外しの直後に公開しても古い cover で出ないよう、すぐ同期する。
+    flushSave().catch(() => {});
     toast("見出し画像を設定しました");
     // blob プレビューはここでは破棄しない。最終 URL が実際に読み込める
     // ようになってから切り替える（keepCoverBlobUntilRemoteReady）。
@@ -1592,9 +1606,10 @@ async function setCoverFromFile(file) {
 
 function removeCover() {
   state.cover = "";
+  coverRemoved = true;
   resetCoverDisplay();
   renderCover();
-  scheduleSave();
+  flushSave().catch(() => {});
 }
 
 /* ---- 見出し画像のサイズ制限と切り取り ----

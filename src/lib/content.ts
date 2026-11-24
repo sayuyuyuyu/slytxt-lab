@@ -1,5 +1,5 @@
 import { getCollection } from "astro:content";
-import { sortArticles, sortProjects } from "./entries";
+import { sortArticles, sortEntries, sortProjects } from "./entries";
 import type { ArticleCollection, ArticleEntry, ProjectEntry, SiteEntry } from "./entries";
 
 export type { ArticleCollection, ArticleEntry, ProjectEntry, SiteEntry } from "./entries";
@@ -15,6 +15,7 @@ export {
   getEntrySlug,
   hasXEmbed,
   sortArticles,
+  sortEntries,
   sortProjects,
   toPlainText
 } from "./entries";
@@ -46,17 +47,13 @@ export async function getAllArticles(): Promise<ArticleEntry[]> {
   return sortArticles(perCategory.flat());
 }
 
-/** Everything written: all articles. */
-export async function getAllWriting(): Promise<ArticleEntry[]> {
-  return getAllArticles();
-}
-
 export async function getProjects(): Promise<ProjectEntry[]> {
   const entries = await getCollection("projects", isPublished);
   return sortProjects(entries);
 }
 
+/** 記事と Projects をまとめ、日付の新しい順に返す（タグ一覧などの混在一覧用）。 */
 export async function getAllEntries(): Promise<SiteEntry[]> {
   const [articles, projects] = await Promise.all([getAllArticles(), getProjects()]);
-  return [...articles, ...projects];
+  return sortEntries([...articles, ...projects]);
 }

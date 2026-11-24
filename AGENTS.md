@@ -15,20 +15,20 @@
 
 # 執筆
 
-- 執筆は Cloudflare 版のエディタ（https://write.slytxt.dev 、コードは `tools/writer-cloudflare/`）で行う。下書きは端末（localStorage）へ即時保存し、Cloudflare KV へ裏で同期する（未同期の間は端末内だけに存在する）。
+- 執筆の経路は2つある。Obsidian プラグイン（`tools/obsidian-slytxt/`、writer の置き換え先）と、Cloudflare 版のエディタ（https://write.slytxt.dev 、コードは `tools/writer-cloudflare/`）。プラグインは下書きを Vault のノートとして持ち、KV 同期はしない。writer は端末（localStorage）へ即時保存し、Cloudflare KV へ裏で同期する（未同期の間は端末内だけに存在する）。
 - `drafts/` は移行前の下書きの原本で、コミットしない。公開するのは `src/content/<category>/<slug>.md` だけ。
-- 公開は執筆ツールの投稿ボタン（PR 経由）から行う。手で出す場合も `main` へ直接 push しない。
+- 公開はどちらの経路でも Pull Request 経由で行う（writer の投稿ボタン、プラグインの「PR を作る」）。手で出す場合も `main` へ直接 push しない。
 - 文体の規範は `~/.agents/skills/slytxt-writing/SKILL.md`。サイトの文章を直すときもこれに合わせる。
 - `tools/writer-cloudflare/` はサブプロジェクトとして `package.json` を持つ。依存はそちらで管理し、サイト本体には足さない。
 
 # 検証
 
-- UI またはコンテンツを変更したら、可能な範囲で `pnpm check` と `pnpm run verify` を実行する。
+- UI またはコンテンツを変更したら、可能な範囲で `pnpm check` と `pnpm run verify` を実行する。pnpm が無い環境では `./scripts/verify.sh`（同じ検証を node_modules の実行ファイルで回す）。
 - Cloudflare Pages の Pull Request プレビューが利用できる場合は、主要ページの表示も確認する。
 
 # Issue ループ
 
 - キューは `muse-overnight` ラベルの Issue。1 Issue = 1 PR。
-- 検証は `pnpm verify`。UI を変えたら `pnpm test:e2e` も実行する。
-- `ci` が通ったら squash merge してよい。手順は `~/.agents/skills/issue-loop/SKILL.md` に従う。
+- 検証は `pnpm verify`（pnpm が無ければ `./scripts/verify.sh`）。UI を変えたら `pnpm test:e2e` も実行する。CI でも `e2e` ジョブが同じものを回す。
+- `ci` が通ったら `./scripts/merge-pr.sh <PR番号>` で squash merge する（main の取り込み直しと ci 待ちを含む）。`Workers Builds: slytxt-feed` は常に赤だが必須ではない。手順の詳細は `~/.agents/skills/issue-loop/SKILL.md` に従う。
 - 記事本文を書くときは `~/.agents/skills/slytxt-writing/SKILL.md` に従う。
