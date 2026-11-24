@@ -106,7 +106,7 @@ textarea {
   border-radius: 999px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
   cursor: default;
   white-space: nowrap;
 }
@@ -161,7 +161,7 @@ textarea {
   border-radius: 999px;
   background: transparent;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.4;
   white-space: nowrap;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -214,7 +214,7 @@ textarea {
   border-radius: 8px;
   background: var(--bg);
   color: var(--text);
-  font-size: 0.86rem;
+  font-size: 0.875rem;
 }
 
 .field:focus {
@@ -255,7 +255,7 @@ textarea {
   padding: 8px 14px;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
 }
 
 .pane__section {
@@ -263,7 +263,7 @@ textarea {
   padding: 12px 14px 0;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -290,7 +290,7 @@ textarea {
   top: 7px;
   right: 7px;
   padding: 4px 9px;
-  font-size: 0.72rem;
+  font-size: 0.875rem;
   line-height: 1.4;
   text-decoration: none;
 }
@@ -362,7 +362,7 @@ textarea {
 
 .drafts__excerpt {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -376,13 +376,13 @@ textarea {
   gap: 6px;
   align-items: center;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.875rem;
 }
 
 .drafts__empty {
   padding: 20px 14px;
   color: var(--text-muted);
-  font-size: 0.84rem;
+  font-size: 0.875rem;
   line-height: 1.7;
 }
 
@@ -436,7 +436,7 @@ textarea {
 
 .editor__count {
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
   white-space: nowrap;
 }
 
@@ -449,7 +449,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--accent-strong);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
   white-space: nowrap;
 }
 
@@ -479,7 +479,7 @@ textarea {
 
 .editor__meta-label {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 /* 見出し画像（タイトル欄の上）。余白と角丸は公開側の .article-cover に合わせる。 */
@@ -494,7 +494,7 @@ textarea {
   border-radius: 12px;
   background: none;
   color: var(--text-muted);
-  font-size: 0.86rem;
+  font-size: 0.875rem;
   cursor: pointer;
 }
 .editor__cover-set:hover {
@@ -522,7 +522,7 @@ textarea {
 .editor__cover-status {
   margin-right: auto;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 /* 見出し画像の切り取りダイアログ。枠のアスペクト比は公開側の
@@ -573,7 +573,7 @@ textarea {
 .crop__zoom-label {
   flex: none;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .crop__zoom {
@@ -673,7 +673,7 @@ textarea {
   margin: 0;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .empty__title {
@@ -712,7 +712,7 @@ textarea {
 
 .preview__note {
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -754,7 +754,7 @@ textarea {
 .preview__category {
   margin: 0 0 12px;
   color: var(--accent);
-  font-size: 0.72rem;
+  font-size: 0.875rem;
   letter-spacing: 0.08em;
   font-weight: 500;
 }
@@ -794,7 +794,7 @@ textarea {
   min-height: 32px;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.875rem;
 }
 
 .preview__tag-hash {
@@ -898,7 +898,7 @@ textarea {
   border-left: 3px solid var(--accent);
   background: var(--surface);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.7;
   overflow-wrap: normal;
 }
@@ -925,7 +925,7 @@ textarea {
   max-width: 100%;
   overflow-x: auto;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 
 .preview__body th,
@@ -957,7 +957,7 @@ textarea {
 .preview__body figcaption {
   margin-top: 8px;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
   line-height: 1.7;
 }
 
@@ -1024,7 +1024,7 @@ textarea {
 .preview__body .link-card__host {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.76rem;
+  font-size: 0.875rem;
 }
 
 /* ---- 実行中のパネル ---- */
@@ -1063,12 +1063,12 @@ textarea {
 }
 
 .task__head strong {
-  font-size: 0.86rem;
+  font-size: 0.875rem;
 }
 
 .task__elapsed {
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1087,7 +1087,7 @@ textarea {
 .task__result-label {
   min-width: 0;
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
   overflow-wrap: anywhere;
 }
 
@@ -1099,7 +1099,7 @@ textarea {
   margin: 0;
   padding: 0 12px 12px;
   overflow-y: auto;
-  font: 0.76rem/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 0.875rem/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--text-muted);
@@ -1120,7 +1120,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
-  font-size: 0.83rem;
+  font-size: 0.875rem;
   line-height: 1.6;
   box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
 }
@@ -1151,7 +1151,7 @@ textarea {
   border-radius: 8px;
   background: transparent;
   color: var(--text);
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
   text-align: left;
   cursor: pointer;
 }
@@ -1204,7 +1204,7 @@ textarea {
 
 .dialog__label {
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
 }
 
 .dialog__value {
@@ -1239,7 +1239,7 @@ textarea {
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
-  font-size: 0.82rem;
+  font-size: 0.875rem;
 }
 .tag-chip__remove {
   border: 0;
@@ -1247,7 +1247,7 @@ textarea {
   color: var(--text-muted);
   cursor: pointer;
   padding: 0 2px;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
   line-height: 1;
 }
 .tag-chip__remove:hover {
@@ -1256,7 +1256,7 @@ textarea {
 .dialog__note {
   margin: 0 0 8px;
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
@@ -1264,7 +1264,7 @@ textarea {
 .dialog__count {
   margin: 4px 0 0;
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
   text-align: right;
 }
 
