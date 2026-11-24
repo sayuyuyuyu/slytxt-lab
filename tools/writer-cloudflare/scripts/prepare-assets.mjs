@@ -7,6 +7,7 @@
  * - editor.js / editor.css は ui/editor.js（Milkdown Crepe）を esbuild で
  *   バンドルして作る。このディレクトリで `pnpm install` 済みであることが前提。
  * - markdown.mjs は src/markdown.mjs をコピーする（ブラウザ側のプレビュー用）。
+ * - draft-merge.mjs は src/draft-merge.mjs をコピーする（端末コピーの突き合わせ用）。
  * - favicon.svg / favicon.ico / apple-touch-icon.png はサイト本体の public/ から
  *   コピーし、本体と同じ意匠のアイコンを writer でも出す。
  * - theme.css はサイト本体の src/styles/global.css から :root の変数ブロック
@@ -29,6 +30,8 @@ await copyFile(path.join(toolRoot, "ui", "index.html"), path.join(publicDir, "in
 await copyFile(path.join(toolRoot, "ui", "style.css"), path.join(publicDir, "style.css"));
 await copyFile(path.join(toolRoot, "ui", "app.js"), path.join(publicDir, "app.js"));
 await copyFile(path.join(toolRoot, "src", "markdown.mjs"), path.join(publicDir, "markdown.mjs"));
+// 端末コピーとサーバーの突き合わせ（純関数）。ui/app.js が import する。
+await copyFile(path.join(toolRoot, "src", "draft-merge.mjs"), path.join(publicDir, "draft-merge.mjs"));
 await copyFile(path.join(repoRoot, "public", "favicon.svg"), path.join(publicDir, "favicon.svg"));
 await copyFile(path.join(repoRoot, "public", "favicon.ico"), path.join(publicDir, "favicon.ico"));
 await copyFile(

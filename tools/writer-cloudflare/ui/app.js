@@ -1,4 +1,11 @@
 import {
+  isEmptyPayload,
+  payloadOf,
+  resolveCoverForSave,
+  resolveLocalRestore,
+  samePayload
+} from "/draft-merge.mjs";
+import {
   plainText,
   renderPreviewMarkdown,
   textLength,
@@ -300,22 +307,6 @@ function removeLocal(id) {
   }
 }
 
-function samePayload(a, b) {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-/** サーバーから読んだ下書きを、collect() と同じ形の payload にする。 */
-function payloadOf(draft) {
-  return {
-    category: draft.category,
-    title: draft.title && draft.title !== "無題" ? draft.title.trim() : "",
-    tags: [...(draft.tags ?? [])],
-    cover: draft.cover ?? "",
-    description: String(draft.description ?? "").trim(),
-    body: draft.body ?? ""
-  };
-}
-
 /** 現在の下書きについて、保存状態の表示を実態に合わせ直す。 */
 function refreshSaveStatus() {
   if (!state.current) {
@@ -380,12 +371,11 @@ async function flushSave({ keepalive = false, awaitPosted = true } = {}) {
   const payload = collect();
 
   // 見出し画像を外す操作をしていないのに空なら、サーバーに残っている値を送る。
-  // 読み込み直しなどでクライアント側だけカバーを失ったときに、PUT で
-  // サーバー側まで消さないため。
-  if (!coverRemoved && !payload.cover) {
-    const known = save.lastSent?.payload?.cover || state.current?.cover || "";
-    if (known) payload.cover = known;
-  }
+  payload.cover = resolveCoverForSave({
+    cover: payload.cover,
+    coverRemoved,
+    knownCover: save.lastSent?.payload?.cover || state.current?.cover || ""
+  });
 
   // 前回サーバーへ送った内容と同じなら送らない。
   // ローカルコピーも同じ内容なら片付けて、同期済みの表示に戻す。
@@ -883,35 +873,10 @@ function clearEditor() {
  *   負けたローカルコピーは退避キーへ残す（黙って消さない）。
  * サーバーと同内容のローカルコピーは、片付けてサーバー版をそのまま返す。
  */
-/** タイトル・本文・カバー・タグ・説明がすべて空の端末コピーか。 */
-function isEmptyPayload(payload) {
-  if (!payload) return true;
-  return !(
-    String(payload.title ?? "").trim() ||
-    String(payload.body ?? "").trim() ||
-    String(payload.cover ?? "").trim() ||
-    String(payload.description ?? "").trim() ||
-    (payload.tags ?? []).length
-  );
-}
-
 function restoreLocalDraft(serverDraft) {
   const local = readLocal(serverDraft.id);
-  if (!local) return serverDraft;
-  // 中身のある下書きに対して、空の端末コピーを復元しない。同期の取りこぼしで
-  // 空の編集画面になるのを防ぐ（#788）。
-  if (isEmptyPayload(local.payload) && !isEmptyPayload(payloadOf(serverDraft))) {
-    removeLocal(serverDraft.id);
-    return serverDraft;
-  }
-  if (samePayload(local.payload, payloadOf(serverDraft))) {
-    removeLocal(serverDraft.id);
-    return serverDraft;
-  }
-  const localIsNewer =
-    local.base === serverDraft.updated ||
-    String(local.savedAt ?? "") > String(serverDraft.updated ?? "");
-  if (!localIsNewer) {
+  const decision = resolveLocalRestore({ serverDraft, local });
+  if (decision.backupLocal && local) {
     try {
       localStorage.setItem(
         `${LOCAL_BACKUP_PREFIX}${serverDraft.id}`,
@@ -920,10 +885,12 @@ function restoreLocalDraft(serverDraft) {
     } catch {
       // 退避できなくても、サーバー側の表示は進める。
     }
-    removeLocal(serverDraft.id);
-    toast("サーバー側に新しい内容があるため、そちらを表示しました。");
-    return serverDraft;
   }
+  if (decision.removeLocal) removeLocal(serverDraft.id);
+  if (decision.backupLocal) {
+    toast("サーバー側に新しい内容があるため、そちらを表示しました。");
+  }
+  if (!decision.useLocal || !local) return serverDraft;
   return {
     ...serverDraft,
     category: local.payload.category,
