@@ -1,19 +1,22 @@
 import { App, MarkdownView, Notice, Plugin, TFile, requestUrl, type Editor } from "obsidian";
 import { EmbedModal } from "./src/embed-modal";
-import { PublishModal, type PublishScreenValues } from "./src/publish-modal";
 import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/github";
 import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
 import { MAX_COVER_BYTES, MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
 import { extractExtras } from "./src/lib/frontmatter";
-import {
-  deriveDescription,
-  firstImageSource,
-  preparePublish,
-  splitHeadingTitle
-} from "./src/lib/publish-plan";
+import { firstImageSource, preparePublish } from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
 import { DEFAULT_SETTINGS, SlytxtSettingTab, type SlytxtSettings } from "./src/settings";
+
+/** ノートの frontmatter にある公開の項目。ノート画面のプロパティ欄で編集する。 */
+type NoteValues = {
+  category: PublishCategory;
+  title: string;
+  tags: string[];
+  description: string;
+  cover: string;
+};
 
 export default class SlytxtPublishPlugin extends Plugin {
   settings: SlytxtSettings = DEFAULT_SETTINGS;
@@ -24,11 +27,11 @@ export default class SlytxtPublishPlugin extends Plugin {
 
     this.addCommand({
       id: "publish-pull-request",
-      name: "公開（項目の確認・編集）",
+      name: "PR を作る（公開）",
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
         if (!file || file.extension !== "md") return false;
-        if (!checking) void this.openPublishScreen(file);
+        if (!checking) void this.publish(file);
         return true;
       }
     });
@@ -74,13 +77,13 @@ export default class SlytxtPublishPlugin extends Plugin {
       }
     });
 
-    this.addRibbonIcon("send", "公開（項目の確認・編集）", () => {
+    this.addRibbonIcon("send", "PR を作る（公開）", () => {
       const file = this.app.workspace.getActiveFile();
       if (!file || file.extension !== "md") {
         new Notice("Markdown ファイルを開いてから押してください。");
         return;
       }
-      void this.openPublishScreen(file);
+      void this.publish(file);
     });
 
     this.addRibbonIcon("image", "画像をアップロードして挿入", () => {
@@ -91,6 +94,17 @@ export default class SlytxtPublishPlugin extends Plugin {
       }
       void this.insertUploadedImage(view.editor);
     });
+
+    // ノートを開いたら、公開の項目がノート上部のプロパティに最初から
+    // 出ているようにする。コマンドを呼ばなくても、その画面の中で
+    // 見て直せることが目的（2026-11-24 本人の指示）。
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        if (file && file.extension === "md") {
+          void this.seedFrontmatterIfNeeded(file);
+        }
+      })
+    );
 
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
@@ -118,10 +132,10 @@ export default class SlytxtPublishPlugin extends Plugin {
         if (!(file instanceof TFile) || file.extension !== "md") return;
         menu.addItem((item) => {
           item
-            .setTitle("公開する（項目の確認・編集）")
+            .setTitle("PR を作る（公開）")
             .setIcon("send")
             .onClick(() => {
-              void this.openPublishScreen(file);
+              void this.publish(file);
             });
         });
         menu.addItem((item) => {
@@ -146,7 +160,7 @@ export default class SlytxtPublishPlugin extends Plugin {
   }
 
   /** 公開の項目（タイトル・カテゴリ・タグ・説明・カバー）を frontmatter に用意し、ノート上部のプロパティ欄で直接編集できるようにする。 */
-  private async seedFrontmatter(file: TFile): Promise<void> {
+  private async seedFrontmatter(file: TFile, options: { silent?: boolean } = {}): Promise<void> {
     await this.app.fileManager.processFrontMatter(file, (front) => {
       if (front.title === undefined) front.title = "";
       if (front.category === undefined) front.category = this.settings.defaultCategory;
@@ -154,7 +168,21 @@ export default class SlytxtPublishPlugin extends Plugin {
       if (front.description === undefined) front.description = "";
       if (front.cover === undefined) front.cover = "";
     });
-    new Notice("公開の項目をノート上部のプロパティに追加しました。");
+    if (!options.silent) {
+      new Notice("公開の項目をノート上部のプロパティに追加しました。");
+    }
+  }
+
+  /** ノートを開いたとき用：カテゴリがまだ無いノートにだけ、項目を静かに用意する。 */
+  private async seedFrontmatterIfNeeded(file: TFile): Promise<void> {
+    try {
+      const raw = await this.app.vault.read(file);
+      const frontmatter = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
+      if (/^category\s*:/m.test(frontmatter)) return;
+      await this.seedFrontmatter(file, { silent: true });
+    } catch {
+      // 用意に失敗してもノート自体は開ける。公開時に項目は自動で補われる。
+    }
   }
 
   /** 画像を選ばせてアップロードし、カーソル位置へ Markdown 画像として差し込む。 */
@@ -193,8 +221,8 @@ export default class SlytxtPublishPlugin extends Plugin {
     }).open();
   }
 
-  /** 現在の frontmatter から公開画面の初期値を決める。 */
-  private currentValues(file: TFile): PublishScreenValues {
+  /** 現在の frontmatter から公開の項目を読む。 */
+  private currentValues(file: TFile): NoteValues {
     const cache = this.app.metadataCache.getFileCache(file);
     const front = cache?.frontmatter ?? {};
     const tags = Array.isArray(front.tags)
@@ -210,51 +238,6 @@ export default class SlytxtPublishPlugin extends Plugin {
       description: String(front.description ?? ""),
       cover: String(front.cover ?? "")
     };
-  }
-
-  /**
-   * 公開画面を開く。編集はすべてこの画面で完結する。
-   * 初期値は本文から補う：タイトルは最初の見出し、説明は書き出し、
-   * カバーは本文の最初の画像（URL の場合）。
-   */
-  private async openPublishScreen(file: TFile): Promise<void> {
-    const values = this.currentValues(file);
-    const raw = await this.app.vault.read(file);
-    const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
-    if (!values.title && values.category !== "misc") {
-      const heading = splitHeadingTitle(bodyText);
-      if (heading) values.title = heading.heading;
-    }
-    if (!values.description) {
-      values.description = deriveDescription(bodyText);
-    }
-    const firstImage = firstImageSource(bodyText);
-    const autoCoverUrl =
-      firstImage && /^https?:\/\//.test(firstImage) ? firstImage : undefined;
-    new PublishModal(this.app, values, {
-      bodyText,
-      ...(autoCoverUrl ? { autoCoverUrl } : {}),
-      onUploadCover: async () => {
-        try {
-          return await this.pickAndUploadCover();
-        } catch (error) {
-          new Notice(error instanceof Error ? error.message : String(error), 12000);
-          return "";
-        }
-      },
-      onPublish: async (screenValues) => {
-        try {
-          await this.publishFromScreen(file, screenValues, bodyText);
-        } catch (error) {
-          const message =
-            error instanceof PublishError || error instanceof Error
-              ? error.message
-              : String(error);
-          new Notice(`公開に失敗しました: ${message}`, 12000);
-          throw error;
-        }
-      }
-    }).open();
   }
 
   /** 画像を選ばせてアップロードし、公開 URL を返す（frontmatter にはまだ書かない）。 */
@@ -313,18 +296,21 @@ export default class SlytxtPublishPlugin extends Plugin {
     }
   }
 
-  /** 公開画面で確定した値で PR を作り、使った値をノートの frontmatter にも残す。 */
-  private async publishFromScreen(
-    file: TFile,
-    values: PublishScreenValues,
-    bodyText: string
-  ): Promise<void> {
+  /**
+   * ノートの frontmatter と本文から PR を作る。画面遷移はしない。
+   * 未指定の項目は本文から補う：タイトルは最初の見出し、カバーは
+   * 本文の最初の画像、説明は書き出し。使った値はノートにも残す。
+   */
+  private async publish(file: TFile): Promise<void> {
     if (!this.settings.token) {
-      throw new PublishError("設定で GitHub トークンを登録してください。");
+      new Notice("設定で GitHub トークンを登録してください。");
+      return;
     }
+    const values = this.currentValues(file);
+    const raw = await this.app.vault.read(file);
+    const frontmatterMatch = raw.match(/^---\n([\s\S]*?)\n---/);
+    const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
     const cover = values.cover || (await this.resolveAutoCover(file, bodyText));
-    const body = await this.app.vault.read(file);
-    const frontmatterMatch = body.match(/^---\n([\s\S]*?)\n---/);
     const cache = this.app.metadataCache.getFileCache(file);
     const payload = preparePublish(
       {
@@ -343,25 +329,33 @@ export default class SlytxtPublishPlugin extends Plugin {
     );
 
     new Notice("PR を作成しています…");
-    const result = await publishNote(this.request(), this.settings, {
-      category: payload.category,
-      slug: payload.slug,
-      title: payload.title,
-      content: payload.content
-    });
-    await this.app.fileManager.processFrontMatter(file, (front) => {
-      front.title = values.title;
-      front.description = payload.frontmatter.description;
-      front.tags = values.tags;
-      front.cover = cover;
-      front.category = values.category;
-    });
-    new Notice(
-      result.autoMerge
-        ? `PR #${result.prNumber} を作成しました（CI が通れば自動でマージされ、公開されます）: ${result.prUrl}`
-        : `PR #${result.prNumber} を作成しました: ${result.prUrl}`,
-      12000
-    );
+    try {
+      const result = await publishNote(this.request(), this.settings, {
+        category: payload.category,
+        slug: payload.slug,
+        title: payload.title,
+        content: payload.content
+      });
+      await this.app.fileManager.processFrontMatter(file, (front) => {
+        front.title = payload.frontmatter.title;
+        front.description = payload.frontmatter.description;
+        front.tags = values.tags;
+        front.cover = cover;
+        front.category = values.category;
+      });
+      new Notice(
+        result.autoMerge
+          ? `PR #${result.prNumber} を作成しました（CI が通れば自動でマージされ、公開されます）: ${result.prUrl}`
+          : `PR #${result.prNumber} を作成しました: ${result.prUrl}`,
+        12000
+      );
+    } catch (error) {
+      const message =
+        error instanceof PublishError || error instanceof Error
+          ? error.message
+          : String(error);
+      new Notice(`公開に失敗しました: ${message}`, 12000);
+    }
   }
 
   /** Obsidian の requestUrl を、テスト可能な GitHubRequest の形に合わせる。 */
