@@ -591,7 +591,9 @@ textarea {
   border: 0;
   background: transparent;
   color: var(--text);
-  font: 500 clamp(1.8rem, 4vw, 2.8rem)/1.4 var(--font-heading);
+  /* 公開側の .page-title と同じスケール（DADS の Std-36 相当）。 */
+  font: 500 clamp(var(--text-3xl, 1.875rem), 4vw, var(--text-4xl, 2.25rem))/1.4
+    var(--font-heading);
   /* 高さは app.js が内容に合わせて決める。手動リサイズと内部
      スクロールバーは出さない。 */
   overflow: hidden;
