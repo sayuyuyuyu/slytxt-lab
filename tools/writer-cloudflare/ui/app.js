@@ -598,7 +598,7 @@ function renderPublished() {
     item.append(select);
 
     if (article.url) {
-      // misc（なんか）は仕様上タイトルを持たないため、投稿文にも入れない。
+      // misc（Journal）は仕様上タイトルを持たないため、投稿文にも入れない。
       // それ以外はタイトルが空でも、見出しと同じく本文の書き出しを
       // 投稿文のタイトルに使う（公開完了画面の挙動と揃える）。
       const shareTitle = article.category === "misc" ? "" : displayTitle(article, "");
@@ -1014,7 +1014,7 @@ function onInput() {
 }
 
 /*
- * カテゴリで変わる編集画面の出し分け。misc（なんか）はタイトル不要
+ * カテゴリで変わる編集画面の出し分け。misc（Journal）はタイトル不要
  * なのでタイトル欄を出さない（値は下書きに残るが、記事に戻すまで
  * 編集できない）。他のカテゴリではタイトル欄を通常どおり出す。
  */
@@ -2255,7 +2255,7 @@ async function removeDraft(id) {
 
 const FALLBACK_META = {
   categories: ["tech", "misc", "comic", "game", "anime"],
-  categoryLabels: { tech: "Tech", misc: "なんか", comic: "Comic", game: "Game", anime: "Anime" },
+  categoryLabels: { tech: "Tech", misc: "Journal", comic: "Comic", game: "Game", anime: "Anime" },
   draftsDir: "Cloudflare KV",
   tags: []
 };

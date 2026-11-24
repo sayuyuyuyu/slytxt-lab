@@ -37,7 +37,7 @@ export type BarController = {
 /** チップに出す区分の表示名。サイトのナビと同じ言葉にする。 */
 const CATEGORY_LABELS: Record<PublishCategory, string> = {
   tech: "Tech",
-  misc: "なんか",
+  misc: "Journal",
   comic: "Comic",
   game: "Game",
   anime: "Anime"
