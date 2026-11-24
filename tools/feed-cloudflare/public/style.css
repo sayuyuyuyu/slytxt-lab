@@ -2,15 +2,16 @@
    説明文は置かず、操作はアイコンと状態の見た目で表す。 */
 :root {
   color-scheme: dark;
-  --bg: #05070f;
-  --surface: #0b1220;
-  --border: #1b2942;
-  --border-strong: #2f4a72;
-  --text: #d9e6f7;
-  --text-muted: #7d8bab;
-  --accent: #4cc9f0;
-  --on-accent: #04121c;
-  --danger: #ff7b8a;
+  /* サイト本体のパレット（global.css の --c-*）と同じ役割の色。 */
+  --bg: #1f2d40;
+  --surface: #2c3b59;
+  --border: #515d73;
+  --border-strong: #515d73;
+  --text: #f2f2f2;
+  --text-muted: #f2d7b6;
+  --accent: #11d9d9;
+  --on-accent: #1f2d40;
+  --danger: #f2c5bb;
 }
 * {
   box-sizing: border-box;
