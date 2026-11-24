@@ -19,6 +19,7 @@ test("site: 記事ページで Spotify 埋め込みが描画される", async ({
 });
 
 test("site: メニューが開閉でき、リンクで遷移できる（iOS のフォーカス喪失でも閉じる）", async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 0) >= 900, "PC 幅はハンバーガーを使わない");
   await page.goto(`${SITE_URL}/`);
   const button = page.locator("[data-menu-button]");
   const menu = page.locator("[data-menu]");
@@ -49,6 +50,7 @@ test("site: メニューが開閉でき、リンクで遷移できる（iOS の�
 });
 
 test("site: メニューは Esc で閉じてボタンへフォーカスが戻る", async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 0) >= 900, "PC 幅はハンバーガーを使わない");
   await page.goto(`${SITE_URL}/`);
   const button = page.locator("[data-menu-button]");
   await button.click();
@@ -56,4 +58,14 @@ test("site: メニューは Esc で閉じてボタンへフォーカスが戻る
   await page.keyboard.press("Escape");
   await expect(button).toHaveAttribute("aria-expanded", "false");
   await expect(button).toBeFocused();
+});
+
+test("site: PC 幅では主要ナビがヘッダーに並ぶ", async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 0) < 900, "モバイル幅はハンバーガー");
+  await page.goto(`${SITE_URL}/`);
+  const nav = page.locator('#site-menu nav[aria-label="Main"]');
+  await expect(nav).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Articles" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Feed" })).toBeVisible();
+  await expect(page.locator("[data-menu-button]")).toBeHidden();
 });

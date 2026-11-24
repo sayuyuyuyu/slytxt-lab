@@ -402,6 +402,99 @@ samp,
 .site-menu a[data-current-section="true"] {
   color: var(--accent-strong);
 }
+
+/* PC 幅ではハンバーガーをやめ、主要ナビをヘッダーに並べる（#853）。
+   子区分（Articles のカテゴリ）はホバー／フォーカスで出す。 */
+@media (min-width: 900px) {
+  .menu-button {
+    display: none;
+  }
+  .site-header__inner {
+    gap: 24px;
+    justify-content: flex-start;
+  }
+  .site-header__actions {
+    order: 3;
+    margin-left: auto;
+  }
+  .site-menu {
+    order: 2;
+  }
+  .site-menu,
+  .site-menu[hidden] {
+    position: static;
+    display: block;
+    flex: 1 1 auto;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 0;
+  }
+  .site-menu > nav {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .site-menu__group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .site-menu__group + .site-menu__group {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .site-menu__label {
+    display: none;
+  }
+  .site-menu ul {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .site-menu a {
+    padding: 6px 8px;
+    border: 0;
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+  .site-menu a::before,
+  .site-menu a:hover::before {
+    content: none;
+  }
+  .site-menu > nav > .site-menu__group > ul > li {
+    position: relative;
+  }
+  .site-menu ul.site-menu__sub {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 11em;
+    margin: 0;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+    box-shadow: 0 12px 24px -18px var(--shadow);
+    z-index: 60;
+  }
+  .site-menu__sub li {
+    display: block;
+  }
+  .site-menu__sub a {
+    padding: 6px 8px;
+    color: var(--text-muted);
+  }
+  .site-menu li:hover > ul.site-menu__sub,
+  .site-menu li:focus-within > ul.site-menu__sub {
+    display: block;
+  }
+}
 .link-button {
   min-height: 44px;
   display: inline-flex;
