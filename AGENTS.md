@@ -23,12 +23,12 @@
 
 # 検証
 
-- UI またはコンテンツを変更したら、可能な範囲で `pnpm check` と `pnpm run verify` を実行する。
+- UI またはコンテンツを変更したら、可能な範囲で `pnpm check` と `pnpm run verify` を実行する。pnpm が無い環境では `./scripts/verify.sh`（同じ検証を node_modules の実行ファイルで回す）。
 - Cloudflare Pages の Pull Request プレビューが利用できる場合は、主要ページの表示も確認する。
 
 # Issue ループ
 
 - キューは `muse-overnight` ラベルの Issue。1 Issue = 1 PR。
-- 検証は `pnpm verify`。UI を変えたら `pnpm test:e2e` も実行する。
-- `ci` が通ったら squash merge してよい。手順は `~/.agents/skills/issue-loop/SKILL.md` に従う。
+- 検証は `pnpm verify`（pnpm が無ければ `./scripts/verify.sh`）。UI を変えたら `pnpm test:e2e` も実行する。CI でも `e2e` ジョブが同じものを回す。
+- `ci` が通ったら `./scripts/merge-pr.sh <PR番号>` で squash merge する（main の取り込み直しと ci 待ちを含む）。`Workers Builds: slytxt-feed` は常に赤だが必須ではない。手順の詳細は `~/.agents/skills/issue-loop/SKILL.md` に従う。
 - 記事本文を書くときは `~/.agents/skills/slytxt-writing/SKILL.md` に従う。

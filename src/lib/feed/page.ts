@@ -9,7 +9,7 @@
  * 「もっと見る」のリンクで辿れる。
  */
 import { FEED_PAGE_SIZE, HOME_FEED_SIZE, type FeedEnv } from "./types.ts";
-import { readFeedPage } from "./store.ts";
+import { decodeFeedCursor, readFeedPage } from "./store.ts";
 import { FEED_END, FEED_START, injectFeed, renderFeedItems } from "./render.ts";
 
 export type PagesContext<Env> = {
@@ -24,8 +24,9 @@ export type PagesFunction<Env> = (context: PagesContext<Env>) => Response | Prom
 const SHELL_PATH = "/feed/index.html";
 const HOME_SHELL_PATH = "/index.html";
 
-/** ?before= の値。ISO 8601（UTC）だけを受け付ける。 */
-const CURSOR = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+/** ?before= の形が違うときの案内。 */
+const CURSOR_HINT =
+  "before はページ送りのカーソル（例 2026-11-16T10:00:00.000Z~01JC0000000000000000000001）で指定してください。";
 
 function html(body: string, status = 200, cache = "public, max-age=60"): Response {
   return new Response(body, {
@@ -47,15 +48,17 @@ function text(body: string, status: number): Response {
   });
 }
 
-export function beforeFromRequest(request: Request): { before: string | null } | { error: string } {
+export function beforeFromRequest(
+  request: Request
+): { before: string | null; beforeId: string | null } | { error: string } {
   const raw = new URL(request.url).searchParams.get("before");
-  if (raw === null) return { before: null };
-  if (!CURSOR.test(raw)) return { error: "before は ISO 8601（例 2026-11-16T10:00:00.000Z）で指定してください。" };
-  return { before: raw };
+  const cursor = decodeFeedCursor(raw);
+  if (cursor === null) return { error: CURSOR_HINT };
+  return cursor;
 }
 
-export function feedHref(before: string): string {
-  return `/feed/?before=${encodeURIComponent(before)}`;
+export function feedHref(cursor: string): string {
+  return `/feed/?before=${encodeURIComponent(cursor)}`;
 }
 
 /** ビルド済みの外枠を ASSETS から読む。無ければ理由を返す。 */
@@ -75,6 +78,17 @@ async function readShell(
   return { shell: await shellResponse.text() };
 }
 
+/** トップページのフィード区画の目印。0件のときは区画ごと取り除く。 */
+const HOME_SECTION_START = "<!--feed:section:start-->";
+const HOME_SECTION_END = "<!--feed:section:end-->";
+
+function withoutHomeSection(shell: string): string {
+  const start = shell.indexOf(HOME_SECTION_START);
+  const end = shell.indexOf(HOME_SECTION_END);
+  if (start < 0 || end < start) return shell;
+  return shell.slice(0, start) + shell.slice(end + HOME_SECTION_END.length);
+}
+
 function missingMarkers(label: string): Response {
   return text(`${label}の外枠に差し込み位置（${FEED_START} … ${FEED_END}）がありません。`, 500);
 }
@@ -87,6 +101,7 @@ export async function handleFeedPage(context: PagesContext<FeedEnv>): Promise<Re
   try {
     feed = await readFeedPage(context.env.FEED, {
       before: cursor.before,
+      beforeId: cursor.beforeId,
       limit: FEED_PAGE_SIZE
     });
   } catch (error) {
@@ -114,10 +129,11 @@ export async function handleFeedPage(context: PagesContext<FeedEnv>): Promise<Re
  * フィードの枠にだけ状態を出す。
  */
 export async function handleHomeFeed(context: PagesContext<FeedEnv>): Promise<Response> {
-  let items: string;
+  // null は「投稿が0件」。区画ごと出さない（Articles / Projects の0件時と同じ扱い）。
+  let items: string | null;
   try {
     const { posts } = await readFeedPage(context.env.FEED, { limit: HOME_FEED_SIZE });
-    items = renderFeedItems(posts);
+    items = posts.length === 0 ? null : renderFeedItems(posts);
   } catch (error) {
     console.error("feed: トップページの D1 読み取りに失敗しました", error);
     items = `<p class="feed-empty">フィードを読み込めませんでした。</p>`;
@@ -125,6 +141,7 @@ export async function handleHomeFeed(context: PagesContext<FeedEnv>): Promise<Re
 
   const result = await readShell(context, HOME_SHELL_PATH, "トップページ");
   if ("error" in result) return result.error;
+  if (items === null) return html(withoutHomeSection(result.shell));
   const page = injectFeed(result.shell, items);
   if (page === null) return missingMarkers("トップページ");
   return html(page);

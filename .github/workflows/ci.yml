@@ -27,7 +27,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@v6
         with:
           version: 10.14.0
           run_install: false
@@ -70,3 +70,49 @@ jobs:
 
       - name: Check generated links
         run: pnpm run check:build
+
+  # 主要フローを実ブラウザで確認する。writer は wrangler dev（ローカル KV）で
+  # 起動するため、サイト本体より重い。UI の競合（#771 / #788）はここで拾う。
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.14.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # writer はサブプロジェクト。public/ の生成に esbuild を使う。
+      - name: Install writer dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: tools/writer-cloudflare
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e
+        run: pnpm test:e2e
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

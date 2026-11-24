@@ -11,9 +11,15 @@ import {
 import {
   deriveTitle,
   documentBody,
+  extractExtras,
   serializeFrontmatter
 } from "../tools/obsidian-slytxt/src/lib/frontmatter.ts";
-import { deriveDescription, preparePublish } from "../tools/obsidian-slytxt/src/lib/publish-plan.ts";
+import {
+  deriveDescription,
+  firstImageSource,
+  preparePublish,
+  splitHeadingTitle
+} from "../tools/obsidian-slytxt/src/lib/publish-plan.ts";
 import { PublishError, publishNote, toBase64 } from "../tools/obsidian-slytxt/src/lib/github.ts";
 import {
   MediaError,
@@ -70,6 +76,72 @@ test("obsidian: frontmatter は固定順で書き、必要な値だけ引用す�
   ]);
 });
 
+test("obsidian: 再公開のときだけ updated が付き、ノート側の値も落とさない", () => {
+  const first = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文" },
+    "2026-11-24"
+  );
+  assert.equal(first.frontmatter.published, "2026-11-24");
+  assert.equal(first.frontmatter.updated, undefined);
+
+  const again = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", published: "2026-11-01" },
+    "2026-11-24"
+  );
+  assert.equal(again.frontmatter.published, "2026-11-01");
+  assert.equal(again.frontmatter.updated, "2026-11-24");
+
+  const sameDay = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", published: "2026-11-24" },
+    "2026-11-24"
+  );
+  assert.equal(sameDay.frontmatter.updated, undefined);
+
+  const kept = preparePublish(
+    {
+      name: "note",
+      category: "tech",
+      title: "題名",
+      body: "本文",
+      published: "2026-11-01",
+      updated: "2026-11-20"
+    },
+    "2026-11-24"
+  );
+  assert.equal(kept.frontmatter.updated, "2026-11-24");
+
+  const onlyGiven = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", updated: "2026-11-20" },
+    "2026-11-24"
+  );
+  assert.equal(onlyGiven.frontmatter.updated, "2026-11-20");
+});
+
+test("obsidian: 管理外の frontmatter キーは公開ファイルへそのまま残る", () => {
+  const raw = [
+    "title: 題名",
+    "adult: true",
+    "memo: あとで読む",
+    "tags: [a, b]",
+    "aliases:",
+    "  - one",
+    "published: 2026-11-01",
+    "category: tech"
+  ].join("\n");
+  const extras = extractExtras(raw);
+  assert.deepEqual(extras, ["adult: true", "memo: あとで読む", "aliases:", "  - one"]);
+
+  const payload = preparePublish(
+    { name: "note", category: "tech", title: "題名", body: "本文", extras },
+    "2026-11-24"
+  );
+  assert.match(payload.content, /^adult: true$/m);
+  assert.match(payload.content, /^memo: あとで読む$/m);
+  // 管理するキーはプラグインの値だけを1回書く。
+  assert.equal(payload.content.match(/^title:/gm).length, 1);
+  assert.equal(payload.content.match(/^published:/gm).length, 1);
+});
+
 test("obsidian: タイトル無しは空文字として明示し、タグは10件まで", () => {
   const yaml = serializeFrontmatter({
     title: "",
@@ -98,6 +170,16 @@ test("obsidian: タイトルは記事は本文から補い、misc は空にす�
   assert.equal(deriveTitle("comic", "", "## 見出しの行\n次の行"), "見出しの行");
   assert.equal(deriveTitle("misc", "", "メモの書き出し"), "");
   assert.equal(deriveTitle("tech", "無題", ""), "無題");
+  // 先頭が埋め込み URL 行・画像だけの行でも、それをタイトルにしない（#774）。
+  assert.equal(
+    deriveTitle("tech", "", "https://www.youtube.com/watch?v=abcdefghijk\n\n本文です。"),
+    "本文です。"
+  );
+  assert.equal(
+    deriveTitle("comic", "", "![](https://media.slytxt.dev/abc.jpg)\n\n漫画の説明。"),
+    "漫画の説明。"
+  );
+  assert.equal(deriveTitle("tech", "", "https://www.youtube.com/watch?v=abcdefghijk"), "無題");
   assert.equal([...deriveTitle("tech", "", "あ".repeat(100))].length, 40);
 });
 
@@ -387,4 +469,78 @@ test("obsidian: 埋め込み URL の種別判定はサイト側と揃える", ()
   assert.equal(classifyEmbedUrl(""), null);
   assert.equal(embedLabel({ type: "youtube", url: "" }), "YouTube の埋め込み");
   assert.equal(embedInsertion("https://example.com"), "\n\nhttps://example.com\n\n");
+});
+
+/* ---- 見出しタイトル・自動カバー・説明文（2026-11-24 本人の指摘） ---- */
+
+test("obsidian: 最初の見出しをタイトルに使い、本文からは除く", () => {
+  const payload = preparePublish(
+    {
+      name: "ジャンプ感想",
+      category: "comic",
+      body: "# ジャンプ感想（2026年51・52号）\n\n先週書くの忘れたので2週分\n\n## あかね\n感想。"
+    },
+    "2026-11-24"
+  );
+  assert.equal(payload.title, "ジャンプ感想（2026年51・52号）");
+  assert.ok(!payload.content.includes("# ジャンプ感想"), "見出しが本文に残っている");
+  assert.ok(payload.content.includes("## あかね"));
+  assert.ok(payload.frontmatter.description.startsWith("先週書くの忘れたので2週分"));
+});
+
+test("obsidian: タイトル指定が見出しと一致したら見出しを本文から除く", () => {
+  const payload = preparePublish(
+    {
+      name: "メモ",
+      category: "tech",
+      title: "題名",
+      body: "# 題名\n\n本文です。"
+    },
+    "2026-11-24"
+  );
+  assert.equal(payload.title, "題名");
+  assert.ok(!payload.content.includes("# 題名"));
+});
+
+test("obsidian: misc は見出しをタイトルにせず本文にも残す", () => {
+  const payload = preparePublish(
+    { name: "メモ", category: "misc", body: "# 見出しメモ\n\n本文です。" },
+    "2026-11-24"
+  );
+  assert.equal(payload.title, "");
+  assert.ok(payload.content.includes("# 見出しメモ"));
+});
+
+test("obsidian: splitHeadingTitle は H1 のときだけ切り出す", () => {
+  assert.deepEqual(splitHeadingTitle("# 題\n\n本文"), { heading: "題", body: "本文" });
+  assert.equal(splitHeadingTitle("## 小見出し\n本文"), null);
+  assert.equal(splitHeadingTitle("書き出し\n# 後ろの見出し"), null);
+  assert.equal(splitHeadingTitle(""), null);
+});
+
+test("obsidian: firstImageSource は最初の画像を記法の順で返す", () => {
+  assert.equal(
+    firstImageSource("文\n\n![](https://media.slytxt.dev/a.jpg)\n"),
+    "https://media.slytxt.dev/a.jpg"
+  );
+  assert.equal(firstImageSource("![[Pasted image 2026.png]]\n\n文"), "Pasted image 2026.png");
+  assert.equal(
+    firstImageSource("![[first.png]]\n![](https://example.com/second.jpg)"),
+    "first.png"
+  );
+  assert.equal(firstImageSource("画像なし"), null);
+});
+
+test("obsidian: 説明文は画像埋め込み行を飛ばし、記法も残さない（#797）", () => {
+  assert.equal(
+    deriveDescription("![[Pasted image 2026.png]]\n\n本文の書き出しです。"),
+    "本文の書き出しです。"
+  );
+  assert.equal(
+    deriveDescription("![](https://media.slytxt.dev/a.jpg)\n本文です。"),
+    "本文です。"
+  );
+  const mixed = deriveDescription("前文 ![](https://media.slytxt.dev/a.jpg) 後文です。");
+  assert.ok(!mixed.includes("media.slytxt.dev"), "画像 URL が説明文に混ざっている");
+  assert.ok(mixed.includes("前文"));
 });

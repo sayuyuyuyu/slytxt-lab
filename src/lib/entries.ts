@@ -44,6 +44,17 @@ export function getEntryDate(entry: SiteEntry): Date {
   return entry.collection === "projects" ? projectDate(entry) : articleDate(entry);
 }
 
+/**
+ * 記事と Projects を混ぜて日付の新しい順に並べる。同じ日付はパスで固定する。
+ * タグ詳細のように区分をまたぐ一覧で、区分の塊ではなく日付を基準にするため（#698）。
+ */
+export function sortEntries<T extends SiteEntry>(entries: T[]): T[] {
+  return [...entries].sort((a, b) => {
+    const diff = getEntryDate(b).getTime() - getEntryDate(a).getTime();
+    return diff !== 0 ? diff : a.id.localeCompare(b.id);
+  });
+}
+
 /** getEntryDate が返す日付の意味。更新日がある場合は Updated、無ければ記事・メモは Published、Projects は Started。 */
 export function getEntryDateLabel(entry: SiteEntry): string {
   if (entry.data.updated) return "Updated";

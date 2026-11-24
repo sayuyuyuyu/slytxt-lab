@@ -368,6 +368,17 @@ export function createDraftStore(kv) {
     return sortSummaries(drafts);
   }
 
+  /**
+   * 空の cover は「外した」と明示されたときだけ消す。
+   * 読み込み直しなどでクライアント側だけカバーを失ったまま PUT されても、
+   * サーバー側の値を消さないため（#814）。
+   */
+  function resolveCover(patch, base) {
+    if (typeof patch.cover !== "string") return base.cover;
+    if (patch.cover === "" && base.cover && patch.coverRemoved !== true) return base.cover;
+    return patch.cover;
+  }
+
   async function writeDraft(id, patch) {
     const current = await readDraft(id).catch(() => null);
     // 存在しないドラフトを保存で作り直さない（ファイル保存版と同じ）。
@@ -380,7 +391,7 @@ export function createDraftStore(kv) {
         description: patch.description ?? base.description,
         category: patch.category ?? base.category,
         tags: patch.tags ?? base.tags,
-        cover: patch.cover ?? base.cover,
+        cover: resolveCover(patch, base),
         created: base.created,
         updated: nowIso(),
         pr: patch.pr ?? base.pr,
