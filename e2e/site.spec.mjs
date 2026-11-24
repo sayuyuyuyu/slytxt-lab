@@ -69,3 +69,17 @@ test("site: PC 幅では主要ナビがヘッダーに並ぶ", async ({ page }) 
   await expect(nav.getByRole("link", { name: "Feed" })).toBeVisible();
   await expect(page.locator("[data-menu-button]")).toBeHidden();
 });
+
+test("site: 幅を変えてもナビの出し方が戻る", async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 0) < 900, "PC 幅でだけ確認する");
+  await page.goto(`${SITE_URL}/`);
+  const menu = page.locator("[data-menu]");
+  const button = page.locator("[data-menu-button]");
+  await expect(menu).toBeVisible();
+  await page.setViewportSize({ width: 500, height: 700 });
+  await expect(button).toBeVisible();
+  await expect(menu).toBeHidden();
+  await page.setViewportSize({ width: 1280, height: 700 });
+  await expect(menu).toBeVisible();
+  await expect(button).toBeHidden();
+});
