@@ -8,6 +8,12 @@ importers:
 
   .:
     devDependencies:
+      '@codemirror/state':
+        specifier: ^6.7.6
+        version: 6.7.6
+      '@codemirror/view':
+        specifier: ^6.43.13
+        version: 6.43.13
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
