@@ -1,9 +1,17 @@
-import { App, MarkdownView, Notice, Plugin, TFile, requestUrl, type Editor } from "obsidian";
+import { MarkdownView, Notice, Plugin, TFile, requestUrl, type Editor } from "obsidian";
 import { EmbedModal } from "./src/embed-modal";
 import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/github";
 import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
 import { MAX_COVER_BYTES, MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
 import { extractExtras } from "./src/lib/frontmatter";
+import {
+  addTags,
+  barStateFromNote,
+  frontmatterPatchFor,
+  removeTag,
+  type BarState
+} from "./src/lib/bar";
+import { publishBarExtension, type BarController, type BarSnapshot } from "./src/bar-widget";
 import {
   deriveDescription,
   firstImageSource,
@@ -64,17 +72,6 @@ export default class SlytxtPublishPlugin extends Plugin {
       }
     });
     this.addCommand({
-      id: "seed-frontmatter",
-      name: "公開の項目をノートに追加",
-      checkCallback: (checking) => {
-        const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== "md") return false;
-        if (!checking) void this.seedFrontmatter(file);
-        return true;
-      }
-    });
-
-    this.addCommand({
       id: "insert-image",
       name: "画像をアップロードして挿入",
       editorCallback: (editor) => {
@@ -100,14 +97,13 @@ export default class SlytxtPublishPlugin extends Plugin {
       void this.insertUploadedImage(view.editor);
     });
 
-    // ノートを開いたら、公開の項目がノート上部のプロパティに最初から
-    // 出ているようにする。コマンドを呼ばなくても、その画面の中で
-    // 見て直せることが目的（2026-11-24 本人の指示）。
+    // 公開バー（設計案B、#849）。ノート画面の先頭に常に出し、値は
+    // frontmatter から読む。開き直しやプロパティの変更でも描き直す。
+    this.registerEditorExtension(publishBarExtension(this.barController()));
+    this.registerEvent(this.app.workspace.on("file-open", () => this.refreshBar()));
     this.registerEvent(
-      this.app.workspace.on("file-open", (file) => {
-        if (file && file.extension === "md") {
-          void this.seedFrontmatterIfNeeded(file);
-        }
+      this.app.metadataCache.on("changed", (file) => {
+        if (file === this.activeMarkdownFile()) this.refreshBar();
       })
     );
 
@@ -143,14 +139,6 @@ export default class SlytxtPublishPlugin extends Plugin {
               void this.publish(file);
             });
         });
-        menu.addItem((item) => {
-          item
-            .setTitle("公開の項目をノートに追加")
-            .setIcon("list-plus")
-            .onClick(() => {
-              void this.seedFrontmatter(file);
-            });
-        });
       })
     );
   }
@@ -164,48 +152,107 @@ export default class SlytxtPublishPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  /**
-   * 公開の項目を frontmatter に用意する。空欄のまま並べるのではなく、
-   * 本文から決められる値はその場で入れる（タイトルは最初の見出し、
-   * 説明は書き出し、カバーは本文の最初の画像が URL の場合）。
-   * 既に入っている値は上書きしない。
-   */
-  private async seedFrontmatter(file: TFile, options: { silent?: boolean } = {}): Promise<void> {
-    const raw = await this.app.vault.read(file);
-    const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
+  /* ---- 公開バー（設計案B、#849） ---- */
+
+  /** バーの再描画を購読しているウィジェット。 */
+  private barListeners = new Set<() => void>();
+
+  /** 公開中のノート（パス）。ボタンの表示に使う。 */
+  private readonly publishingNow = new Set<string>();
+
+  private refreshBar(): void {
+    for (const listener of this.barListeners) listener();
+  }
+
+  private activeMarkdownFile(): TFile | null {
+    const file = this.app.workspace.getActiveFile();
+    return file && file.extension === "md" ? file : null;
+  }
+
+  /** エディタの本文（未保存の編集を含む）。 */
+  private activeBody(): string {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    return view?.editor.getValue() ?? "";
+  }
+
+  private noteState(file: TFile): BarState {
+    const front = this.app.metadataCache.getFileCache(file)?.frontmatter ?? null;
+    return barStateFromNote(front, this.activeBody(), this.settings.defaultCategory);
+  }
+
+  /** バーの操作を frontmatter に書き戻す（値の正は frontmatter のまま）。 */
+  private async patchNote(
+    file: TFile,
+    update: (state: BarState) => BarState
+  ): Promise<void> {
+    const next = update(this.noteState(file));
     await this.app.fileManager.processFrontMatter(file, (front) => {
-      if (front.category === undefined) front.category = this.settings.defaultCategory;
-      if (front.tags === undefined) front.tags = [];
-      if (!String(front.title ?? "").trim()) {
-        // カテゴリが misc のときは公開記事ではタイトルを使わないが、
-        // ノート上では「見出し＝タイトル」の見え方を優先して入れておく。
-        const heading = splitHeadingTitle(bodyText);
-        front.title = heading ? heading.heading : String(front.title ?? "");
-      }
-      if (!String(front.description ?? "").trim()) {
-        front.description = deriveDescription(bodyText);
-      }
-      if (!String(front.cover ?? "").trim()) {
-        const source = firstImageSource(bodyText);
-        front.cover =
-          source && /^https?:\/\//.test(source) ? source : String(front.cover ?? "");
+      for (const [key, value] of Object.entries(frontmatterPatchFor(next))) {
+        front[key] = value;
       }
     });
-    if (!options.silent) {
-      new Notice("公開の項目をノート上部のプロパティに追加しました。");
+    this.refreshBar();
+  }
+
+  private barController(): BarController {
+    return {
+      snapshot: (): BarSnapshot | null => {
+        const file = this.activeMarkdownFile();
+        if (!file) return null;
+        return { ...this.noteState(file), publishing: this.publishingNow.has(file.path) };
+      },
+      setCategory: (category) => {
+        const file = this.activeMarkdownFile();
+        if (!file) return;
+        void this.patchNote(file, (state) => ({ ...state, category }));
+      },
+      addTag: (input) => {
+        const file = this.activeMarkdownFile();
+        if (!file) return;
+        void this.patchNote(file, (state) => ({ ...state, tags: addTags(state.tags, input) }));
+      },
+      removeTag: (tag) => {
+        const file = this.activeMarkdownFile();
+        if (!file) return;
+        void this.patchNote(file, (state) => ({ ...state, tags: removeTag(state.tags, tag) }));
+      },
+      pickCover: () => {
+        const file = this.activeMarkdownFile();
+        if (!file) return;
+        void this.setCoverFromPicker(file);
+      },
+      publish: () => {
+        const file = this.activeMarkdownFile();
+        if (!file) return;
+        void this.publishFromBar(file);
+      },
+      subscribe: (listener) => {
+        this.barListeners.add(listener);
+        return () => this.barListeners.delete(listener);
+      }
+    };
+  }
+
+  /** バーから公開する。公開中はボタンを「公開中…」にする。 */
+  private async publishFromBar(file: TFile): Promise<void> {
+    if (this.publishingNow.has(file.path)) return;
+    this.publishingNow.add(file.path);
+    this.refreshBar();
+    try {
+      await this.publish(file);
+    } finally {
+      this.publishingNow.delete(file.path);
+      this.refreshBar();
     }
   }
 
-  /** ノートを開いたとき用：不足している項目を静かに補う（1セッションに1回だけ）。 */
-  private readonly filledOnOpen = new Set<string>();
-
-  private async seedFrontmatterIfNeeded(file: TFile): Promise<void> {
-    if (this.filledOnOpen.has(file.path)) return;
-    this.filledOnOpen.add(file.path);
+  /** バーのサムネイルを押したとき。選んだ画像をアップロードして cover にする。 */
+  private async setCoverFromPicker(file: TFile): Promise<void> {
     try {
-      await this.seedFrontmatter(file, { silent: true });
-    } catch {
-      // 補うのに失敗してもノート自体は開ける。公開時に項目は自動で補われる。
+      const url = await this.pickAndUploadCover();
+      await this.patchNote(file, (state) => ({ ...state, cover: url }));
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : String(error), 12000);
     }
   }
 

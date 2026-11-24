@@ -2,3 +2,103 @@
 .modal-content .setting-item-description {
   white-space: pre-wrap;
 }
+
+/* 公開バー（ノート先頭のウィジェット、#849）。
+   Obsidian のテーマ変数に乗せ、モバイルでも1行に収める。 */
+.slytxt-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+  font-size: 0.8em;
+  line-height: 1.4;
+}
+
+.slytxt-bar__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.slytxt-bar__category {
+  font-weight: 600;
+}
+
+.slytxt-bar__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 12em;
+}
+
+.slytxt-bar__remove {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.9em;
+  line-height: 1;
+}
+
+.slytxt-bar__tag-input {
+  min-width: 6em;
+  flex: 0 1 8em;
+  padding: 2px 6px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: inherit;
+}
+
+.slytxt-bar__cover {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6em;
+  height: 1.9em;
+  padding: 0 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.slytxt-bar__cover-image {
+  height: 1.7em;
+  width: auto;
+  border-radius: 4px;
+}
+
+.slytxt-bar__publish {
+  margin-left: auto;
+  padding: 3px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.slytxt-bar__publish:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
