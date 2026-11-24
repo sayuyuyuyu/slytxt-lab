@@ -79,11 +79,11 @@ test("obsidian bar: frontmatter への書き戻しは管理キーだけ", () => 
     title: "題名",
     description: "説明"
   });
+  // バーで編集できるのはカテゴリ・タグ・カバーだけ。タイトルと説明は
+  // 公開時に本文から決まるので、frontmatter には書き戻さない。
   assert.deepEqual(patch, {
     category: "tech",
     tags: ["a"],
-    cover: "",
-    title: "題名",
-    description: "説明"
+    cover: ""
   });
 });
