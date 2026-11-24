@@ -135,12 +135,27 @@ function isCurrentSection(href: string) {
     // PC 幅ではナビを常時インライン表示する（ハンバーガーは出さない）。
     // 開閉の状態を持ち込むと hidden が残って消えるため、操作は張らない。
     const narrow = window.matchMedia("(max-width: 899px)");
-    const menuIsWide = !narrow.matches;
-    if (menuIsWide) {
-      // hidden 属性を外して、常時インラインのナビとして出す。
-      menu.hidden = false;
-      button.hidden = true;
-    }
+
+    /**
+     * 幅に応じてナビの出し方を揃える。
+     * PC 幅は常時インライン（hidden を外し、ハンバーガーを隠す）。
+     * モバイル幅はハンバーガーを出し、パネルは閉じた状態から始める。
+     * 画面幅をまたいで変えたときも、属性が残って消えないようにする。
+     */
+    const syncMenuForWidth = () => {
+      if (narrow.matches) {
+        button.hidden = false;
+        button.setAttribute("aria-expanded", "false");
+        header.dataset.open = "false";
+        menu.hidden = true;
+      } else {
+        button.hidden = true;
+        menu.hidden = false;
+      }
+    };
+    syncMenuForWidth();
+    narrow.addEventListener("change", syncMenuForWidth);
+    window.addEventListener("resize", syncMenuForWidth, { passive: true });
 
     const isOpen = () => button.getAttribute("aria-expanded") === "true";
 

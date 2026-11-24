@@ -445,8 +445,17 @@ samp,
 
 /* PC 幅ではハンバーガーをやめ、主要ナビをヘッダーに並べる（#853）。
    子区分（Articles のカテゴリ）はホバー／フォーカスで出す。 */
+@media (max-width: 899px) {
+  /* 全体の [hidden] は !important なので、ここでも !important で上書きする。
+     JS の状態に関係なく、モバイルではハンバーガーを必ず出す。 */
+  .menu-button[hidden] {
+    display: inline-flex !important;
+  }
+}
+
 @media (min-width: 900px) {
-  .menu-button {
+  .menu-button,
+  .menu-button[hidden] {
     display: none;
   }
   .site-header__inner {
@@ -460,10 +469,12 @@ samp,
   .site-menu {
     order: 2;
   }
+  /* 全体の [hidden] は !important。PC 幅ではナビを常に出す（JS の有無に
+     依存しない）。 */
   .site-menu,
   .site-menu[hidden] {
     position: static;
-    display: block;
+    display: block !important;
     flex: 1 1 auto;
     background: none;
     -webkit-backdrop-filter: none;
