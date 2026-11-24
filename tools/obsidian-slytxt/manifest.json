@@ -1,7 +1,7 @@
 {
   "id": "slytxt-publish",
   "name": "slytxt publish",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "minAppVersion": "1.6.0",
   "description": "ノートの frontmatter を整えて、slytxt-lab へ PR として公開する。",
   "author": "slytxt",
