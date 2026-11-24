@@ -99,15 +99,16 @@ export function removeTag(tags: string[], tag: string): string[] {
 }
 
 /**
- * バーの操作を frontmatter に反映するときの差分。値の正は frontmatter のまま。
- * タイトルと説明は、空のときだけ本文から補った値を書き戻す。
+ * バーの操作を frontmatter に反映するときの差分。
+ *
+ * バーで編集できるのはカテゴリ・タグ・カバーだけ。タイトルと説明は
+ * 公開時に本文から決まるので、frontmatter には書き戻さない（ユーザーが
+ * 書いていない値を勝手に埋めない）。
  */
 export function frontmatterPatchFor(state: BarState): Record<string, unknown> {
   return {
     category: state.category,
     tags: state.tags,
-    cover: state.cover,
-    title: state.title,
-    description: state.description
+    cover: state.cover
   };
 }

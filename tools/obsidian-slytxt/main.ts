@@ -169,10 +169,15 @@ export default class SlytxtPublishPlugin extends Plugin {
     return file && file.extension === "md" ? file : null;
   }
 
-  /** エディタの本文（未保存の編集を含む）。 */
+  /**
+   * エディタの本文（未保存の編集を含む）。frontmatter は CM の文書に含まれる
+   * ので、値の導出に使う前に取り除く（YAML を本文として読むと、タイトルや
+   * 説明に `---` や `tags:` が入る）。
+   */
   private activeBody(): string {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    return view?.editor.getValue() ?? "";
+    const raw = view?.editor.getValue() ?? "";
+    return raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
   }
 
   private noteState(file: TFile): BarState {

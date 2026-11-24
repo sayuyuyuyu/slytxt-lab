@@ -147,9 +147,16 @@ class PublishBarWidget extends WidgetType {
       const img = element("img", "slytxt-bar__cover-image");
       img.src = state.cover;
       img.alt = "";
+      // 画像が読めないときは空の枠を残さず、文字に戻す。
+      img.addEventListener("error", () => {
+        img.remove();
+        cover.textContent = "カバー";
+        cover.classList.add("is-empty");
+      });
       cover.append(img);
     } else {
       cover.textContent = "カバー";
+      cover.classList.add("is-empty");
     }
     cover.addEventListener("click", (event) => {
       event.preventDefault();
@@ -158,7 +165,7 @@ class PublishBarWidget extends WidgetType {
     root.append(cover);
 
     // 公開。
-    const publish = element("button", "slytxt-bar__publish");
+    const publish = element("button", "slytxt-bar__publish mod-cta");
     publish.type = "button";
     publish.textContent = state.publishing ? "公開中…" : "公開";
     publish.disabled = state.publishing;
