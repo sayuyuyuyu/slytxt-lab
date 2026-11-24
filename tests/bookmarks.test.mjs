@@ -636,7 +636,8 @@ test("list page has a meta description", () => {
 test("list page theme toggle mirrors the main site toggle", () => {
   const html = renderHtml(listSnapshot(1), RENDER_OPTIONS);
   // theme-color starts dark and follows the stored theme, like BaseLayout.
-  assert.ok(html.includes('<meta name="theme-color" content="#05070f">'));
+  // 新パレットの --bg（--c-navy-900）に合わせる（#866）。
+  assert.ok(html.includes('<meta name="theme-color" content="#1f2d40">'));
   assert.ok(html.includes('data-theme-icon'));
   assert.ok(html.includes('aria-label="Toggle theme"'));
   // THEME_SCRIPT swaps the icon and label for the current theme and
