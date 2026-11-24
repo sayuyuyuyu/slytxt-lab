@@ -72,8 +72,7 @@ function isCurrentSection(href: string) {
       </button>
       <ThemeToggle />
     </div>
-  </div>
-  <div class="site-menu" id="site-menu" data-menu hidden>
+    <div class="site-menu" id="site-menu" data-menu hidden>
     <nav aria-label="Main">
       {
         visibleNavGroups.map((group) => (
@@ -110,7 +109,8 @@ function isCurrentSection(href: string) {
           </div>
         ))
       }
-    </nav>
+      </nav>
+    </div>
   </div>
   <noscript>
     <style>
@@ -131,6 +131,16 @@ function isCurrentSection(href: string) {
     const button = document.querySelector<HTMLButtonElement>("[data-menu-button]");
     const menu = document.querySelector<HTMLElement>("[data-menu]");
     if (!header || !button || !menu) return;
+
+    // PC 幅ではナビを常時インライン表示する（ハンバーガーは出さない）。
+    // 開閉の状態を持ち込むと hidden が残って消えるため、操作は張らない。
+    const narrow = window.matchMedia("(max-width: 899px)");
+    const menuIsWide = !narrow.matches;
+    if (menuIsWide) {
+      // hidden 属性を外して、常時インラインのナビとして出す。
+      menu.hidden = false;
+      button.hidden = true;
+    }
 
     const isOpen = () => button.getAttribute("aria-expanded") === "true";
 
