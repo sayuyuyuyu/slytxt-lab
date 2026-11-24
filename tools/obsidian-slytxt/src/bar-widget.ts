@@ -88,7 +88,14 @@ class PublishBarWidget extends WidgetType {
   private render(): void {
     const root = this.root;
     if (!root) return;
-    const state = this.controller.snapshot();
+    let state: BarSnapshot | null = null;
+    try {
+      state = this.controller.snapshot();
+    } catch (error) {
+      console.error("slytxt publish: 公開バーの値を読めませんでした", error);
+      root.hidden = true;
+      return;
+    }
     root.replaceChildren();
     root.hidden = state === null;
     if (!state) return;
@@ -179,12 +186,19 @@ class PublishBarWidget extends WidgetType {
 }
 
 function buildDecorations(controller: BarController): DecorationSet {
-  const bar = Decoration.widget({
-    widget: new PublishBarWidget(controller),
-    side: -1,
-    block: true
-  });
-  return Decoration.set([bar.range(0)], true);
+  try {
+    const bar = Decoration.widget({
+      widget: new PublishBarWidget(controller),
+      side: -1,
+      block: true
+    });
+    return Decoration.set([bar.range(0)], true);
+  } catch (error) {
+    // バーが作れなくても本文は開けるようにする（バーの失敗でノートを
+    // 巻き込まない。#851）。原因はコンソールに残す。
+    console.error("slytxt publish: 公開バーを作れませんでした", error);
+    return Decoration.none;
+  }
 }
 
 /**
