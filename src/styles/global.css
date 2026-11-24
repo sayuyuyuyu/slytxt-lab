@@ -6,30 +6,48 @@
 @import "tailwindcss" source(none);
 
 /* ---------------------------------------------------------------------------
-   Blue-black terminal palette.
-   Dark is the default look. `:root.light` is the daylight variant.
+   Palette: 紺 × ティール × クリーム（#855）。
+   色はここで一度だけ定義し、役割の変数はすべてこの集合から作る
+   （直書きの色を他に残さない）。ライト／ダークとも、文字と背景の
+   コントラストは 4.5:1 以上を満たす組み合わせだけを使う。
    --------------------------------------------------------------------------- */
 :root {
+  --c-navy-900: #1f2d40;
+  --c-navy-700: #294273;
+  --c-slate-800: #2c3b59;
+  --c-indigo-600: #4557bf;
+  --c-gray-600: #515d73;
+  --c-teal-900: #025959;
+  --c-teal-600: #119fbf;
+  --c-cyan-400: #11d9d9;
+  --c-cream-200: #f2d7b6;
+  --c-peach-200: #f2c5bb;
+  --c-white-100: #f2f2f2;
+}
+
+:root {
   color-scheme: dark;
-  --bg: #05070f;
-  --bg-soft: #080c18;
-  --surface: #0b1220;
-  --surface-2: #101a2e;
-  --text: #d9e6f7;
-  --text-muted: #7d8bab;
-  --border: #1b2942;
-  --border-strong: #2f4a72;
-  --accent: #4cc9f0;
-  --on-accent: #04121c;
-  --accent-strong: #9be7ff;
-  --accent-3: #c08bff;
-  --accent-5: #5cf2b4;
-  --accent-warn: #ffd166;
-  --accent-red: #ff6b81;
-  --grid: rgba(76, 201, 240, 0.055);
-  --glow: rgba(76, 201, 240, 0.35);
-  --scan: rgba(76, 201, 240, 0.045);
-  --shadow: rgba(0, 0, 0, 0.55);
+  /* ダークは紺を下地に、文字はオフホワイト、リンクはシアン。 */
+  --bg: var(--c-navy-900);
+  --bg-soft: color-mix(in srgb, var(--c-navy-900) 82%, var(--c-slate-800));
+  --surface: var(--c-slate-800);
+  --surface-2: color-mix(in srgb, var(--c-slate-800) 70%, var(--c-navy-700));
+  --text: var(--c-white-100);
+  --text-muted: color-mix(in srgb, var(--c-cream-200) 62%, var(--c-navy-900));
+  --border: color-mix(in srgb, var(--c-gray-600) 46%, var(--c-navy-900));
+  --border-strong: var(--c-gray-600);
+  --accent: var(--c-cyan-400);
+  --on-accent: var(--c-navy-900);
+  --accent-strong: var(--c-cream-200);
+  /* 装飾の「//」や強調に使う。紺地でコントラストを保つためシアン寄りに混ぜる。 */
+  --accent-3: color-mix(in srgb, var(--c-indigo-600) 45%, var(--c-cyan-400));
+  --accent-5: var(--c-peach-200);
+  --accent-warn: color-mix(in srgb, var(--c-cream-200) 88%, var(--c-navy-900));
+  --accent-red: color-mix(in srgb, var(--c-peach-200) 88%, var(--c-navy-900));
+  --grid: color-mix(in srgb, var(--c-cyan-400) 6%, transparent);
+  --glow: color-mix(in srgb, var(--c-cyan-400) 35%, transparent);
+  --scan: color-mix(in srgb, var(--c-cyan-400) 5%, transparent);
+  --shadow: color-mix(in srgb, var(--c-navy-900) 55%, transparent);
   --content-width: 1040px;
   --article-width: 700px;
   /* Header bar height including its bottom border. */
@@ -42,27 +60,29 @@
     "Liberation Mono", monospace;
   --font-heading: var(--font-body);
 }
+
 :root.light {
   color-scheme: light;
-  --bg: #eef3fb;
-  --bg-soft: #e7eef8;
-  --surface: #e2eaf6;
-  --surface-2: #d6e2f2;
-  --text: #0b1220;
-  --text-muted: #4a5972;
-  --border: #c3d0e4;
-  --border-strong: #9db0cd;
-  --accent: #0b63c4;
-  --on-accent: #ffffff;
-  --accent-strong: #084a96;
-  --accent-3: #7a3fd1;
-  --accent-5: #0a6b4a;
-  --accent-warn: #9a6a00;
-  --accent-red: #c02b3f;
-  --grid: rgba(11, 99, 196, 0.07);
-  --glow: rgba(11, 99, 196, 0.25);
-  --scan: rgba(11, 99, 196, 0.05);
-  --shadow: rgba(15, 35, 70, 0.18);
+  /* ライトはオフホワイトを下地に、文字は紺、リンクは深いティール。 */
+  --bg: var(--c-white-100);
+  --bg-soft: color-mix(in srgb, var(--c-white-100) 88%, var(--c-cream-200));
+  --surface: color-mix(in srgb, var(--c-white-100) 92%, var(--c-gray-600));
+  --surface-2: color-mix(in srgb, var(--c-white-100) 84%, var(--c-gray-600));
+  --text: var(--c-navy-900);
+  --text-muted: var(--c-gray-600);
+  --border: color-mix(in srgb, var(--c-gray-600) 32%, var(--c-white-100));
+  --border-strong: color-mix(in srgb, var(--c-gray-600) 62%, var(--c-white-100));
+  --accent: var(--c-teal-900);
+  --on-accent: var(--c-white-100);
+  --accent-strong: var(--c-navy-700);
+  --accent-3: var(--c-indigo-600);
+  --accent-5: var(--c-teal-900);
+  --accent-warn: color-mix(in srgb, var(--c-cream-200) 34%, var(--c-navy-900));
+  --accent-red: color-mix(in srgb, var(--c-peach-200) 34%, var(--c-navy-900));
+  --grid: color-mix(in srgb, var(--c-teal-900) 8%, transparent);
+  --glow: color-mix(in srgb, var(--c-teal-600) 25%, transparent);
+  --scan: color-mix(in srgb, var(--c-teal-900) 5%, transparent);
+  --shadow: color-mix(in srgb, var(--c-navy-900) 18%, transparent);
 }
 * {
   box-sizing: border-box;
@@ -1800,31 +1820,31 @@ html.konami-on .site-main {
   :root,
   :root.light {
     color-scheme: light;
-    --bg: #ffffff;
-    --bg-soft: #ffffff;
-    --surface: #ffffff;
-    --surface-2: #ffffff;
-    --text: #111111;
-    --text-muted: #444444;
-    --border: #cccccc;
-    --border-strong: #999999;
-    --accent: #0b63c4;
-    --on-accent: #ffffff;
-    --accent-strong: #084a96;
-    --accent-3: #7a3fd1;
-    --accent-5: #0a6b4a;
-    --accent-warn: #9a6a00;
-    --accent-red: #c02b3f;
+    --bg: var(--c-white-100);
+    --bg-soft: var(--c-white-100);
+    --surface: var(--c-white-100);
+    --surface-2: var(--c-white-100);
+    --text: var(--c-navy-900);
+    --text-muted: var(--c-gray-600);
+    --border: color-mix(in srgb, var(--c-gray-600) 32%, var(--c-white-100));
+    --border-strong: var(--c-gray-600);
+    --accent: var(--c-teal-900);
+    --on-accent: var(--c-white-100);
+    --accent-strong: var(--c-navy-700);
+    --accent-3: var(--c-indigo-600);
+    --accent-5: var(--c-teal-900);
+    --accent-warn: color-mix(in srgb, var(--c-cream-200) 34%, var(--c-navy-900));
+    --accent-red: color-mix(in srgb, var(--c-peach-200) 34%, var(--c-navy-900));
     --shadow: transparent;
   }
   html {
-    background: #ffffff;
+    background: var(--c-white-100);
     background-image: none;
     background-attachment: scroll;
   }
   body {
-    background: #ffffff;
-    color: #111111;
+    background: var(--c-white-100);
+    color: var(--c-navy-900);
   }
   body::after,
   .site-footer::before {
