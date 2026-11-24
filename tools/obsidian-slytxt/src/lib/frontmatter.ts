@@ -37,9 +37,9 @@ export function extractExtras(rawFrontmatter: string): string[] {
   let keeping = false;
   for (const line of String(rawFrontmatter ?? "").split("\n")) {
     if (line.trim() === "") continue;
-    const key = line.match(/^([A-Za-z0-9_-]+)\s*:/);
-    if (key) {
-      keeping = !MANAGED_KEYS.has(key[1]);
+    const key = line.match(/^([A-Za-z0-9_-]+)\s*:/)?.[1];
+    if (key !== undefined) {
+      keeping = !MANAGED_KEYS.has(key);
       if (keeping) extras.push(line.replace(/\s+$/, ""));
       continue;
     }
@@ -97,6 +97,7 @@ export function isEmbedOnlyLine(line: string): boolean {
   if (/^https?:\/\/\S+$/.test(text)) return true;
   if (/^<https?:\/\/\S+>$/.test(text)) return true;
   if (/^!\[[^\]]*\]\(\S*\)$/.test(text)) return true;
+  if (/^!\[\[[^\]]+\]\]$/.test(text)) return true;
   const link = text.match(/^\[([^\]]+)\]\((\S+)\)$/);
   return link ? link[1] === link[2] : false;
 }

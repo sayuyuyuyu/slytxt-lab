@@ -14,7 +14,12 @@ import {
   extractExtras,
   serializeFrontmatter
 } from "../tools/obsidian-slytxt/src/lib/frontmatter.ts";
-import { deriveDescription, preparePublish } from "../tools/obsidian-slytxt/src/lib/publish-plan.ts";
+import {
+  deriveDescription,
+  firstImageSource,
+  preparePublish,
+  splitHeadingTitle
+} from "../tools/obsidian-slytxt/src/lib/publish-plan.ts";
 import { PublishError, publishNote, toBase64 } from "../tools/obsidian-slytxt/src/lib/github.ts";
 import {
   MediaError,
@@ -464,4 +469,78 @@ test("obsidian: 埋め込み URL の種別判定はサイト側と揃える", ()
   assert.equal(classifyEmbedUrl(""), null);
   assert.equal(embedLabel({ type: "youtube", url: "" }), "YouTube の埋め込み");
   assert.equal(embedInsertion("https://example.com"), "\n\nhttps://example.com\n\n");
+});
+
+/* ---- 見出しタイトル・自動カバー・説明文（2026-11-24 本人の指摘） ---- */
+
+test("obsidian: 最初の見出しをタイトルに使い、本文からは除く", () => {
+  const payload = preparePublish(
+    {
+      name: "ジャンプ感想",
+      category: "comic",
+      body: "# ジャンプ感想（2026年51・52号）\n\n先週書くの忘れたので2週分\n\n## あかね\n感想。"
+    },
+    "2026-11-24"
+  );
+  assert.equal(payload.title, "ジャンプ感想（2026年51・52号）");
+  assert.ok(!payload.content.includes("# ジャンプ感想"), "見出しが本文に残っている");
+  assert.ok(payload.content.includes("## あかね"));
+  assert.ok(payload.frontmatter.description.startsWith("先週書くの忘れたので2週分"));
+});
+
+test("obsidian: タイトル指定が見出しと一致したら見出しを本文から除く", () => {
+  const payload = preparePublish(
+    {
+      name: "メモ",
+      category: "tech",
+      title: "題名",
+      body: "# 題名\n\n本文です。"
+    },
+    "2026-11-24"
+  );
+  assert.equal(payload.title, "題名");
+  assert.ok(!payload.content.includes("# 題名"));
+});
+
+test("obsidian: misc は見出しをタイトルにせず本文にも残す", () => {
+  const payload = preparePublish(
+    { name: "メモ", category: "misc", body: "# 見出しメモ\n\n本文です。" },
+    "2026-11-24"
+  );
+  assert.equal(payload.title, "");
+  assert.ok(payload.content.includes("# 見出しメモ"));
+});
+
+test("obsidian: splitHeadingTitle は H1 のときだけ切り出す", () => {
+  assert.deepEqual(splitHeadingTitle("# 題\n\n本文"), { heading: "題", body: "本文" });
+  assert.equal(splitHeadingTitle("## 小見出し\n本文"), null);
+  assert.equal(splitHeadingTitle("書き出し\n# 後ろの見出し"), null);
+  assert.equal(splitHeadingTitle(""), null);
+});
+
+test("obsidian: firstImageSource は最初の画像を記法の順で返す", () => {
+  assert.equal(
+    firstImageSource("文\n\n![](https://media.slytxt.dev/a.jpg)\n"),
+    "https://media.slytxt.dev/a.jpg"
+  );
+  assert.equal(firstImageSource("![[Pasted image 2026.png]]\n\n文"), "Pasted image 2026.png");
+  assert.equal(
+    firstImageSource("![[first.png]]\n![](https://example.com/second.jpg)"),
+    "first.png"
+  );
+  assert.equal(firstImageSource("画像なし"), null);
+});
+
+test("obsidian: 説明文は画像埋め込み行を飛ばし、記法も残さない（#797）", () => {
+  assert.equal(
+    deriveDescription("![[Pasted image 2026.png]]\n\n本文の書き出しです。"),
+    "本文の書き出しです。"
+  );
+  assert.equal(
+    deriveDescription("![](https://media.slytxt.dev/a.jpg)\n本文です。"),
+    "本文です。"
+  );
+  const mixed = deriveDescription("前文 ![](https://media.slytxt.dev/a.jpg) 後文です。");
+  assert.ok(!mixed.includes("media.slytxt.dev"), "画像 URL が説明文に混ざっている");
+  assert.ok(mixed.includes("前文"));
 });
