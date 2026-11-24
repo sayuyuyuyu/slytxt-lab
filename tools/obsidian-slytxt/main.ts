@@ -4,7 +4,12 @@ import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/
 import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
 import { MAX_COVER_BYTES, MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
 import { extractExtras } from "./src/lib/frontmatter";
-import { firstImageSource, preparePublish } from "./src/lib/publish-plan";
+import {
+  deriveDescription,
+  firstImageSource,
+  preparePublish,
+  splitHeadingTitle
+} from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
 import { DEFAULT_SETTINGS, SlytxtSettingTab, type SlytxtSettings } from "./src/settings";
@@ -159,29 +164,48 @@ export default class SlytxtPublishPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  /** 公開の項目（タイトル・カテゴリ・タグ・説明・カバー）を frontmatter に用意し、ノート上部のプロパティ欄で直接編集できるようにする。 */
+  /**
+   * 公開の項目を frontmatter に用意する。空欄のまま並べるのではなく、
+   * 本文から決められる値はその場で入れる（タイトルは最初の見出し、
+   * 説明は書き出し、カバーは本文の最初の画像が URL の場合）。
+   * 既に入っている値は上書きしない。
+   */
   private async seedFrontmatter(file: TFile, options: { silent?: boolean } = {}): Promise<void> {
+    const raw = await this.app.vault.read(file);
+    const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
     await this.app.fileManager.processFrontMatter(file, (front) => {
-      if (front.title === undefined) front.title = "";
       if (front.category === undefined) front.category = this.settings.defaultCategory;
       if (front.tags === undefined) front.tags = [];
-      if (front.description === undefined) front.description = "";
-      if (front.cover === undefined) front.cover = "";
+      if (!String(front.title ?? "").trim()) {
+        // カテゴリが misc のときは公開記事ではタイトルを使わないが、
+        // ノート上では「見出し＝タイトル」の見え方を優先して入れておく。
+        const heading = splitHeadingTitle(bodyText);
+        front.title = heading ? heading.heading : String(front.title ?? "");
+      }
+      if (!String(front.description ?? "").trim()) {
+        front.description = deriveDescription(bodyText);
+      }
+      if (!String(front.cover ?? "").trim()) {
+        const source = firstImageSource(bodyText);
+        front.cover =
+          source && /^https?:\/\//.test(source) ? source : String(front.cover ?? "");
+      }
     });
     if (!options.silent) {
       new Notice("公開の項目をノート上部のプロパティに追加しました。");
     }
   }
 
-  /** ノートを開いたとき用：カテゴリがまだ無いノートにだけ、項目を静かに用意する。 */
+  /** ノートを開いたとき用：不足している項目を静かに補う（1セッションに1回だけ）。 */
+  private readonly filledOnOpen = new Set<string>();
+
   private async seedFrontmatterIfNeeded(file: TFile): Promise<void> {
+    if (this.filledOnOpen.has(file.path)) return;
+    this.filledOnOpen.add(file.path);
     try {
-      const raw = await this.app.vault.read(file);
-      const frontmatter = raw.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
-      if (/^category\s*:/m.test(frontmatter)) return;
       await this.seedFrontmatter(file, { silent: true });
     } catch {
-      // 用意に失敗してもノート自体は開ける。公開時に項目は自動で補われる。
+      // 補うのに失敗してもノート自体は開ける。公開時に項目は自動で補われる。
     }
   }
 
