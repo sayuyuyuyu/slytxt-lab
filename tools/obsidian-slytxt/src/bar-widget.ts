@@ -9,12 +9,12 @@
  * @codemirror/* は esbuild で external にしている（Obsidian 本体が持つ
  * ものを使う。プラグインに同梱すると状態が混ざる）。
  */
+import { StateField } from "@codemirror/state";
 import {
   Decoration,
-  ViewPlugin,
+  EditorView,
   WidgetType,
-  type DecorationSet,
-  type ViewUpdate
+  type DecorationSet
 } from "@codemirror/view";
 import { nextCategory, type BarState } from "./lib/bar.ts";
 import type { PublishCategory } from "./lib/slug.ts";
@@ -180,25 +180,19 @@ function buildDecorations(controller: BarController): DecorationSet {
   return Decoration.set([bar.range(0)], true);
 }
 
-/** エディタの先頭に公開バーを出す拡張。 */
+/**
+ * エディタの先頭に公開バーを出す拡張。
+ *
+ * ブロックウィジェットは StateField からしか出せない（ViewPlugin から出すと
+ * Obsidian がノートを開くときに例外になり、ファイルが開けなくなる）。
+ */
 export function publishBarExtension(controller: BarController) {
-  return ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
-
-      constructor() {
-        this.decorations = buildDecorations(controller);
-      }
-
-      update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged) {
-          // widget の eq() が同じ controller を返すので、DOM は作り直されない。
-          this.decorations = buildDecorations(controller);
-        }
-      }
-    },
-    {
-      decorations: (value) => value.decorations
-    }
-  );
+  const field = StateField.define<DecorationSet>({
+    create: () => buildDecorations(controller),
+    update: (decorations, tr) =>
+      // widget の eq() が同じ controller を返すので、DOM は作り直されない。
+      tr.docChanged ? buildDecorations(controller) : decorations,
+    provide: (value) => EditorView.decorations.from(value)
+  });
+  return field;
 }
