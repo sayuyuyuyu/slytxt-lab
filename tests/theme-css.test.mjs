@@ -19,9 +19,11 @@ test("theme.css にはトップレベルの :root と :root.light だけが入�
 test("theme.css は実際の global.css の通常テーマと一致し、印刷用パレットを含まない", async () => {
   const globalCss = await readFile(new URL("../src/styles/global.css", import.meta.url), "utf8");
   const theme = extractThemeCss(globalCss);
-  assert.equal((theme.match(/:root(?:\.light)?\s*\{/g) ?? []).length, 2);
-  assert.ok(theme.includes("--bg: #05070f;"));
-  assert.ok(theme.includes("--bg: #eef3fb;"));
-  assert.ok(!theme.includes("--bg: #ffffff;"));
+  // パレット（--c-*）とダーク・ライトの3ブロック。印刷用は含めない。
+  assert.equal((theme.match(/:root(?:\.light)?\s*\{/g) ?? []).length, 3);
+  assert.ok(theme.includes("--c-navy-900: #1f2d40;"));
+  assert.ok(theme.includes("--bg: var(--c-navy-900);"));
+  assert.ok(theme.includes("--bg: var(--c-white-100);"));
+  assert.ok(!theme.includes("@media print"));
   assert.ok(!theme.includes("--shadow: transparent;"));
 });
