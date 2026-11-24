@@ -200,7 +200,7 @@
   border-left: 3px solid var(--accent);
   background: var(--surface);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.7;
 }
 
@@ -219,13 +219,13 @@
 
 .milkdown .milkdown-code-block .milkdown-code-block-placeholder {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.7;
   white-space: pre-wrap;
 }
 
 /* 画像ブロック。公開側の figure と同じ角丸にし、キャプション欄は
-   figcaption（muted・0.88rem）の見た目にする。 */
+   figcaption（muted・0.9375rem）の見た目にする。 */
 .milkdown .ProseMirror img {
   max-width: 100%;
   height: auto;
@@ -242,7 +242,7 @@
   border: 0;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.9375rem;
   line-height: 1.7;
   text-align: left;
 }
@@ -250,7 +250,7 @@
 /* 表。公開側の table と同じ罫線と余白にする（ドラッグハンドルは編集用）。 */
 .milkdown .milkdown-table-block table {
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.9375rem;
 }
 
 .milkdown .milkdown-table-block th,
@@ -337,7 +337,7 @@
 .milkdown .embed-link-card__host {
   color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.76rem;
+  font-size: 0.875rem;
 }
 
 /* 埋め込みの操作（前後への段落追加と削除）。
@@ -367,7 +367,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   color: var(--text);
-  font-size: 0.74rem;
+  font-size: 0.875rem;
   line-height: 1.5;
   cursor: pointer;
   backdrop-filter: blur(6px);
