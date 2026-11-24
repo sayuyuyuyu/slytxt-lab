@@ -31,24 +31,24 @@ export function renderOgPng(options: {
   const svg = `<svg width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="glow" cx="14%" cy="-10%" r="90%">
-      <stop offset="0" stop-color="#4cc9f0" stop-opacity="0.22"/>
-      <stop offset="1" stop-color="#4cc9f0" stop-opacity="0"/>
+      <stop offset="0" stop-color="#11d9d9" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#11d9d9" stop-opacity="0"/>
     </radialGradient>
     <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
-      <path d="M34 0H0V34" fill="none" stroke="#16233a" stroke-width="1"/>
+      <path d="M34 0H0V34" fill="none" stroke="#2c3b59" stroke-width="1"/>
     </pattern>
   </defs>
-  <rect width="${WIDTH}" height="${HEIGHT}" fill="#05070f"/>
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="#1f2d40"/>
   <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#grid)"/>
   <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#glow)"/>
-  <rect x="60" y="56" width="1080" height="518" rx="10" fill="#0b1220" stroke="#1b2942"/>
-  <circle cx="96" cy="90" r="7" fill="#ff6b81"/>
-  <circle cx="120" cy="90" r="7" fill="#ffd166"/>
-  <circle cx="144" cy="90" r="7" fill="#5cf2b4"/>
-  <text x="100" y="152" fill="#5cf2b4" font-size="26" font-family="Menlo, Consolas, monospace">$ ~/${escapeXml(category)}</text>
-  <text x="100" y="280" fill="#d9e6f7" font-size="56" font-weight="600" font-family="Hiragino Sans, Noto Sans JP, sans-serif">${titleSpans}</text>
-  <text x="100" y="520" fill="#7d8bab" font-size="24" font-family="Menlo, Consolas, monospace">${escapeXml(footer)}</text>
-  <text x="1048" y="520" fill="#4cc9f0" font-size="24" font-family="Menlo, Consolas, monospace">█</text>
+  <rect x="60" y="56" width="1080" height="518" rx="10" fill="#2c3b59" stroke="#515d73"/>
+  <circle cx="96" cy="90" r="7" fill="#f2c5bb"/>
+  <circle cx="120" cy="90" r="7" fill="#f2d7b6"/>
+  <circle cx="144" cy="90" r="7" fill="#11d9d9"/>
+  <text x="100" y="152" fill="#11d9d9" font-size="26" font-family="Menlo, Consolas, monospace">$ ~/${escapeXml(category)}</text>
+  <text x="100" y="280" fill="#f2f2f2" font-size="56" font-weight="600" font-family="Hiragino Sans, Noto Sans JP, sans-serif">${titleSpans}</text>
+  <text x="100" y="520" fill="#f2d7b6" font-size="24" font-family="Menlo, Consolas, monospace">${escapeXml(footer)}</text>
+  <text x="1048" y="520" fill="#11d9d9" font-size="24" font-family="Menlo, Consolas, monospace">█</text>
 </svg>`;
 
   return new Resvg(svg, {
