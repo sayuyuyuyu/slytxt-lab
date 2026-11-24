@@ -10,7 +10,9 @@
 | `GET /api/posts` | 直近の投稿（`?before=<ISO 8601>` でカーソル） |
 | `DELETE /api/posts/<id>` | 論理削除（公開一覧から外れる。画像の実体は R2 に残る） |
 
-実装は `src/index.mjs`（Worker の入口）と、サイト側の `src/lib/feed/api.ts`（処理本体）・`src/lib/feed/compose.ts`（検証・ID・OGP）です。書き込みは writer と同じく `x-slytxt-client: 1` と同一オリジンを要求します（入口の Cloudflare Access と合わせて二重に守る）。
+実装は `src/index.mjs`（Worker の入口）と、サイト側の `src/lib/feed/api.ts`（処理本体）・`src/lib/feed/compose.ts`（検証・ID・OGP）です。
+
+`public/` は writer と違ってリポジトリで追跡しています（Worker がそのまま配信するため）。アイコンはサイト本体の `public/` から取るので、差し替えたら `node tools/feed-cloudflare/scripts/prepare-assets.mjs` を実行して差分をコミットしてください（`tests/feed-assets.test.mjs` が一致を見張っています）。書き込みは writer と同じく `x-slytxt-client: 1` と同一オリジンを要求します（入口の Cloudflare Access と合わせて二重に守る）。
 
 ## 準備
 
