@@ -140,7 +140,7 @@ const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003
       href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <meta name="theme-color" content="#05070f" />
+    <meta name="theme-color" content="#1f2d40" />
     <script is:inline>
       (() => {
         document.documentElement.classList.add("js");
@@ -150,7 +150,7 @@ const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003
           document.documentElement.classList.toggle("light", isLight);
           document
             .querySelector('meta[name="theme-color"]')
-            ?.setAttribute("content", isLight ? "#eef3fb" : "#05070f");
+            ?.setAttribute("content", isLight ? "#f2f2f2" : "#1f2d40");
         } catch {
           // Storage unavailable: stay on the default dark palette.
         }
