@@ -10,13 +10,14 @@
 
 ## 開発
 
-前提は Node.js 22 以降と pnpm です。
+前提は Node.js 22 以降と pnpm です。pnpm の版は `package.json` の `packageManager`（10.14.0）に従います。
 
 ```bash
 pnpm install
-pnpm dev          # 開発サーバー
-pnpm run verify   # 型チェック・テスト・ビルド・生成物のリンク検証
-pnpm test:e2e     # Playwright で主要フローを確認（手順は e2e/README.md）
+pnpm dev            # 開発サーバー
+pnpm run verify     # 型チェック・テスト・ビルド・生成物のリンク検証
+./scripts/verify.sh # 同じ検証。pnpm が無い環境では node_modules の実行ファイルで代用する
+pnpm test:e2e       # Playwright で主要フローを確認（手順は e2e/README.md）
 ```
 
 検索インデックス（Pagefind）は `pnpm build` のときに `dist/pagefind` へ生成されるので、検索の動作確認はビルド後に `pnpm preview` で行います。本番 URL は環境変数 `SITE_URL`（既定は `https://slytxt.dev`）で指定します。
@@ -43,3 +44,11 @@ pnpm test:e2e     # Playwright で主要フローを確認（手順は e2e/READM
 ## 開発フロー
 
 `main` への直接 push は禁止です。変更は作業ブランチから Pull Request を作成し、CI が通ってからマージします。
+
+```bash
+./scripts/merge-pr.sh <PR番号>   # main の取り込み直し → ci 待ち → squash merge
+```
+
+`main` の branch protection は strict で、必須チェックは `ci` だけです。main が進むと PR の required check が「expected」のままになり merge が弾かれるため、上のスクリプトは先に `gh pr update-branch` します。
+
+既知の失敗: `Workers Builds: slytxt-feed` はすべての PR で赤になります（Cloudflare 側のビルド設定の問題で、必須チェックではありません）。`ci` と `Cloudflare Pages` が通っていればマージできます。
