@@ -18,6 +18,21 @@ const isIsoTime = (value) =>
   value !== undefined &&
   !Number.isNaN(Date.parse(value)) &&
   new Date(value).toISOString() === value;
+/**
+ * theme-color の期待値。パレット（global.css の --c-*）から読む。
+ * ダークは --c-navy-900、ライトは --c-white-100。
+ */
+const globalCss = await readFile(path.join(root, "..", "src", "styles", "global.css"), "utf8");
+const paletteValue = (name) =>
+  globalCss.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`))?.[1]?.toLowerCase() ?? "";
+const themeColors = {
+  dark: paletteValue("c-navy-900"),
+  light: paletteValue("c-white-100"),
+};
+if (!themeColors.dark || !themeColors.light) {
+  throw new Error("global.css のパレット（--c-navy-900 / --c-white-100）を読めませんでした");
+}
+
 const htmlFiles = (await files(root)).filter((name) => name.endsWith(".html"));
 assert.ok(htmlFiles.length > 0, "Build the site before checking output");
 const issues = [];
@@ -124,14 +139,20 @@ for (const file of htmlFiles) {
     issues.push(
       `${relative}: viewport ${viewport} does not match width=device-width, initial-scale=1`,
     );
-  // theme-color の初期値は既定ダークのパレット（--bg: #05070f）。
-  // ライトのときに書き換える初期化スクリプトはこの値を起点にする。
+  // theme-color は --bg（ダークは --c-navy-900、ライトは --c-white-100）と
+  // 一致している必要がある。期待値は global.css のパレットから導き、
+  // パレットを変えたのに HTML を直し忘れたら落ちるようにする。
   const themeColor = metaContent("name", "theme-color")?.toLowerCase();
-  if (themeColor === "#05070f") checkedThemeColors++;
+  if (themeColor === themeColors.dark) checkedThemeColors++;
   else if (!themeColor) issues.push(`${relative}: missing theme-color meta`);
   else
     issues.push(
-      `${relative}: theme-color ${themeColor} does not match #05070f`,
+      `${relative}: theme-color ${themeColor} does not match ${themeColors.dark}`,
+    );
+  // ライトに切り替えたときの値も、ページのスクリプトに埋まっている。
+  if (!html.toLowerCase().includes(themeColors.light))
+    issues.push(
+      `${relative}: theme-color for light theme (${themeColors.light}) is missing`,
     );
   const ogImageUrl = metaContent("property", "og:image");
   let ogImagePath = "";
