@@ -1,6 +1,6 @@
 export const site = {
-  name: "slytxt.lab",
-  title: "slytxt.lab",
+  name: "slytxt.dev",
+  title: "slytxt.dev",
   description:
     "AIやクラウドを試した記録と、日々のこと、つくったもの。",
   locale: "ja_JP",
