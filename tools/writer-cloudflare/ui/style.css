@@ -591,7 +591,9 @@ textarea {
   border: 0;
   background: transparent;
   color: var(--text);
-  font: 500 clamp(1.8rem, 4vw, 2.8rem)/1.4 var(--font-heading);
+  /* 公開側の .page-title と同じスケール（DADS の Std-36 相当）。 */
+  font: 500 clamp(var(--text-3xl, 1.875rem), 4vw, var(--text-4xl, 2.25rem))/1.4
+    var(--font-heading);
   /* 高さは app.js が内容に合わせて決める。手動リサイズと内部
      スクロールバーは出さない。 */
   overflow: hidden;
@@ -764,7 +766,9 @@ textarea {
 
 .preview__title {
   margin: 0;
-  font: 500 clamp(1.8rem, 4vw, 2.8rem) / 1.4 var(--font-heading);
+  /* 公開側（global.css の .page-title）と揃える。DADS の Std-36 相当。 */
+  font: 500 clamp(var(--text-3xl, 1.875rem), 4vw, var(--text-4xl, 2.25rem)) / 1.4
+    var(--font-heading);
   text-wrap: balance;
 }
 
@@ -832,9 +836,10 @@ textarea {
 
 .preview__body h2 {
   position: relative;
-  margin-top: 2.3em;
+  /* 公開側（global.css の .article-body h2）と揃える。DADS の Std-24 相当。 */
+  margin-top: var(--space-5, 40px);
   padding-left: 0.7em;
-  font: 500 1.6rem/1.5 var(--font-heading);
+  font: 500 var(--text-2xl, 1.5rem)/1.5 var(--font-heading);
 }
 
 .preview__body h2::before {
