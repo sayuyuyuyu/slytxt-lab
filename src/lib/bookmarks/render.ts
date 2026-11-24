@@ -249,7 +249,7 @@ const THEME_SCRIPT = `<script>
       toggle.setAttribute("title", next);
     }
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", light ? "#eef3fb" : "#05070f");
+    if (meta) meta.setAttribute("content", light ? "#f2f2f2" : "#1f2d40");
   }
   if (toggle) {
     toggle.addEventListener("click", function () {
@@ -275,8 +275,8 @@ const THEME_SCRIPT = `<script>
  * 背景のグリッドやスキャンライン等の装飾は、このページでは省く。
  */
 const STYLE = `
-:root{color-scheme:dark;--bg:#05070f;--bg-soft:#080c18;--surface:#0b1220;--surface-2:#101a2e;--text:#d9e6f7;--text-muted:#7d8bab;--border:#1b2942;--border-strong:#2f4a72;--accent:#4cc9f0;--on-accent:#04121c;--accent-strong:#9be7ff;--accent-3:#c08bff;--accent-5:#5cf2b4;--accent-warn:#ffd166;--accent-red:#ff6b81;--font:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","YuGothic",sans-serif;--font-mono:ui-monospace,"SFMono-Regular","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
-:root.light{color-scheme:light;--bg:#eef3fb;--bg-soft:#e7eef8;--surface:#e2eaf6;--surface-2:#d6e2f2;--text:#0b1220;--text-muted:#4a5972;--border:#c3d0e4;--border-strong:#9db0cd;--accent:#0b63c4;--on-accent:#ffffff;--accent-strong:#084a96;--accent-3:#7a3fd1;--accent-5:#0a6b4a;--accent-warn:#9a6a00;--accent-red:#c02b3f}
+:root{color-scheme:dark;--bg:#1f2d40;--bg-soft:#2c3b59;--surface:#2c3b59;--surface-2:#294273;--text:#f2f2f2;--text-muted:#f2d7b6;--border:#515d73;--border-strong:#515d73;--accent:#11d9d9;--on-accent:#1f2d40;--accent-strong:#f2d7b6;--accent-3:#4557bf;--accent-5:#f2c5bb;--accent-warn:#f2d7b6;--accent-red:#f2c5bb;--font:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","YuGothic",sans-serif;--font-mono:ui-monospace,"SFMono-Regular","SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+:root.light{color-scheme:light;--bg:#f2f2f2;--bg-soft:#f2f2f2;--surface:#f2f2f2;--surface-2:#f2d7b6;--text:#1f2d40;--text-muted:#515d73;--border:#515d73;--border-strong:#515d73;--accent:#025959;--on-accent:#f2f2f2;--accent-strong:#294273;--accent-3:#4557bf;--accent-5:#025959;--accent-warn:color-mix(in srgb,#f2d7b6 34%,#1f2d40);--accent-red:color-mix(in srgb,#f2c5bb 34%,#1f2d40)}
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.8 var(--font);text-rendering:optimizeLegibility;overflow-wrap:anywhere}
@@ -340,7 +340,7 @@ h1{margin:0;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:500;line-height:1.4}
 .footer-links a::before{content:"$ ";color:var(--accent-5)}
 .footer-links a:hover{color:var(--accent-strong)}
 @media (max-width:640px){.site-header__inner,.wrap,.site-footer__inner{width:min(100% - 32px,1040px)}.tools__search{flex-basis:100%}}
-@media print{:root,:root.light{color-scheme:light;--bg:#ffffff;--bg-soft:#ffffff;--surface:#ffffff;--surface-2:#ffffff;--text:#111111;--text-muted:#444444;--border:#cccccc;--border-strong:#999999;--accent:#0b63c4;--accent-strong:#084a96;--accent-3:#7a3fd1;--accent-5:#0a6b4a;--accent-warn:#9a6a00;--accent-red:#c02b3f}body{background:#ffffff}.site-header,.site-footer,.skip-link,.tools,.more{display:none!important}}
+@media print{:root,:root.light{color-scheme:light;--bg:#f2f2f2;--bg-soft:#f2f2f2;--surface:#f2f2f2;--surface-2:#f2f2f2;--text:#1f2d40;--text-muted:#515d73;--border:#515d73;--border-strong:#515d73;--accent:#025959;--accent-strong:#294273;--accent-3:#4557bf;--accent-5:#025959;--accent-warn:color-mix(in srgb,#f2d7b6 34%,#1f2d40);--accent-red:color-mix(in srgb,#f2c5bb 34%,#1f2d40)}body{background:#f2f2f2}.site-header,.site-footer,.skip-link,.tools,.more{display:none!important}}
 `;
 
 export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOptions): string {
@@ -397,9 +397,9 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <meta name="description" content="Xで保存した投稿の一覧です。">
-<meta name="theme-color" content="#05070f">
+<meta name="theme-color" content="#1f2d40">
 <title>${escapeHtml(title)}</title>
-<script>try{var isLight=localStorage.getItem("theme")==="light";document.documentElement.classList.toggle("light",isLight);document.querySelector('meta[name="theme-color"]').setAttribute("content",isLight?"#eef3fb":"#05070f")}catch(e){}</script>
+<script>try{var isLight=localStorage.getItem("theme")==="light";document.documentElement.classList.toggle("light",isLight);document.querySelector('meta[name="theme-color"]').setAttribute("content",isLight?"#f2f2f2":"#1f2d40")}catch(e){}</script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
