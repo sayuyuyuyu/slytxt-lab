@@ -312,6 +312,76 @@ test("writer: タイトル欄が空の tech / comic 記事は公開完了時のX
   await expect(share).toHaveAttribute("rel", "noopener");
 });
 
+test("writer: 公開パネルから公開すると、その場でX投稿リンクが有効になる", async ({ page }) => {
+  const articleUrl = "https://slytxt.dev/articles/comic/2026-01-07-panel-share/";
+  const title = "公開パネルからXに投稿するための、スマートフォン幅でも折り返して読める長いタイトル";
+  await page.route("**/api/published", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ articles: [] })
+    });
+  });
+  await page.route(/\/api\/publish\/[^/]+$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify({
+        type: "done",
+        result: {
+          file: "src/content/comic/2026-01-07-panel-share.md",
+          url: articleUrl,
+          title,
+          state: "merged",
+          merged: true
+        }
+      })}\n`
+    });
+  });
+
+  await page.goto(`${WRITER_URL}/`);
+  await expect(page.locator("#themeToggle")).toBeVisible({ timeout: 15_000 });
+  // 新規は直前の保存の flush を待ってから下書きを作る。増えるまで待たないと、
+  // 入力が古い下書きに当たって作りたての下書きで消える。
+  const draftCount = await page.locator("#drafts .drafts__item").count();
+  await page.locator("#new").click();
+  await expect(page.locator("#drafts .drafts__item")).toHaveCount(draftCount + 1);
+  await page.locator("#category").selectOption("comic");
+  await page.locator("#title").fill(title);
+  const editor = page.locator('#editorRoot [contenteditable="true"]');
+  await editor.click();
+  await page.keyboard.type("公開パネルからの投稿を確認する本文です。");
+  await expectSaved(page);
+
+  await page.locator("#publishOpen").click();
+  // 公開前は投稿先 URL が無いので、パネルに X のボタンは出さない。
+  await expect(page.locator("#publishPanel .x-share")).toHaveCount(0);
+  await page.locator("#publishConfirm").click();
+
+  // パネルは閉じず、公開完了と同時に同じ場所で X に投稿できる。
+  await expect(page.locator("#publishPanel")).toBeVisible();
+  await expect(page.locator("#publishStatus")).toHaveText("公開しました。");
+  const share = page.locator("#publishPanel .x-share");
+  await expect(share).toHaveText("Xに投稿");
+  await expect(share).toHaveAttribute(
+    "href",
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(articleUrl)}`
+  );
+  await expect(share).toHaveAttribute("target", "_blank");
+  await expect(share).toHaveAttribute("rel", "noopener");
+  // 長いタイトルでもパネルが横にはみ出さず、ボタンも画面内に収まる。
+  const panel = page.locator("#publishPanel .dialog__panel");
+  expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  const box = await share.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+  // 完了画面（タスク欄）のボタンも従来どおり残る。
+  await expect(page.locator("#taskResult .x-share")).toHaveCount(1);
+  // パネルは「閉じる」で戻る。公開後はもう戻すタグ・説明文は無い。
+  await expect(page.locator("#publishCancel")).toHaveText("閉じる");
+  await page.locator("#publishCancel").click();
+  await expect(page.locator("#publishPanel")).toBeHidden();
+});
+
 /** computed style と要素幅をまとめて取る（比較は px の端数を許容する）。 */
 async function measure(locator) {
   return locator.evaluate((el) => {

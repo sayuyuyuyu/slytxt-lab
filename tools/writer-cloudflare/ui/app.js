@@ -81,6 +81,11 @@ const els = {
   publishDescription: $("#publishDescription"),
   publishDescriptionCount: $("#publishDescriptionCount"),
   publishDescriptionNote: $("#publishDescriptionNote"),
+  publishDescriptionRow: $("#publishDescriptionRow"),
+  publishNote: $("#publishNote"),
+  publishStatus: $("#publishStatus"),
+  publishResult: $("#publishResult"),
+  publishTagsRow: $("#publishTagsRow"),
   tags: $("#tags"),
   tagInput: $("#tagInput"),
   tagCandidates: $("#tagCandidates"),
@@ -1189,6 +1194,8 @@ function openTask(title) {
 function appendLog(message) {
   els.taskLog.textContent += `${message}\n`;
   els.taskLog.scrollTop = els.taskLog.scrollHeight;
+  // 公開パネルから投稿したときは、パネル側の状態行にも同じ経過を出す。
+  if (publishPhase === "publishing" && !els.publishPanel.hidden) setPublishStatus(message);
 }
 
 function finishTask() {
@@ -1196,15 +1203,14 @@ function finishTask() {
   els.task.dataset.state = "done";
 }
 
-function showResult(parts, isError = false) {
-  els.taskResult.setAttribute("role", isError ? "alert" : "status");
-  els.taskResult.setAttribute("aria-live", isError ? "assertive" : "polite");
-  els.taskResult.replaceChildren();
+const RESULT_LABEL_CLASS = "result-label";
+
+/** 結果の一行（文字／リンク／X 投稿ボタン）を並べる。公開完了と公開パネルで共通。 */
+function renderParts(container, parts) {
+  container.replaceChildren();
   for (const part of parts) {
     if (part.share) {
-      els.taskResult.append(
-        createXShareLink(part.share.title, part.share.url, "button x-share")
-      );
+      container.append(createXShareLink(part.share.title, part.share.url, "button x-share"));
     } else if (part.href) {
       const link = document.createElement("a");
       link.className = "button button--primary";
@@ -1212,14 +1218,20 @@ function showResult(parts, isError = false) {
       link.target = "_blank";
       link.rel = "noreferrer";
       link.textContent = part.label;
-      els.taskResult.append(link);
+      container.append(link);
     } else {
       const span = document.createElement("span");
-      span.className = "task__result-label";
+      span.className = RESULT_LABEL_CLASS;
       span.textContent = part.label;
-      els.taskResult.append(span);
+      container.append(span);
     }
   }
+}
+
+function showResult(parts, isError = false) {
+  els.taskResult.setAttribute("role", isError ? "alert" : "status");
+  els.taskResult.setAttribute("aria-live", isError ? "assertive" : "polite");
+  renderParts(els.taskResult, parts);
   els.taskResult.hidden = false;
 }
 
@@ -2032,9 +2044,53 @@ function openPublishPanel() {
   renderTags();
   updatePublishFile();
   publishReturnFocus = rememberFocus();
+  setPublishPhase("edit");
   els.publishPanel.hidden = false;
   els.publishConfirm.focus();
   if (!els.publishDescription.value.trim()) void fillDescriptionSuggestion();
+}
+
+/**
+ * 公開パネルの段階。
+ * - edit: タグ・説明文を直して投稿する（既定）。
+ * - publishing: 公開中。入力を隠し、経過を状態行に出す（閉じても公開は続く）。
+ * - done: 公開済み。結果リンク（PR・公開ページ・X への投稿）を出す。
+ */
+let publishPhase = "edit";
+
+function setPublishPhase(phase) {
+  publishPhase = phase;
+  const locked = phase !== "edit";
+  els.publishTagsRow.hidden = locked;
+  els.publishDescriptionRow.hidden = locked;
+  els.publishConfirm.hidden = locked;
+  els.publishNote.hidden = phase === "done";
+  els.publishCancel.textContent = locked ? "閉じる" : "キャンセル";
+  if (phase === "edit") {
+    els.publishStatus.hidden = true;
+    els.publishStatus.textContent = "";
+    els.publishResult.hidden = true;
+    els.publishResult.replaceChildren();
+  }
+}
+
+/** 公開の経過と結果の一行（他の状態表示と同じ形で読み上げ対象にする）。 */
+function setPublishStatus(message, state = "busy") {
+  els.publishStatus.textContent = message;
+  els.publishStatus.hidden = false;
+  els.publishStatus.setAttribute("role", state === "error" ? "alert" : "status");
+  els.publishStatus.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
+}
+
+/** 公開完了。パネル内に結果を出し、その場で X に投稿できるようにする。 */
+function showPublishResult(parts) {
+  setPublishPhase("done");
+  renderParts(els.publishResult, parts);
+  els.publishResult.hidden = false;
+  setPublishStatus("公開しました。");
+  if (els.publishPanel.hidden) return;
+  // 完了と同時に使うのは X への投稿なので、そこへフォーカスを移す。
+  (els.publishResult.querySelector(".x-share") ?? els.publishCancel).focus();
 }
 
 function closePublishPanel({ restore = false } = {}) {
@@ -2141,6 +2197,11 @@ async function runPublish() {
     toast("保存できていないため、公開を中止しました。", "error");
     return;
   }
+  // 投稿を始めたら、パネルを閉じてもタグ・説明文は戻さない（もう送った内容）。
+  publishTagsSnapshot = null;
+  publishDescriptionSnapshot = null;
+  setPublishPhase("publishing");
+  setPublishStatus("公開しています…");
   setBusy(true);
   const id = encodeURIComponent(state.current.id);
   try {
@@ -2154,7 +2215,7 @@ async function runPublish() {
     const shareTitle =
       state.current.category === "misc" ? "" : String(result.title ?? "").trim();
     finishTask();
-    showResult([
+    const parts = [
       { label: result.file },
       ...(result.prUrl ? [{ href: result.prUrl, label: "PR" }] : []),
       ...(result.url
@@ -2164,7 +2225,9 @@ async function runPublish() {
             { label: "公開ページはデプロイの反映まで数十秒かかることがあります" }
           ]
         : [])
-    ]);
+    ];
+    showResult(parts);
+    showPublishResult(parts);
     toast("公開しました。");
     // 公開したドラフトはサーバー側で消えている。
     removeLocal(state.current.id);
@@ -2177,6 +2240,9 @@ async function runPublish() {
     finishTask();
     appendLog(`失敗: ${error.message}`);
     showResult([{ label: "失敗しました。" }], true);
+    // 同じパネルからそのままやり直せるよう、入力に戻して理由を出す。
+    setPublishPhase("edit");
+    setPublishStatus(`公開できませんでした。${error.message}`, "error");
     toast(error.message, "error");
   } finally {
     setBusy(false);
@@ -2369,7 +2435,7 @@ async function boot() {
   els.tagInput.addEventListener("change", commitTagInput);
   els.publishConfirm.addEventListener("click", () => {
     commitTagInput();
-    closePublishPanel();
+    // パネルは閉じない。公開が終わると、同じ場所で X に投稿できる。
     runPublish();
   });
   els.confirmCancel.addEventListener("click", () => settleConfirm(false));
