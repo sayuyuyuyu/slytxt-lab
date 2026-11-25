@@ -153,3 +153,29 @@ test("site: skip-link は普段隠れていて、キーボードの Tab でだ�
   await page.keyboard.press("Enter");
   await expect.poll(() => new URL(page.url()).hash).toBe("#main-content");
 });
+
+test("site: ヘッダーの検索はページ遷移なしで開き、Esc で閉じる", async ({ page }) => {
+  await page.goto(`${SITE_URL}/`);
+  const dialog = page.locator("[data-search-overlay]");
+  await expect(dialog).toBeHidden();
+
+  const open = page.locator("[data-search-open]").first();
+  await open.click();
+  await expect(dialog).toBeVisible();
+
+  // 開いたら入力にフォーカスが移り、その場で結果が出る。
+  const input = dialog.locator(".pagefind-ui__search-input");
+  await expect(input).toBeFocused();
+  await input.fill("スタイル比較");
+  await expect(dialog.locator(".pagefind-ui__result").first()).toBeVisible();
+
+  // Esc で閉じて、開いたボタンへフォーカスが戻る。
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(open).toBeFocused();
+});
+
+test("site: 検索ページは廃止されている", async ({ page }) => {
+  const response = await page.goto(`${SITE_URL}/search/`);
+  expect(response.status()).toBe(404);
+});

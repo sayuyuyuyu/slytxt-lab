@@ -364,7 +364,7 @@ for (const file of htmlFiles) {
     else issues.push(`${relative}: missing <link rel="${rel}" href="${href}">`);
   }
   const robotsContent = metaContent("name", "robots");
-  const expectsNoindex = relative === "404.html" || relative === "search/index.html";
+  const expectsNoindex = relative === "404.html";
   if (expectsNoindex) {
     if (robotsContent === "noindex") checkedNoindex++;
     else issues.push(`${relative}: missing noindex robots meta`);
@@ -507,7 +507,7 @@ if (sitemap !== null) {
     const route = "/" + relative.replace(/index\.html$/, "");
     const expected = new URL(route, SITE_ORIGIN).href;
     // noindex pages (404 and Search) are intentionally left out of the sitemap.
-    const isNoindex = relative === "404.html" || relative === "search/index.html";
+    const isNoindex = relative === "404.html";
     // Listing pages with no entries are also left out on purpose (see the
     // count-based staticPaths in src/pages/sitemap.xml.ts): they render the
     // EmptyState component instead of any content.

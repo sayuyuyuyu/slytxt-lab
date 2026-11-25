@@ -3,6 +3,7 @@ import { ARTICLE_COLLECTIONS, getAllEntries, getArticles, getProjects } from "@/
 import { collectTags } from "@/lib/tags";
 import { categoryPaths, navGroups, site } from "@/lib/site";
 import ThemeToggle from "./ThemeToggle.astro";
+import SearchDialog from "./SearchDialog.astro";
 
 const currentPath = Astro.url.pathname;
 
@@ -60,6 +61,16 @@ function isCurrentSection(href: string) {
     </a>
     <div class="site-header__actions">
       <button
+        class="search-button"
+        type="button"
+        aria-label="検索"
+        title="検索"
+        aria-haspopup="dialog"
+        data-search-open
+      >
+        <span class="search-button__icon" aria-hidden="true">⌕</span>
+      </button>
+      <button
         class="menu-button"
         type="button"
         aria-label="Open menu"
@@ -112,6 +123,7 @@ function isCurrentSection(href: string) {
       </nav>
     </div>
   </div>
+  <SearchDialog />
   <noscript>
     <style>
       .site-menu[hidden] {
