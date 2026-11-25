@@ -237,10 +237,18 @@ samp,
   padding: 8px 16px;
   background: var(--surface);
   border: 1px solid var(--accent);
+  /* 普段は画面の外へ逃がす。表示はキーボードで辿ったとき（:focus-visible）だけ。
+     ブラウザがリロード後にフォーカスを戻しても、その復元はキーボード操作ではない
+     ため、ここで出てこない（#883）。 */
   transform: translateY(-180%);
 }
 .skip-link:focus {
   transform: translateY(0);
+}
+/* JS があるときは、直前の操作がキーボードのときだけ出す。ブラウザがリロード後に
+   フォーカスを戻しても、その復元はキーボード操作ではないので出てこない（#883）。 */
+html[data-input="pointer"] .skip-link:focus {
+  transform: translateY(-180%);
 }
 
 .prompt {

@@ -133,3 +133,23 @@ test("site: カード内のタグはカードのリンクではなくタグへ�
   await tag.click();
   await expectPath(page, href);
 });
+
+test("site: skip-link は普段隠れていて、キーボードの Tab でだけ出る", async ({ page }) => {
+  await page.goto(`${SITE_URL}/`);
+  const skip = page.locator(".skip-link");
+  const isOffscreen = async () => (await skip.boundingBox()).y + (await skip.boundingBox()).height <= 0;
+
+  expect(await isOffscreen()).toBe(true);
+
+  // ブラウザがリロード後にフォーカスを戻す場合を想定（キーボード操作ではない）。
+  await page.evaluate(() => document.querySelector(".skip-link").focus());
+  expect(await isOffscreen()).toBe(true);
+
+  // キーボードで辿ったときは出て、本文へスキップできる。
+  await page.goto(`${SITE_URL}/`);
+  await page.keyboard.press("Tab");
+  await expect(skip).toBeFocused();
+  expect(await isOffscreen()).toBe(false);
+  await page.keyboard.press("Enter");
+  await expect.poll(() => new URL(page.url()).hash).toBe("#main-content");
+});
