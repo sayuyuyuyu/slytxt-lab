@@ -157,6 +157,21 @@ const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003
       })();
     </script>
     <script is:inline>
+      // 直前の操作がキーボードかポインタかを html に持たせる（skip-link の表示に使う）。
+      // 読み込み直後はポインタ扱いにして、フォーカスの復元で skip-link を出さない。
+      document.documentElement.dataset.input = "pointer";
+      window.addEventListener(
+        "pointerdown",
+        () => {
+          document.documentElement.dataset.input = "pointer";
+        },
+        { passive: true }
+      );
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Tab") document.documentElement.dataset.input = "keyboard";
+      });
+    </script>
+    <script is:inline>
       // 出現アニメーションが動かない場合でも内容が消えないように。
       // 正常に初期化できた場合は、画面外要素の出現を IntersectionObserver に任せる。
       window.addEventListener("load", () => {
