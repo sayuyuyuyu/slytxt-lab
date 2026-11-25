@@ -1,11 +1,12 @@
 import { MarkdownView, Notice, Plugin, TFile, requestUrl, type Editor } from "obsidian";
 import { EmbedModal } from "./src/embed-modal";
 import { PublishResultModal } from "./src/publish-result-modal";
+import { PublishPanel } from "./src/publish-panel";
 import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/github";
 import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
 import { MAX_COVER_BYTES, MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
 import { extractExtras } from "./src/lib/frontmatter";
-import { missingProperties, normalizeTags, type PropertyPatch } from "./src/lib/note-properties";
+import { normalizeTags, panelValues, type PanelValues } from "./src/lib/note-properties";
 import { firstImageSource, preparePublish } from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
@@ -34,7 +35,7 @@ export default class SlytxtPublishPlugin extends Plugin {
       checkCallback: (checking) => {
         const file = this.app.workspace.getActiveFile();
         if (!file || file.extension !== "md") return false;
-        if (!checking) void this.publish(file);
+        if (!checking) void this.openPublishPanel(file);
         return true;
       }
     });
@@ -50,17 +51,6 @@ export default class SlytxtPublishPlugin extends Plugin {
             new Notice(error instanceof Error ? error.message : String(error), 12000);
           });
         }
-        return true;
-      }
-    });
-
-    this.addCommand({
-      id: "fill-properties",
-      name: "公開の項目をノートに追加",
-      checkCallback: (checking) => {
-        const file = this.app.workspace.getActiveFile();
-        if (!file || file.extension !== "md") return false;
-        if (!checking) void this.fillProperties(file, { force: true });
         return true;
       }
     });
@@ -86,7 +76,7 @@ export default class SlytxtPublishPlugin extends Plugin {
         new Notice("Markdown ファイルを開いてから押してください。");
         return;
       }
-      void this.publish(file);
+      void this.openPublishPanel(file);
     });
 
     this.addRibbonIcon("image", "画像をアップロードして挿入", () => {
@@ -98,16 +88,6 @@ export default class SlytxtPublishPlugin extends Plugin {
       void this.insertUploadedImage(view.editor);
     });
 
-    // ノートを開いたら、公開に必要なプロパティを実値で埋める（#882）。
-    this.registerEvent(
-      this.app.workspace.on("file-open", (file) => {
-        if (file) void this.fillProperties(file);
-      })
-    );
-    this.app.workspace.onLayoutReady(() => {
-      const file = this.app.workspace.getActiveFile();
-      if (file) void this.fillProperties(file);
-    });
 
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
@@ -138,7 +118,7 @@ export default class SlytxtPublishPlugin extends Plugin {
             .setTitle("PR を作る（公開）")
             .setIcon("send")
             .onClick(() => {
-              void this.publish(file);
+              void this.openPublishPanel(file);
             });
         });
       })
@@ -154,43 +134,30 @@ export default class SlytxtPublishPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  /* ---- プロパティの自動補完（#882） ---- */
-
-  /** 処理済みのパス。file-open は何度も来るので、同じノートを繰り返さない。 */
-  private readonly filled = new Set<string>();
+  /* ---- 公開直前の入力パネル（#905） ---- */
 
   /**
-   * 足りないプロパティを frontmatter に書く。値が揃っていれば何もしない。
-   * 失敗しても書く・開くは止めない（補助的な処理なので）。
+   * 公開パネルを開く。値は frontmatter と本文から実値で入れておく。
+   * 書いている間はノート画面に何も出さない。
    */
-  private async fillProperties(file: TFile, { force = false } = {}): Promise<void> {
-    if (file.extension !== "md") return;
-    if (this.filled.has(file.path) && !force) return;
-    this.filled.add(file.path);
-    try {
-      const raw = await this.app.vault.read(file);
-      const body = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
-      const front = this.app.metadataCache.getFileCache(file)?.frontmatter ?? null;
-      const cache = this.app.metadataCache.getFileCache(file);
-      const inlineTags = (cache?.tags ?? []).map((tag) => tag.tag.replace(/^#/, ""));
-      const patch: PropertyPatch = missingProperties({
-        frontmatter: front,
-        body,
-        inlineTags,
-        defaultCategory: this.settings.defaultCategory
-      });
-      if (Object.keys(patch).length === 0) return;
-      await this.app.fileManager.processFrontMatter(file, (next) => {
-        for (const [key, value] of Object.entries(patch)) {
-          // 途中で別の端末や本人が値を入れた場合は上書きしない。
-          if (next[key] === undefined || next[key] === null || next[key] === "") {
-            next[key] = value;
-          }
-        }
-      });
-    } catch {
-      // プロパティの補完は補助。失敗しても編集は続けられる。
+  private async openPublishPanel(file: TFile): Promise<void> {
+    if (!this.settings.token) {
+      new Notice("設定で GitHub トークンを登録してください。");
+      return;
     }
+    const raw = await this.app.vault.read(file);
+    const body = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
+    const cache = this.app.metadataCache.getFileCache(file);
+    const initial = panelValues({
+      frontmatter: cache?.frontmatter ?? null,
+      body,
+      inlineTags: (cache?.tags ?? []).map((tag) => tag.tag.replace(/^#/, "")),
+      defaultCategory: this.settings.defaultCategory
+    });
+    new PublishPanel(this.app, initial, {
+      uploadCover: () => this.pickAndUploadCover(),
+      submit: (values) => void this.publish(file, values)
+    }).open();
   }
 
   /** 画像を選ばせてアップロードし、カーソル位置へ Markdown 画像として差し込む。 */
@@ -301,16 +268,10 @@ export default class SlytxtPublishPlugin extends Plugin {
   }
 
   /**
-   * ノートの frontmatter と本文から PR を作る。画面遷移はしない。
-   * 未指定の項目は本文から補う：タイトルは最初の見出し、カバーは
-   * 本文の最初の画像、説明は書き出し。使った値はノートにも残す。
+   * パネルの値だけで PR を作る（#905）。frontmatter が空でも公開できる。
+   * 既存の PR 作成・自動マージ・本番反映の流れはそのまま使う。
    */
-  private async publish(file: TFile): Promise<void> {
-    if (!this.settings.token) {
-      new Notice("設定で GitHub トークンを登録してください。");
-      return;
-    }
-    const values = this.currentValues(file);
+  private async publish(file: TFile, values: PanelValues): Promise<void> {
     const raw = await this.app.vault.read(file);
     const frontmatterMatch = raw.match(/^---\n([\s\S]*?)\n---/);
     const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
@@ -340,14 +301,11 @@ export default class SlytxtPublishPlugin extends Plugin {
         title: payload.title,
         content: payload.content
       });
+      // 再公開で updated を引き継ぐため、公開日と更新日だけはノートに残す。
       await this.app.fileManager.processFrontMatter(file, (front) => {
-        front.title = payload.frontmatter.title;
-        front.description = payload.frontmatter.description;
-        front.tags = values.tags;
-        front.cover = cover;
-        front.category = values.category;
+        front.published = payload.frontmatter.published;
+        if (payload.frontmatter.updated) front.updated = payload.frontmatter.updated;
       });
-      // 公開後の導線（#708）。PR と並べて X の投稿画面を開けるようにする。
       const share = shareTarget(payload.category, payload.slug, payload.frontmatter.title);
       new PublishResultModal(this.app, {
         prNumber: result.prNumber,
