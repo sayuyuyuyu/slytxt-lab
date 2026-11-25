@@ -17,38 +17,8 @@ if [ -z "$number" ]; then
   exit 2
 fi
 
-updated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-before="$(gh pr view "$number" --json headRefOid --jq .headRefOid)"
-gh pr update-branch "$number" >/dev/null 2>&1 || true
-after="$(gh pr view "$number" --json headRefOid --jq .headRefOid)"
-
-i=0
-while [ "$i" -lt 80 ]; do
-  row="$(gh pr checks "$number" --json name,state,startedAt \
-    --jq '[.[] | select(.name == "ci")] | sort_by(.startedAt) | last | "\(.state) \(.startedAt)"' 2>/dev/null || true)"
-  state="${row%% *}"
-  started="${row#* }"
-
-  if [ "$state" = "SUCCESS" ]; then
-    # 更新で head が変わったときだけ、更新後の実行であることを確かめる。
-    if [ "$before" = "$after" ] || [ "${started:-}" \> "$updated_at" ] || [ "${started:-}" = "$updated_at" ]; then
-      break
-    fi
-  fi
-
-  case "$state" in
-    FAILURE|CANCELLED|TIMED_OUT|SKIPPED)
-      echo "ci が $state です。修正してから再実行してください。" >&2
-      exit 1
-      ;;
-  esac
-  i=$((i + 1))
-  sleep 15
-done
-
-if [ "$i" -ge 80 ]; then
-  echo "ci の完了を待ちきれませんでした（20分）。" >&2
-  exit 1
-fi
-
-gh pr merge "$number" --squash --delete-branch
+# GitHub の必須チェックは `ci` だけ。auto-merge を使えば GitHub 側が待って
+# マージするので、こちらでポーリング（sleep ループ）しない。
+# `Workers Builds: slytxt-feed` は常に失敗するが必須ではないため、
+# auto-merge は required check の成功だけで進む。
+gh pr merge "$number" --squash --delete-branch --auto
