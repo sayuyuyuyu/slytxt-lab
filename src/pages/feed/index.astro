@@ -9,7 +9,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 // 目印を消すと本番で一覧が出なくなるので、check-build で存在を検証している。
 ---
 <BaseLayout title={`Feed - ${site.name}`} description={pageDescriptions.feed}>
-  <PageHeader eyebrow="feed" title="Feed" />
+  <PageHeader title="Feed" />
   <section class="listing" aria-label="Feed">
     <div class="container">
       <div class="feed" data-pagefind-ignore>
