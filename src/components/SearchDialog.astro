@@ -18,6 +18,9 @@
 
 <script is:inline>
   (() => {
+  // この script は header の中で走る。本文側にも検索ボタン（404 など）があるため、
+  // 読み込みが終わってからボタンを拾う。
+  const start = () => {
     const dialog = document.querySelector("[data-search-overlay]");
     const status = dialog?.querySelector("[data-search-status]");
     if (!dialog || !status) return;
@@ -139,5 +142,11 @@
     dialog.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && dialog.open) close();
     });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
+  }
   })();
 </script>

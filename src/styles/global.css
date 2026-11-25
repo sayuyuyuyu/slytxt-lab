@@ -742,10 +742,40 @@ html[data-input="pointer"] .skip-link:focus {
 .listing {
   padding-block: 0 64px;
 }
-.listing-tools {
+/* 一覧のタグ絞り込み（#881）。タグ専用ページの代わりに一覧の上部へ置く。 */
+.tag-filter {
   display: flex;
-  justify-content: end;
-  padding-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  padding-block: 0 20px;
+}
+.tag-filter__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 2px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+.tag-filter__chip:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.tag-filter__chip[aria-current="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.tag-filter__chip[aria-current="true"] .tag__hash {
+  color: var(--on-accent);
+}
+.tag-filter__empty {
+  margin: 12px 0;
+  color: var(--text-muted);
   font-size: 0.875rem;
 }
 .listing-list {
@@ -894,35 +924,6 @@ html[data-input="pointer"] .skip-link:focus {
 }
 .tag:hover .tag__hash {
   transform: scale(1.25);
-}
-.tag-directory {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-  gap: 0 32px;
-}
-.tag-directory a {
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 20px 0;
-  border-top: 1px solid var(--border);
-  font-family: var(--font-mono);
-  text-decoration: none;
-}
-.tag-directory a::before {
-  content: ">";
-  color: var(--accent-5);
-}
-.tag-directory span {
-  margin-left: auto;
-  flex: none;
-  white-space: nowrap;
-  color: var(--text-muted);
-  font-size: 0.875rem;
 }
 .empty-state {
   padding: 28px 0;
@@ -1720,7 +1721,7 @@ html.js [data-motion].is-shown {
 .button,
 .link-button,
 .pagination a,
-.tag-directory a,
+.tag-filter__chip,
 .tag {
   transition:
     transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
@@ -1737,10 +1738,6 @@ html.js [data-motion].is-shown {
   transform: translateY(-2px);
   border-color: var(--accent);
   box-shadow: 0 0 18px -8px var(--glow);
-}
-.tag-directory a:hover {
-  transform: translateX(4px);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }
 .brand__mark {
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -1973,7 +1970,6 @@ html.konami-on .site-main {
   .article-nav,
   .pagination,
   .feed-more,
-  .listing-tools,
   .breadcrumbs,
   .link-button {
     display: none !important;

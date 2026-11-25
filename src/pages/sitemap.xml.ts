@@ -5,13 +5,11 @@ import {
   getAllArticles,
   getAllEntries,
   getArticles,
-  getEntriesByTag,
   getEntryDate,
   getEntryPath,
   getProjects
 } from "@/lib/content";
 import type { SiteEntry } from "@/lib/content";
-import { collectTags, slugifyTag, tagPath } from "@/lib/tags";
 import { escapeXml } from "@/lib/xml";
 
 function urlNode(site: URL, path: string, lastmod?: Date): string {
@@ -53,9 +51,8 @@ export async function GET(context: APIContext) {
     collection,
     entries: perCategory[index]
   }));
-  const tags = collectTags(entries);
   const allLatest = latestDate(entries);
-  // トップ・タグ一覧はサイト全体、各一覧はその一覧に載るエントリの最新日。
+  // トップはサイト全体、各一覧はその一覧に載るエントリの最新日。
   // About だけは本文がページファイル内の静的な文章で、更新日を持たないため
   // lastmod を付けない。
   const staticUrls: { path: string; lastmod?: Date }[] = [
@@ -70,7 +67,6 @@ export async function GET(context: APIContext) {
     // 知る手立てが無い。lastmod は付けない（About と同じ扱い）。
     { path: "/feed/" },
     ...(projects.length > 0 ? [{ path: "/projects/", lastmod: latestDate(projects) }] : []),
-    ...(tags.size > 0 ? [{ path: "/tags/", lastmod: allLatest }] : []),
     { path: "/about/" }
   ];
 
@@ -79,21 +75,12 @@ export async function GET(context: APIContext) {
     ...categoryEntries.flatMap(({ collection, entries: list }) =>
       pagedUrls(list, `/articles/${collection}`)
     ),
-    ...pagedUrls(projects, "/projects"),
-    ...Array.from(tags.keys()).flatMap((slug) =>
-      pagedUrls(getEntriesByTag(entries, slug), `/tags/${slug}`)
-    )
+    ...pagedUrls(projects, "/projects")
   ];
-
-  const tagUrls = Array.from(tags.values()).flatMap((tag) => {
-    const tagEntries = getEntriesByTag(entries, slugifyTag(tag));
-    return [{ path: tagPath(tag), lastmod: latestDate(tagEntries) }];
-  });
 
   const urls = [
     ...staticUrls.map((url) => urlNode(site, url.path, url.lastmod)),
     ...pageUrls.map((url) => urlNode(site, url.path, url.lastmod)),
-    ...tagUrls.map((url) => urlNode(site, url.path, url.lastmod)),
     ...entries.map((entry) => urlNode(site, getEntryPath(entry), getEntryDate(entry)))
   ];
 

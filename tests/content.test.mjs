@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getAdjacentArticles,
-  getEntriesByTag,
   getEntryDescription,
   getEntryDisplayTitle,
   getEntryPreview,
@@ -139,23 +138,6 @@ test("adjacent articles at the edges, in the middle, and for a single entry", ()
     previous: undefined,
     next: undefined,
   });
-});
-
-test("entries by tag matches on the slugified tag", () => {
-  const cpp = entry({
-    id: "cpp",
-    data: { title: "", tags: ["C++"] },
-  });
-  const journal = entry({
-    id: "journal",
-    data: { title: "", tags: ["ジャンプ感想"] },
-  });
-  const other = entry({ id: "other", data: { title: "", tags: ["C"] } });
-  const all = [cpp, journal, other];
-  assert.deepEqual(getEntriesByTag(all, "cplusplus"), [cpp]);
-  assert.deepEqual(getEntriesByTag(all, "ジャンプ感想"), [journal]);
-  assert.deepEqual(getEntriesByTag(all, "c"), [other]);
-  assert.deepEqual(getEntriesByTag(all, "missing"), []);
 });
 
 test("entries: 記事と Projects を混ぜて日付の新しい順に並べる", () => {

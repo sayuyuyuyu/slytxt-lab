@@ -1,5 +1,4 @@
 import type { CollectionEntry } from "astro:content";
-import { slugifyTag } from "./tags.ts";
 
 export type ArticleCollection = "tech" | "misc" | "comic" | "game" | "anime";
 export type ArticleEntry =
@@ -104,12 +103,6 @@ export function getEntrySlug(entry: SiteEntry): string {
 export function getEntryPath(entry: SiteEntry): string {
   if (entry.collection === "projects") return `/projects/${getEntrySlug(entry)}/`;
   return `/${ARTICLE_BASE[entry.collection]}/${getEntrySlug(entry)}/`;
-}
-
-export function getEntriesByTag(entries: SiteEntry[], tagSlug: string): SiteEntry[] {
-  return entries.filter((entry) =>
-    entry.data.tags.some((tag) => slugifyTag(tag) === tagSlug)
-  );
 }
 
 export function getAdjacentArticles<T extends ArticleEntry>(entries: T[], currentId: string) {

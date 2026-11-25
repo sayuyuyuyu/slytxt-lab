@@ -179,3 +179,72 @@ test("site: 検索ページは廃止されている", async ({ page }) => {
   const response = await page.goto(`${SITE_URL}/search/`);
   expect(response.status()).toBe(404);
 });
+
+test("site: 記事一覧のタグで絞り込め、URL に残る", async ({ page }) => {
+  await page.goto(`${SITE_URL}/articles/`);
+  const chips = page.locator("[data-tag-filter] [data-tag-chip]");
+  await expect(chips.first()).toBeVisible();
+  const cards = page.locator("[data-tag-entry]");
+  const total = await cards.count();
+  expect(total).toBeGreaterThan(1);
+
+  // 全部のカードには付いていないタグを選ぶ（絞り込みが効くことを見る）。
+  const cardTags = await cards.evaluateAll((els) => els.map((el) => (el.dataset.tags ?? "").split(" ")));
+  let index = -1;
+  for (let i = 1; i < (await chips.count()); i += 1) {
+    const slug = await chips.nth(i).getAttribute("data-tag-chip");
+    const matches = cardTags.filter((tags) => tags.includes(slug)).length;
+    if (matches > 0 && matches < total) {
+      index = i;
+      break;
+    }
+  }
+  test.skip(index < 0, "この一覧には、一部のカードにだけ付くタグが無い");
+
+  // タグを選ぶと、ページ遷移せずにカードが絞り込まれる。
+  const chip = chips.nth(index);
+  const tag = await chip.getAttribute("data-tag-chip");
+  await chip.click();
+  await expect.poll(() => new URL(page.url()).searchParams.get("tag")).toBe(tag);
+  const visible = page.locator("[data-tag-entry]:not([hidden])");
+  const shown = await visible.count();
+  expect(shown).toBeLessThan(total);
+  for (const card of await visible.all()) {
+    expect((await card.getAttribute("data-tags")).split(" ")).toContain(tag);
+  }
+
+  // 「すべて」で戻せる。
+  await chips.first().click();
+  await expect(page.locator("[data-tag-entry]:not([hidden])")).toHaveCount(total);
+  await expect.poll(() => new URL(page.url()).searchParams.get("tag")).toBeNull();
+});
+
+test("site: カードのタグはタグ専用ページではなく絞り込んだ一覧へ行く", async ({ page }) => {
+  await page.goto(`${SITE_URL}/`);
+  const tag = page.locator(".entry-card .tag").first();
+  const href = await tag.getAttribute("href");
+  const url = new URL(href, SITE_URL);
+  expect(url.pathname).toBe("/articles/");
+  expect(url.searchParams.get("tag")).toBeTruthy();
+  await tag.click();
+  await expect.poll(() => new URL(page.url()).searchParams.get("tag")).toBe(
+    url.searchParams.get("tag"),
+  );
+});
+
+test("site: タグ専用ページは廃止されている", async ({ page }) => {
+  for (const path of ["/tags/", "/tags/漫画/"]) {
+    const response = await page.goto(`${SITE_URL}${path}`);
+    expect(response.status(), path).toBe(404);
+  }
+});
+
+test("site: 404 の検索ボタンからも検索を開ける", async ({ page }) => {
+  await page.goto(`${SITE_URL}/404.html`);
+  const dialog = page.locator("[data-search-overlay]");
+  await page.locator("[data-search-open]").last().click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".pagefind-ui__search-input")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+});

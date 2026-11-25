@@ -5,7 +5,6 @@ import type { ArticleCollection, ArticleEntry, ProjectEntry, SiteEntry } from ".
 export type { ArticleCollection, ArticleEntry, ProjectEntry, SiteEntry } from "./entries";
 export {
   getAdjacentArticles,
-  getEntriesByTag,
   getEntryDate,
   getEntryDateLabel,
   getEntryDescription,
