@@ -7,7 +7,7 @@ export type SlytxtSettings = {
   repo: string;
   token: string;
   baseBranch: string;
-  /** frontmatter モーダルで最初に選ばれるカテゴリ。 */
+  /** ノートの category が空・不正なときに埋める既定のカテゴリ。 */
   defaultCategory: PublishCategory;
   /** media Worker のアップロード用トークン（カバー画像のアップロードに使う）。 */
   uploadToken: string;
@@ -66,7 +66,7 @@ export class SlytxtSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("既定のカテゴリ")
-      .setDesc("frontmatter モーダルで最初に選ばれるカテゴリ。")
+      .setDesc("ノートの category が空・不正なときに埋めるカテゴリ。")
       .addDropdown((dropdown) => {
         for (const category of PUBLISH_CATEGORIES) {
           dropdown.addOption(category, category);
