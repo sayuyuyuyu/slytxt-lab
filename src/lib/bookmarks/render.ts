@@ -176,11 +176,10 @@ ${mediaHtml(item)}<div class="card__foot"><a class="card__open" href="${escapeHt
 
 function noticeHtml(snapshot: BookmarkSnapshot): string {
   if (!snapshot.error) return "";
-  const asOf = `${formatJst(snapshot.updatedAt)} 時点の内容を表示しています`;
   if (snapshot.errorKind === "auth") {
-    return `<p class="notice notice--auth">Xとの接続の有効期限が切れている可能性があります。${asOf}。復旧には再接続が必要です。</p>`;
+    return `<p class="notice notice--auth"><a class="button" href="/api/bookmarks/authorize">再接続</a></p>`;
   }
-  return `<p class="notice">最新の取得に失敗しました。${asOf}。時間をおいて開き直すと直ることがあります。</p>`;
+  return `<p class="notice"><button class="button" type="button" data-reload>再読み込み</button></p>`;
 }
 
 /** 絞り込みと「もっと見る」をまとめて扱うスクリプト。絞り込み中は件数制限を外して一致分をすべて出す。 */
@@ -239,11 +238,9 @@ function listScript(initial: number): string {
 const THEME_SCRIPT = `<script>
 (function () {
   var toggle = document.querySelector("[data-theme-toggle]");
-  var icon = document.querySelector("[data-theme-icon]");
   function setIcon() {
     var light = document.documentElement.classList.contains("light");
     var next = light ? "Switch to dark mode" : "Switch to light mode";
-    if (icon) icon.textContent = light ? "☼" : "☾";
     if (toggle) {
       toggle.setAttribute("aria-label", next);
       toggle.setAttribute("title", next);
@@ -289,6 +286,8 @@ button,input,select{font:inherit}
 .site-header{position:sticky;top:0;z-index:50;background:var(--bg)}
 .site-header__inner{width:min(100% - 48px,1040px);margin-inline:auto;min-height:65px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--border)}
 .brand{display:inline-flex;align-items:center;gap:10px;min-width:0;font-family:var(--font-mono);font-size:.98rem;font-weight:700;letter-spacing:.02em;text-decoration:none;color:var(--text)}
+.theme-toggle__icon{width:1.05em;height:1.05em;display:inline-block;vertical-align:-.125em}
+:root:not(.light) .theme-toggle__icon--sun,:root.light .theme-toggle__icon--moon{display:none}
 .theme-toggle{width:44px;flex:0 0 44px;min-height:44px;padding:0;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--text);cursor:pointer;font-size:1.1rem;line-height:1}
 .theme-toggle:hover{background:var(--surface);border-color:var(--accent);color:var(--accent-strong)}
 .wrap{width:min(100% - 48px,1040px);margin-inline:auto;padding:0 0 64px}
@@ -348,7 +347,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
   let tools = "";
   let script = "";
   if (!snapshot) {
-    body = `<p class="empty">まだXと接続していません。</p>`;
+    body = ``;
   } else if (items.length === 0) {
     body = ``;
   } else {
@@ -375,15 +374,15 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 </div>`;
     const more =
       items.length > initial
-        ? `\n<p class="more" data-more-wrap><button type="button" class="more__button" data-more>もっと見る（あと${items.length - initial}件）</button></p>`
+        ? `\n<p class="more" data-more-wrap><button type="button" class="more__button" data-more>もっと見る</button></p>`
         : "";
-    body = `<ol class="cards">${cards}</ol>\n<p class="no-match" data-no-match hidden>条件に合う投稿がありません。</p>${more}`;
+    body = `<ol class="cards">${cards}</ol>\n<p class="no-match" data-no-match hidden></p>${more}`;
     script = listScript(initial);
   }
 
   const notice = snapshot ? noticeHtml(snapshot) : "";
   const countLine = snapshot
-    ? `<p class="page-count">${items.length}件の投稿 ・ 更新 ${formatJstWithWeekday(snapshot.updatedAt)}</p>`
+    ? `<p class="page-count">${items.length} ・ ${formatJstWithWeekday(snapshot.updatedAt)}</p>`
     : "";
 
   return `<!doctype html>
@@ -411,7 +410,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <header class="site-header">
 <div class="site-header__inner">
 <a class="brand" href="${escapeHtml(options.siteUrl)}" aria-label="${escapeHtml(options.siteName)} トップ"><span class="brand__name">${escapeHtml(options.siteName)}</span></a>
-<button class="theme-toggle" type="button" aria-label="Toggle theme" data-theme-toggle><span aria-hidden="true" data-theme-icon>◐</span></button>
+<button class="theme-toggle" type="button" aria-label="Toggle theme" data-theme-toggle><svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.6A8.6 8.6 0 1 1 9.4 4a6.6 6.6 0 0 0 10.6 10.6Z"/></svg><svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></button>
 </div>
 </header>
 <main id="main-content" class="wrap" tabindex="-1">
@@ -687,8 +686,8 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
   if (DATA.error) {
     var noticeText =
       DATA.errorKind === "auth"
-        ? "Xとの接続の有効期限が切れている可能性があります（" + (DATA.updatedAt || "") + " 時点の内容）"
-        : "最新の取得に失敗しました（" + (DATA.updatedAt || "") + " 時点の内容）";
+        ? ""
+        : "";
     mount.appendChild(el("p", "notice", noticeText));
   }
 
