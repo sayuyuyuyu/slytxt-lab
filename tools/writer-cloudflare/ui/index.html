@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="しらゆラボの記事とメモを書くための執筆画面です。" />
-    <meta name="theme-color" content="#05070f" />
+    <meta name="theme-color" content="#1f2d40" />
     <title>執筆 - slytxt.dev</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -22,12 +22,12 @@
       (() => {
         document.documentElement.classList.add("js");
         try {
-          // サイトと同じく、青黒のダークを既定にする。
+          // サイトと同じく、紺のダークを既定にする。
           const isLight = localStorage.getItem("theme") === "light";
           document.documentElement.classList.toggle("light", isLight);
           document
             .querySelector('meta[name="theme-color"]')
-            ?.setAttribute("content", isLight ? "#eef3fb" : "#05070f");
+            ?.setAttribute("content", isLight ? "#f2f2f2" : "#1f2d40");
         } catch {}
       })();
     </script>
