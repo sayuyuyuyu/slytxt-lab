@@ -1,5 +1,6 @@
 import { MarkdownView, Notice, Plugin, TFile, requestUrl, type Editor } from "obsidian";
 import { EmbedModal } from "./src/embed-modal";
+import { PublishResultModal } from "./src/publish-result-modal";
 import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/github";
 import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
 import { MAX_COVER_BYTES, MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
@@ -20,6 +21,7 @@ import {
 } from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
+import { shareTarget } from "./src/lib/share";
 import { DEFAULT_SETTINGS, SlytxtSettingTab, type SlytxtSettings } from "./src/settings";
 
 /** ノートの frontmatter にある公開の項目。ノート画面のプロパティ欄で編集する。 */
@@ -419,12 +421,14 @@ export default class SlytxtPublishPlugin extends Plugin {
         front.cover = cover;
         front.category = values.category;
       });
-      new Notice(
-        result.autoMerge
-          ? `PR #${result.prNumber} を作成しました（CI が通れば自動でマージされ、公開されます）: ${result.prUrl}`
-          : `PR #${result.prNumber} を作成しました: ${result.prUrl}`,
-        12000
-      );
+      // 公開後の導線（#708）。PR と並べて X の投稿画面を開けるようにする。
+      const share = shareTarget(payload.category, payload.slug, payload.frontmatter.title);
+      new PublishResultModal(this.app, {
+        prNumber: result.prNumber,
+        prUrl: result.prUrl,
+        autoMerge: result.autoMerge,
+        ...share
+      }).open();
     } catch (error) {
       const message =
         error instanceof PublishError || error instanceof Error
