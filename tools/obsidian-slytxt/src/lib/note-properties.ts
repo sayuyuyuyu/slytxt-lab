@@ -1,12 +1,9 @@
 /**
- * ノートを開いたときに、公開に必要なプロパティを実値で埋める（#882）。
+ * 公開直前の入力パネルに出す初期値（#905）。
  *
- * 公開バーをやめたので、書くときに触るのは Obsidian 標準のプロパティだけに
- * なる。空欄（「値がありません」）を本人に入力させないよう、本文から決まる
- * 値は先に入れておく。値の決め方は公開時（preparePublish）と同じ規則に揃える。
- *
- * DOM にも Obsidian の API にも触らない純関数。呼び出し側（main.ts）が
- * processFrontMatter で差分を書き込む。
+ * 値の決め方は公開時（preparePublish）と同じ規則。frontmatter に値があれば
+ * それを、無ければ本文から導いた値を使う。DOM にも Obsidian の API にも
+ * 触らない純関数。
  */
 import { deriveTitle } from "./frontmatter.ts";
 import { deriveDescription } from "./publish-plan.ts";
@@ -105,4 +102,35 @@ export function missingProperties({
   }
 
   return patch;
+}
+
+/** 公開パネルに最初から入れておく値。 */
+export type PanelValues = {
+  title: string;
+  description: string;
+  category: PublishCategory;
+  tags: string[];
+  cover: string;
+};
+
+/**
+ * frontmatter と本文から、パネルの初期値を決める。
+ * 空欄を並べないよう、本文から決まる値はここで入れておく（#905）。
+ */
+export function panelValues(input: NotePropertiesInput): PanelValues {
+  const front = input.frontmatter ?? {};
+  const missing = missingProperties(input);
+  const text = (value: unknown, fallback: string | undefined) => {
+    const given = String(value ?? "").trim();
+    return given || (fallback ?? "");
+  };
+  return {
+    title: text(front.title, missing.title as string | undefined),
+    description: text(front.description, missing.description as string | undefined),
+    category: isPublishCategory(String(front.category ?? ""))
+      ? (front.category as PublishCategory)
+      : ((missing.category as PublishCategory | undefined) ?? input.defaultCategory),
+    tags: normalizeTags(front.tags).length > 0 ? normalizeTags(front.tags) : normalizeTags(missing.tags),
+    cover: text(front.cover, missing.cover as string | undefined)
+  };
 }
