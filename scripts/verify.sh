@@ -5,6 +5,18 @@
 set -eu
 cd "$(dirname "$0")/.."
 
+# --fast: 型チェックとテストだけ（編集直後の確認用）。ビルドと生成物の検証は省く。
+if [ "${1:-}" = "--fast" ]; then
+  if command -v pnpm >/dev/null 2>&1; then
+    pnpm check
+    pnpm test
+  else
+    node_modules/.bin/astro check
+    node --experimental-strip-types --test tests/*.test.mjs
+  fi
+  exit 0
+fi
+
 if command -v pnpm >/dev/null 2>&1; then
   exec pnpm run verify
 fi

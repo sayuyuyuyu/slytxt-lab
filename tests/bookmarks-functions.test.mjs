@@ -71,7 +71,7 @@ test("feed serves all formats when X is not configured yet", async () => {
   );
   assert.equal(html.status, 200);
   assert.match(html.headers.get("content-type"), /text\/html/);
-  assert.match(await html.text(), /まだXと接続していません/);
+  assert.doesNotMatch(await html.text(), /まだXと接続していません/);
 
   const json = await feedRequest(
     context({

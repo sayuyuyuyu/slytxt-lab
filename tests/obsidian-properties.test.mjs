@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   missingProperties,
-  normalizeTags
+  normalizeTags,
+  panelValues
 } from "../tools/obsidian-slytxt/src/lib/note-properties.ts";
 
 const base = { defaultCategory: "comic" };
@@ -79,4 +80,39 @@ test("obsidian: タグは配列・文字列のどちらでも正規化し、10�
   assert.deepEqual(normalizeTags(["#a", " b ", ""]), ["a", "b"]);
   assert.equal(normalizeTags(Array.from({ length: 12 }, (_, i) => `t${i}`)).length, 10);
   assert.deepEqual(normalizeTags(undefined), []);
+});
+
+test("obsidian: 公開パネルの初期値は frontmatter 優先で、無ければ本文から", () => {
+  const values = panelValues({
+    defaultCategory: "comic",
+    frontmatter: { category: "tech" },
+    body: "## 見出し\n\n本文の書き出し。\n\n![](https://media.slytxt.dev/a.jpg)",
+    inlineTags: ["漫画"]
+  });
+  assert.deepEqual(values, {
+    title: "見出し",
+    description: "本文の書き出し。",
+    category: "tech",
+    tags: ["漫画"],
+    cover: "https://media.slytxt.dev/a.jpg"
+  });
+
+  const filled = panelValues({
+    defaultCategory: "comic",
+    frontmatter: {
+      title: "自分で決めた題",
+      category: "game",
+      description: "説明",
+      tags: ["既存"],
+      cover: "https://media.slytxt.dev/b.jpg"
+    },
+    body: "## 見出し"
+  });
+  assert.deepEqual(filled, {
+    title: "自分で決めた題",
+    description: "説明",
+    category: "game",
+    tags: ["既存"],
+    cover: "https://media.slytxt.dev/b.jpg"
+  });
 });

@@ -26,10 +26,39 @@ async function walk(dir) {
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) files.push(...(await walk(full)));
-    else if (entry.name.endsWith(".astro")) files.push(full);
+    else if (entry.name.endsWith(".astro") || entry.name.endsWith(".ts")) files.push(full);
   }
   return files;
 }
+
+/** コメントを落とす（コメント中の字形や例文は UI ではない）。 */
+function stripComments(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
+/** .ts のうち、HTML を組み立てているテンプレート文字列から文字を集める。 */
+function templateStrings(source) {
+  const text = stripComments(source);
+  const found = new Set();
+  for (const match of text.matchAll(/`([^`]*)`/g)) {
+    const value = match[1];
+    if (!/[<][a-zA-Z]/.test(value)) continue;
+    for (const node of value.split(/<[^>]*>/)) {
+      const clean = node
+        .replace(/\$\{[^}]*\}/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!clean) continue;
+      if (JAPANESE.test(clean)) found.add(clean);
+    }
+  }
+  return found;
+}
+
+/** アイコンに使ってはいけない字形（文字の字形は位置と大きさが揃わない）。 */
+const BANNED_GLYPHS = /[\u2197\u2600\u263C\u263E\u2315\u25D0\u276F\u2715]/;
 
 /** .astro から、画面に出る文字（テキストノード）を集める。 */
 function visibleStrings(source) {
@@ -50,11 +79,24 @@ function visibleStrings(source) {
 
 const files = await walk(path.join(root, "src"));
 const found = new Map();
+const glyphOffenders = [];
 for (const file of files) {
   const source = await readFile(file, "utf8");
-  for (const value of visibleStrings(source)) {
-    if (!found.has(value)) found.set(value, path.relative(root, file));
+  const relative = path.relative(root, file);
+  const strings = file.endsWith(".astro")
+    ? visibleStrings(source)
+    : templateStrings(source);
+  for (const value of strings) {
+    if (!found.has(value)) found.set(value, relative);
   }
+  const withoutComments = stripComments(source);
+  if (BANNED_GLYPHS.test(withoutComments)) glyphOffenders.push(relative);
+}
+
+if (glyphOffenders.length) {
+  console.error("アイコンに文字の字形（↗ ☾ ☼ ⌕ ◐ ❯ ✕）が使われています。SVG にしてください:");
+  for (const file of glyphOffenders) console.error(`  ${file}`);
+  process.exit(1);
 }
 
 const current = [...found.keys()].sort();
