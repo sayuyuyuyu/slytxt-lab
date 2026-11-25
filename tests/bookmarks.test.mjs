@@ -339,7 +339,8 @@ test("bookmark list page wraps its content in a main landmark", () => {
   assert.ok(html.includes('<main id="main-content" class="wrap" tabindex="-1">'));
   assert.ok(!html.includes('<div class="wrap">'));
   assert.ok(html.indexOf('<main id="main-content" class="wrap" tabindex="-1">') < html.indexOf('<div class="page-head">'));
-  assert.ok(html.indexOf("</main>") > html.indexOf("まだXと接続していません"));
+  // 空状態は文字ではなく UI（空の一覧）で示す。
+  assert.ok(!html.includes("まだXと接続していません"));
 });
 
 test("bookmark list page has a skip link to main content like the site", () => {
@@ -369,7 +370,7 @@ test("bookmark list page advertises its RSS feed for autodiscovery", () => {
 
 test("rendering an unconnected feed says so instead of failing", () => {
   const html = renderHtml(null, RENDER_OPTIONS);
-  assert.ok(html.includes("まだXと接続していません"));
+  assert.ok(!html.includes("まだXと接続していません"));
   assert.equal(JSON.parse(renderJson(null)).items.length, 0);
 });
 
@@ -509,7 +510,7 @@ test("list page shows the first items and folds the rest behind a more button", 
   const html = renderHtml(listSnapshot(3), options);
   assert.equal((html.match(/<li class="card" data-author="alice">/g) ?? []).length, 2);
   assert.equal((html.match(/<li class="card" data-author="alice" hidden>/g) ?? []).length, 1);
-  assert.ok(html.includes("もっと見る（あと1件）"));
+  assert.ok(html.includes("もっと見る"));
 });
 
 test("list page noscript style only unhides folded cards", () => {
@@ -528,14 +529,14 @@ test("list page notice wording depends on the error kind", () => {
     { ...base, error: "X API が 401 を返しました。", errorKind: "auth" },
     RENDER_OPTIONS,
   );
-  assert.ok(authHtml.includes("再接続が必要です"));
+  assert.ok(authHtml.includes("再接続") && authHtml.includes("/api/bookmarks/authorize"));
 
   const tempHtml = renderHtml(
     { ...base, error: "X API が 500 を返しました。", errorKind: "temporary" },
     RENDER_OPTIONS,
   );
-  assert.ok(tempHtml.includes("最新の取得に失敗しました"));
-  assert.ok(!tempHtml.includes("再接続が必要です"));
+  assert.ok(tempHtml.includes("data-reload"));
+  assert.ok(!tempHtml.includes("/api/bookmarks/authorize"));
 });
 
 test("embed output is capped by embedCount", () => {
@@ -646,7 +647,8 @@ test("list page theme toggle mirrors the main site toggle", () => {
   // theme-color starts dark and follows the stored theme, like BaseLayout.
   // 新パレットの --bg（--c-navy-900）に合わせる（#866）。
   assert.ok(html.includes('<meta name="theme-color" content="#1f2d40">'));
-  assert.ok(html.includes('data-theme-icon'));
+  assert.ok(html.includes("theme-toggle__icon--moon"));
+  assert.ok(html.includes("theme-toggle__icon--sun"));
   assert.ok(html.includes('aria-label="Toggle theme"'));
   // THEME_SCRIPT swaps the icon and label for the current theme and
   // follows storage events, including a full clear (key === null).
@@ -870,7 +872,8 @@ test("list page no longer carries the explanatory lead paragraph", () => {
   assert.ok(!html.includes('class="lead"'));
   assert.ok(!html.includes("1日1回、朝9時以降の最初のアクセスで取り直します"));
   // 件数表示のような UI 要素は残す。
-  assert.ok(html.includes("件の投稿"));
+  // 件数と更新日時だけを出す（語は付けない）。
+  assert.ok(!html.includes("件の投稿"));
 });
 
 test("embed carries media data and renders it in the card", () => {
