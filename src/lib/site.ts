@@ -39,7 +39,6 @@ export const emptyStateTitles = {
 
 export type ArticleSection = {
   title: string;
-  eyebrow: string;
   description: string;
   emptyTitle: string;
   emptyDescription: string;
@@ -48,35 +47,30 @@ export type ArticleSection = {
 export const articleSections: Record<"tech" | "misc" | "comic" | "game" | "anime", ArticleSection> = {
   tech: {
     title: categoryLabels.tech,
-    eyebrow: "tech",
     description: "AI、MCP、クラウド、プログラミングを試した記録。",
     emptyTitle: emptyStateTitles.articles,
     emptyDescription: "まだありません。AIやクラウドを試した記録の最初の1本がここに並びます。"
   },
   misc: {
     title: categoryLabels.misc,
-    eyebrow: "misc",
     description: "どの区分にも入らないもの。短いメモや日々のこと。",
     emptyTitle: emptyStateTitles.articles,
     emptyDescription: "まだありません。短いメモや日々のことがここに並びます。"
   },
   comic: {
     title: categoryLabels.comic,
-    eyebrow: "comic",
     description: "漫画の感想。ジャンプ感想など。",
     emptyTitle: emptyStateTitles.articles,
     emptyDescription: "まだありません。漫画の感想がここに並びます。"
   },
   game: {
     title: categoryLabels.game,
-    eyebrow: "game",
     description: "ゲームの話。音ゲーの記録など。",
     emptyTitle: emptyStateTitles.articles,
     emptyDescription: "まだありません。ゲームの話がここに並びます。"
   },
   anime: {
     title: categoryLabels.anime,
-    eyebrow: "anime",
     description: "アニメの感想。",
     emptyTitle: emptyStateTitles.articles,
     emptyDescription: "まだありません。アニメの感想がここに並びます。"
@@ -86,7 +80,6 @@ export const articleSections: Record<"tech" | "misc" | "comic" | "game" | "anime
 /** The index page that gathers every category. */
 export const articlesIndex: ArticleSection = {
   title: "Articles",
-  eyebrow: "articles",
   description: "技術と漫画、ゲーム、アニメ、それ以外の記事。",
   emptyTitle: emptyStateTitles.articles,
   emptyDescription: "まだありません。長い文章がここに並びます。"
