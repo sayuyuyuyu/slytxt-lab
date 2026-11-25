@@ -83,3 +83,26 @@ test("site: 幅を変えてもナビの出し方が戻る", async ({ page }) => 
   await expect(menu).toBeVisible();
   await expect(button).toBeHidden();
 });
+
+test("site: 幅をまたがない resize ではメニューの開閉状態が変わらない", async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 0) >= 900, "モバイル幅でだけ確認する");
+  await page.goto(`${SITE_URL}/`);
+  const button = page.locator("[data-menu-button]");
+  const menu = page.locator("[data-menu]");
+
+  await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await expect(menu).toBeVisible();
+
+  // iOS Safari はスクロールでアドレスバーが縮むたびに resize を出す。
+  // 幅は 900px をまたいでいないので、開いたままにする。
+  const size = page.viewportSize();
+  await page.setViewportSize({ width: size.width, height: size.height - 80 });
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await expect(menu).toBeVisible();
+
+  // resize イベント単体でも閉じない。
+  await page.evaluate(() => window.dispatchEvent(new Event("resize")));
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await expect(menu).toBeVisible();
+});
