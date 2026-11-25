@@ -154,8 +154,10 @@ function isCurrentSection(href: string) {
       }
     };
     syncMenuForWidth();
+    // 幅をまたいだときだけ揃える。resize をそのまま使うと、iOS Safari の
+    // アドレスバー伸縮のように高さだけが変わる場面でも開いたメニューが
+    // 閉じてしまう（#886）。
     narrow.addEventListener("change", syncMenuForWidth);
-    window.addEventListener("resize", syncMenuForWidth, { passive: true });
 
     const isOpen = () => button.getAttribute("aria-expanded") === "true";
 
