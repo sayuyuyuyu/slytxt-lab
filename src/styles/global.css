@@ -48,23 +48,24 @@
   --glow: color-mix(in srgb, var(--c-cyan-400) 35%, transparent);
   --scan: color-mix(in srgb, var(--c-cyan-400) 5%, transparent);
   --shadow: color-mix(in srgb, var(--c-navy-900) 55%, transparent);
-  /* 文字サイズ（DADS の Standard スケール。本文 16px、最小 14px）。
-     小さい字は 0.875rem（14px）より下げない。 */
+  /* 文字サイズは DADS の Standard スケール（14 / 16 / 18 / 20 / 24 / 28 / 32 / 36px）。
+     本文 16px、付随情報 14px。14px 未満は使わない（#854）。 */
   --text-xs: 0.875rem;
-  --text-sm: 0.9375rem;
   --text-base: 1rem;
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
-  --text-3xl: 1.875rem;
-  --text-4xl: 2.25rem;
-  /* 余白は 8px を基準にしたスケール（DADS の余白）。 */
+  --text-3xl: 1.75rem;
+  --text-4xl: 2rem;
+  --text-5xl: 2.25rem;
+  /* 余白は DADS の 8px スケール。 */
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;
   --space-4: 32px;
   --space-5: 40px;
-  --space-6: 64px;
+  --space-6: 48px;
+  --space-7: 64px;
   --content-width: 1040px;
   --article-width: 700px;
   /* Header bar height including its bottom border. */
@@ -285,7 +286,7 @@ html[data-input="pointer"] .skip-link:focus {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-decoration: none;
@@ -337,7 +338,7 @@ html[data-input="pointer"] .skip-link:focus {
   box-shadow: 0 0 20px -6px var(--glow);
 }
 .theme-toggle__icon {
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   line-height: 1;
 }
 /* The nav lives behind the hamburger button at every width. */
@@ -381,7 +382,7 @@ html[data-input="pointer"] .skip-link:focus {
   padding: 13px 2px;
   border-bottom: 1px solid var(--border);
   font-family: var(--font-mono);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   text-decoration: none;
 }
 .site-menu__group > ul > li:last-child > a {
@@ -543,7 +544,7 @@ html[data-input="pointer"] .skip-link:focus {
   color: var(--text-muted);
 }
 .section {
-  padding-block: 48px;
+  padding-block: var(--space-6);
 }
 .section-head {
   display: flex;
@@ -556,7 +557,7 @@ html[data-input="pointer"] .skip-link:focus {
   margin-top: 48px;
 }
 .section-head h2 {
-  font-size: clamp(1.4rem, 3vw, 1.9rem);
+  font-size: clamp(var(--text-2xl), 3vw, var(--text-3xl));
 }
 .section-head p {
   margin: 8px 0 0;
@@ -613,24 +614,24 @@ html[data-input="pointer"] .skip-link:focus {
    Lists and cards
    --------------------------------------------------------------------------- */
 .page-header {
-  padding-block: 48px 24px;
+  padding-block: var(--space-6) var(--space-3);
 }
 .page-title {
-  /* DADS の Std-36 相当。画面幅で 30〜36px。 */
-  font-size: clamp(var(--text-3xl), 4vw, var(--text-4xl));
+  /* DADS の Std-32〜Std-36。画面幅で 28〜36px。 */
+  font-size: clamp(var(--text-3xl), 4.4vw, var(--text-5xl));
 }
 .page-lead {
   max-width: 680px;
-  margin: 16px 0 0;
+  margin: var(--space-2) 0 0;
   color: var(--text-muted);
 }
 .page-count {
-  margin: 16px 0 0;
+  margin: var(--space-2) 0 0;
   color: var(--text-muted);
   font-size: 0.875rem;
 }
 .listing {
-  padding-block: 0 64px;
+  padding-block: 0 var(--space-7);
 }
 /* 一覧のタグ絞り込み（#881）。タグ専用ページの代わりに一覧の上部へ置く。 */
 .tag-filter {
@@ -676,7 +677,7 @@ html[data-input="pointer"] .skip-link:focus {
   position: relative;
   min-width: 0;
   border-top: 1px solid var(--border);
-  padding: 24px 18px 24px 20px;
+  padding: var(--space-3) 18px var(--space-3) 20px;
 }
 .entry-card::before,
 .project-card::before {
@@ -1028,7 +1029,7 @@ html[data-input="pointer"] .skip-link:focus {
   grid-template-columns: minmax(0, var(--article-width));
 }
 .article-body {
-  font-size: 1.03rem;
+  font-size: var(--text-base);
   line-height: 1.95;
 }
 .article-body > :first-child {
@@ -1063,7 +1064,7 @@ html[data-input="pointer"] .skip-link:focus {
 }
 .article-body h3 {
   margin-top: 1.8em;
-  font-size: 1.2rem;
+  font-size: var(--text-xl);
 }
 .article-body h3::before {
   content: "// ";
@@ -1378,7 +1379,7 @@ html.js .adult-gate[data-locked="true"] {
   color: var(--accent-strong);
 }
 .search-button__icon {
-  font-size: 1.125rem;
+  font-size: var(--text-lg);
   line-height: 1;
 }
 
@@ -1429,7 +1430,7 @@ html.js .adult-gate[data-locked="true"] {
   position: relative;
   border-top: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 60%, transparent);
-  margin-top: 40px;
+  margin-top: var(--space-5);
   padding-block: 22px 30px;
   font-family: var(--font-mono);
   font-size: 0.875rem;
