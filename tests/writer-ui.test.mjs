@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import {
   isEmptyPayload,
   payloadOf,
@@ -115,4 +116,44 @@ test("draft-merge: 保存で送る cover は、外していない空を残さな
 test("draft-merge: samePayload はキー順に依存する", () => {
   assert.equal(samePayload({ a: 1, b: 2 }, { a: 1, b: 2 }), true);
   assert.equal(samePayload({ a: 1, b: 2 }, { b: 2, a: 1 }), false);
+});
+
+/* ---- theme-color（#888） ---- */
+
+test("writer-ui: theme-color はサイトのパレット（--c-navy-900 / --c-white-100）に一致する", async () => {
+  const palette = new Map(
+    [...(await readFile(new URL("../src/styles/global.css", import.meta.url), "utf8")).matchAll(
+      /--c-([\w-]+)\s*:\s*(#[0-9a-f]{6});/gi,
+    )].map((match) => [match[1], match[2].toLowerCase()]),
+  );
+  const dark = palette.get("navy-900");
+  const light = palette.get("white-100");
+  assert.ok(dark && light);
+
+  const html = await readFile(
+    new URL("../tools/writer-cloudflare/ui/index.html", import.meta.url),
+    "utf8",
+  );
+  const app = await readFile(
+    new URL("../tools/writer-cloudflare/ui/app.js", import.meta.url),
+    "utf8",
+  );
+
+  // <meta name="theme-color"> の初期値と、テーマ切替の2か所（HTML の初期化・app.js）。
+  assert.ok(html.includes(`<meta name="theme-color" content="${dark}" />`));
+  assert.ok(html.includes(`"${light}" : "${dark}"`));
+  assert.ok(app.includes(`"${light}" : "${dark}"`));
+});
+
+test("writer-ui: tools/ の writer に旧パレットの theme-color が残らない", async () => {
+  // public/ は prepare-assets が ui/ から作る生成物なので対象外。
+  for (const file of ["ui/index.html", "ui/app.js"]) {
+    const source = await readFile(
+      new URL(`../tools/writer-cloudflare/${file}`, import.meta.url),
+      "utf8",
+    );
+    for (const old of ["#05070f", "#eef3fb"]) {
+      assert.ok(!source.toLowerCase().includes(old), `${file} に ${old} が残っている`);
+    }
+  }
 });

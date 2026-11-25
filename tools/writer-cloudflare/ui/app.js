@@ -156,7 +156,7 @@ function syncThemeToggle() {
   els.themeToggle.setAttribute("title", label);
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", light ? "#eef3fb" : "#05070f");
+    ?.setAttribute("content", light ? "#f2f2f2" : "#1f2d40");
 }
 
 function toggleTheme() {
