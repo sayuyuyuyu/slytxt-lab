@@ -5,20 +5,8 @@ import { publishNote, type GitHubRequest, type GitHubResponse } from "./src/lib/
 import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
 import { MAX_COVER_BYTES, MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
 import { extractExtras } from "./src/lib/frontmatter";
-import {
-  addTags,
-  barStateFromNote,
-  frontmatterPatchFor,
-  removeTag,
-  type BarState
-} from "./src/lib/bar";
-import { publishBarExtension, type BarController, type BarSnapshot } from "./src/bar-widget";
-import {
-  deriveDescription,
-  firstImageSource,
-  preparePublish,
-  splitHeadingTitle
-} from "./src/lib/publish-plan";
+import { missingProperties, normalizeTags, type PropertyPatch } from "./src/lib/note-properties";
+import { firstImageSource, preparePublish } from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
 import { shareTarget } from "./src/lib/share";
@@ -67,6 +55,17 @@ export default class SlytxtPublishPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "fill-properties",
+      name: "公開の項目をノートに追加",
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!file || file.extension !== "md") return false;
+        if (!checking) void this.fillProperties(file, { force: true });
+        return true;
+      }
+    });
+
+    this.addCommand({
       id: "insert-embed",
       name: "埋め込み URL を挿入",
       editorCallback: (editor) => {
@@ -99,15 +98,16 @@ export default class SlytxtPublishPlugin extends Plugin {
       void this.insertUploadedImage(view.editor);
     });
 
-    // 公開バー（設計案B、#849）。ノート画面の先頭に常に出し、値は
-    // frontmatter から読む。開き直しやプロパティの変更でも描き直す。
-    this.registerEditorExtension(publishBarExtension(this.barController()));
-    this.registerEvent(this.app.workspace.on("file-open", () => this.refreshBar()));
+    // ノートを開いたら、公開に必要なプロパティを実値で埋める（#882）。
     this.registerEvent(
-      this.app.metadataCache.on("changed", (file) => {
-        if (file === this.activeMarkdownFile()) this.refreshBar();
+      this.app.workspace.on("file-open", (file) => {
+        if (file) void this.fillProperties(file);
       })
     );
+    this.app.workspace.onLayoutReady(() => {
+      const file = this.app.workspace.getActiveFile();
+      if (file) void this.fillProperties(file);
+    });
 
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
@@ -154,112 +154,42 @@ export default class SlytxtPublishPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  /* ---- 公開バー（設計案B、#849） ---- */
+  /* ---- プロパティの自動補完（#882） ---- */
 
-  /** バーの再描画を購読しているウィジェット。 */
-  private barListeners = new Set<() => void>();
-
-  /** 公開中のノート（パス）。ボタンの表示に使う。 */
-  private readonly publishingNow = new Set<string>();
-
-  private refreshBar(): void {
-    for (const listener of this.barListeners) listener();
-  }
-
-  private activeMarkdownFile(): TFile | null {
-    const file = this.app.workspace.getActiveFile();
-    return file && file.extension === "md" ? file : null;
-  }
+  /** 処理済みのパス。file-open は何度も来るので、同じノートを繰り返さない。 */
+  private readonly filled = new Set<string>();
 
   /**
-   * エディタの本文（未保存の編集を含む）。frontmatter は CM の文書に含まれる
-   * ので、値の導出に使う前に取り除く（YAML を本文として読むと、タイトルや
-   * 説明に `---` や `tags:` が入る）。
+   * 足りないプロパティを frontmatter に書く。値が揃っていれば何もしない。
+   * 失敗しても書く・開くは止めない（補助的な処理なので）。
    */
-  private activeBody(): string {
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    const raw = view?.editor.getValue() ?? "";
-    return raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
-  }
-
-  private noteState(file: TFile): BarState {
-    const front = this.app.metadataCache.getFileCache(file)?.frontmatter ?? null;
-    return barStateFromNote(front, this.activeBody(), this.settings.defaultCategory);
-  }
-
-  /** バーの操作を frontmatter に書き戻す（値の正は frontmatter のまま）。 */
-  private async patchNote(
-    file: TFile,
-    update: (state: BarState) => BarState
-  ): Promise<void> {
-    const next = update(this.noteState(file));
-    await this.app.fileManager.processFrontMatter(file, (front) => {
-      for (const [key, value] of Object.entries(frontmatterPatchFor(next))) {
-        front[key] = value;
-      }
-    });
-    this.refreshBar();
-  }
-
-  private barController(): BarController {
-    return {
-      snapshot: (): BarSnapshot | null => {
-        const file = this.activeMarkdownFile();
-        if (!file) return null;
-        return { ...this.noteState(file), publishing: this.publishingNow.has(file.path) };
-      },
-      setCategory: (category) => {
-        const file = this.activeMarkdownFile();
-        if (!file) return;
-        void this.patchNote(file, (state) => ({ ...state, category }));
-      },
-      addTag: (input) => {
-        const file = this.activeMarkdownFile();
-        if (!file) return;
-        void this.patchNote(file, (state) => ({ ...state, tags: addTags(state.tags, input) }));
-      },
-      removeTag: (tag) => {
-        const file = this.activeMarkdownFile();
-        if (!file) return;
-        void this.patchNote(file, (state) => ({ ...state, tags: removeTag(state.tags, tag) }));
-      },
-      pickCover: () => {
-        const file = this.activeMarkdownFile();
-        if (!file) return;
-        void this.setCoverFromPicker(file);
-      },
-      publish: () => {
-        const file = this.activeMarkdownFile();
-        if (!file) return;
-        void this.publishFromBar(file);
-      },
-      subscribe: (listener) => {
-        this.barListeners.add(listener);
-        return () => this.barListeners.delete(listener);
-      }
-    };
-  }
-
-  /** バーから公開する。公開中はボタンを「公開中…」にする。 */
-  private async publishFromBar(file: TFile): Promise<void> {
-    if (this.publishingNow.has(file.path)) return;
-    this.publishingNow.add(file.path);
-    this.refreshBar();
+  private async fillProperties(file: TFile, { force = false } = {}): Promise<void> {
+    if (file.extension !== "md") return;
+    if (this.filled.has(file.path) && !force) return;
+    this.filled.add(file.path);
     try {
-      await this.publish(file);
-    } finally {
-      this.publishingNow.delete(file.path);
-      this.refreshBar();
-    }
-  }
-
-  /** バーのサムネイルを押したとき。選んだ画像をアップロードして cover にする。 */
-  private async setCoverFromPicker(file: TFile): Promise<void> {
-    try {
-      const url = await this.pickAndUploadCover();
-      await this.patchNote(file, (state) => ({ ...state, cover: url }));
-    } catch (error) {
-      new Notice(error instanceof Error ? error.message : String(error), 12000);
+      const raw = await this.app.vault.read(file);
+      const body = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
+      const front = this.app.metadataCache.getFileCache(file)?.frontmatter ?? null;
+      const cache = this.app.metadataCache.getFileCache(file);
+      const inlineTags = (cache?.tags ?? []).map((tag) => tag.tag.replace(/^#/, ""));
+      const patch: PropertyPatch = missingProperties({
+        frontmatter: front,
+        body,
+        inlineTags,
+        defaultCategory: this.settings.defaultCategory
+      });
+      if (Object.keys(patch).length === 0) return;
+      await this.app.fileManager.processFrontMatter(file, (next) => {
+        for (const [key, value] of Object.entries(patch)) {
+          // 途中で別の端末や本人が値を入れた場合は上書きしない。
+          if (next[key] === undefined || next[key] === null || next[key] === "") {
+            next[key] = value;
+          }
+        }
+      });
+    } catch {
+      // プロパティの補完は補助。失敗しても編集は続けられる。
     }
   }
 
@@ -303,16 +233,12 @@ export default class SlytxtPublishPlugin extends Plugin {
   private currentValues(file: TFile): NoteValues {
     const cache = this.app.metadataCache.getFileCache(file);
     const front = cache?.frontmatter ?? {};
-    const tags = Array.isArray(front.tags)
-      ? front.tags.map(String)
-      : typeof front.tags === "string"
-        ? front.tags.split(/[,、]/).map((tag: string) => tag.trim())
-        : [];
+    const tags = normalizeTags(front.tags);
     const category = String(front.category ?? this.settings.defaultCategory);
     return {
       category: isPublishCategory(category) ? category : this.settings.defaultCategory,
       title: String(front.title ?? ""),
-      tags: tags.filter(Boolean),
+      tags,
       description: String(front.description ?? ""),
       cover: String(front.cover ?? "")
     };
