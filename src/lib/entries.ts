@@ -121,7 +121,7 @@ export function getAdjacentArticles<T extends ArticleEntry>(entries: T[], curren
   };
 }
 
-/** Markdown の記号を落としてプレーンテキストにする。writer 側の plainText と扱いをそろえる。 */
+/** Markdown の記号を落としてプレーンテキストにする。 */
 export function toPlainText(source: string): string {
   return String(source ?? "")
     .split("\n")

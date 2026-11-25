@@ -1,6 +1,6 @@
 # Obsidian プラグイン（slytxt publish）
 
-Obsidian から slytxt-lab へ記事を公開するプラグインです。書く場所を Obsidian（iOS アプリ）に寄せ、writer（`write.slytxt.dev`）を引退させるための移行先になります（#707）。
+Obsidian から slytxt-lab へ記事を公開するプラグインです。Mac / iPhone の Obsidian で書いたノートを、そのまま PR として公開します（#707 で writer から移行）。
 
 ## できること
 
@@ -8,13 +8,13 @@ Obsidian から slytxt-lab へ記事を公開するプラグインです。書�
 - **PR を作る（公開）** … ノートの frontmatter と本文から、GitHub API でブランチと PR を作り、PR に自動マージ（squash）を設定する。CI が通ればそのままマージされて公開される。自動マージを設定できなかった場合だけ、GitHub で手動マージする。タイトル未指定で本文の最初が見出しなら、その見出しをタイトルとして使い本文からは除く。カバー未指定なら本文の最初の画像をカバーにする（Vault 内の画像はアップロードする）。
 - コマンド **「カバー画像をアップロード」** … 画像ファイルを選ぶと media Worker のアップロード口（`PUT media.slytxt.dev/<キー>`）へ上げ、公開 URL を frontmatter の cover に差す。バーのサムネイルを押しても同じことができる。画像は Git に入らない。
 - コマンド **「埋め込み URL を挿入」** … URL を URL だけの段落としてカーソル位置へ挿入する。YouTube / Spotify / X は埋め込みに、それ以外はリンクカードになる（サイト側の規則と同じ）。
-- 公開状態の確認は PR を見る（writer の画面は無い）。
+- 公開状態の確認は PR を見る。
 
-説明文の AI 候補は未実装。writer の summary エンドポイントはサーバー側の下書き（KV）専用で、端末ローカルのノートからは叩けないため、候補は本文からの抜粋生成で代替している。
+説明文の AI 候補は未実装。候補は本文からの抜粋生成で代替している。
 
 ## 仕組み
 
-- 記事のパス・ブランチ名・公開 URL は writer と同じ規則です（`src/lib/slug.ts`）。ブランチはカテゴリによらず `write/<slug>` です。
+- 記事のパス・ブランチ名・公開 URL の規則は `src/lib/slug.ts` にまとめています。ブランチはカテゴリによらず `write/<slug>` です。
 - frontmatter はサイトのスキーマに合わせてキー順を固定し、必要な値だけ引用します（`src/lib/frontmatter.ts`）。
 - GitHub との通信は `src/lib/github.ts` に閉じ込め、HTTP を差し替え可能にしてあります（Obsidian では `requestUrl` を渡す）。手順（ブランチ→ファイル→PR）と失敗時のメッセージはテストで確認しています。
 - 公開バーは CodeMirror 6 のウィジェット（`src/bar-widget.ts`）で、値の決め方とタグ操作は純関数（`src/lib/bar.ts`）に分けています。`@codemirror/*` はバンドルせず、Obsidian 本体のものを使います（esbuild で external）。

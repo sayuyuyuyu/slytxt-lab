@@ -24,17 +24,15 @@ pnpm test:e2e       # Playwright で主要フローを確認（手順は e2e/REA
 
 ## 執筆と公開
 
-執筆の経路は2つあります。どちらも `src/content/<カテゴリ>/<slug>.md` を Pull Request で作り、`main` へのマージで Cloudflare Pages がビルドして公開する点は同じです。
+執筆は Obsidian プラグインで行います。`src/content/<カテゴリ>/<slug>.md` を Pull Request で作り、`main` へのマージで Cloudflare Pages がビルドして公開します。
 
-- **Obsidian プラグイン**（[tools/obsidian-slytxt](tools/obsidian-slytxt/README.md)）— writer の置き換え先です。ノートから「PR を作る（公開）」でブランチと Pull Request を作り、自動マージ（squash）を設定します。CI が通ればそのまま公開されます。Mac では本番反映まで確認済みで、iPhone への導入が残っています。
-- **writer**（<https://write.slytxt.dev>、[tools/writer-cloudflare](tools/writer-cloudflare/README.md)）— 現行の本体です。認証は Cloudflare Access（本人のメールアドレスのみ許可）。下書きを端末と KV に持ち、投稿ボタンからファイル作成・ブランチ・Pull Request・CI 待ち・マージまで進みます。
+- **Obsidian プラグイン**（[tools/obsidian-slytxt](tools/obsidian-slytxt/README.md)）— ノートから「PR を作る（公開）」でブランチと Pull Request を作り、自動マージ（squash）を設定します。CI が通ればそのまま公開されます。Mac では本番反映まで確認済みで、iPhone への導入が残っています。
 
-共通部分と writer 固有の部分の切り分けは [アーキテクチャ](docs/architecture.md) の「公開フロー」を参照してください。
+公開フローの詳細は [アーキテクチャ](docs/architecture.md) を参照してください。
 
 ## ドキュメント
 
 - [アーキテクチャ](docs/architecture.md) — 全体構成と公開フロー
-- [執筆ツール](tools/writer-cloudflare/README.md) — writer の構成とデプロイ手順
 - [短文フィード](db/feed/README.md) — D1 に置く短文と公開一覧（`/feed/`）。投稿画面は [feed-cloudflare](tools/feed-cloudflare/README.md)
 - [Obsidian プラグイン](tools/obsidian-slytxt/README.md) — Obsidian から PR で公開する
 - [公開メディア配信](tools/media-cloudflare/README.md) — media.slytxt.dev の Worker

@@ -2,24 +2,18 @@ import { defineConfig, devices } from "@playwright/test";
 
 /*
  * E2E はローカル完結（本番・Cloudflare Access には繋がない）。
- * - writer: wrangler dev（ローカル KV、状態は一時ディレクトリ）
- * - サイト: 使い捨てフィクスチャをビルドして astro preview
+ * サイト: 使い捨てフィクスチャをビルドして astro preview
  * CI の必須チェックには入れない。実行は `pnpm test:e2e`（e2e/README.md）。
  */
 export default defineConfig({
   testDir: "./e2e",
   timeout: 90_000,
   expect: { timeout: 15_000 },
-  // writer の自動保存はタイマーとネットワークに依存し、CI の遅いディスクでは
-  // 数秒ずれることがある（#771 / #788 の再現もこの揺れだった）。手元では
-  // 通るのに CI だけ落ちる状態を避けるため、CI だけ再試行する。
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: [["list"]],
   use: {
-    trace: "on-first-retry",
-    // writer の本文編集で、URL の貼り付け（本人の実利用経路）を使うため。
-    permissions: ["clipboard-write"]
+    trace: "on-first-retry"
   },
   projects: [
     {
@@ -36,12 +30,6 @@ export default defineConfig({
     }
   ],
   webServer: [
-    {
-      command: "node e2e/start-writer.mjs",
-      url: "http://127.0.0.1:8787",
-      reuseExistingServer: false,
-      timeout: 180_000
-    },
     {
       command: "node e2e/start-site.mjs",
       url: "http://127.0.0.1:4321",

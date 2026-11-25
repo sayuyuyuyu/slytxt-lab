@@ -104,7 +104,7 @@ export function isEmbedOnlyLine(line: string): boolean {
 
 /**
  * 記事のタイトル。無ければ本文の書き出しで補う。
- * misc（Journal）はタイトルを持たないので空のままにする（writer と同じ）。
+ * misc（Journal）はタイトルを持たないので空のままにする。
  */
 export function deriveTitle(
   category: PublishCategory,

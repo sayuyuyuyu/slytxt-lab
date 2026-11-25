@@ -5,8 +5,8 @@
  *   POST /api/posts                    投稿を1件作る（リンクカードはここで取得）
  *   POST /api/media                    画像を1枚アップロードする
  *
- * 書き込みは writer と同じ作法で、独自ヘッダ x-slytxt-client と同一オリジン
- * だけを許可する（Cloudflare Access が入口を守る前提の二重の防御）。
+ * 書き込みは独自ヘッダ x-slytxt-client と同一オリジンだけを許可する
+ * （Cloudflare Access が入口を守る前提の二重の防御）。
  */
 import { createFeedPost, decodeFeedCursor, deleteFeedPost, readFeedPage } from "./store.ts";
 import {
@@ -64,7 +64,7 @@ function error(message: string, status: number): Response {
   return json({ error: message }, status);
 }
 
-/** writer（tools/writer-cloudflare/src/index.mjs）と同じ書き込み防御。 */
+/** 書き込みの防御。独自ヘッダと同一オリジンだけを通す。 */
 export function writeAllowed(request: Request): boolean {
   if (request.headers.get("x-slytxt-client") !== "1") return false;
   const origin = request.headers.get("origin");
