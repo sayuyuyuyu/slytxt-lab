@@ -104,8 +104,14 @@ jobs:
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
+      # PR はサイトの e2e だけ（速い）。writer の e2e は main へのマージ後と手動で回す。
       - name: Run e2e
-        run: pnpm test:e2e
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm exec playwright test e2e/site.spec.mjs
+          else
+            pnpm test:e2e
+          fi
 
       - name: Upload traces on failure
         if: failure()

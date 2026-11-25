@@ -24,11 +24,10 @@ pnpm test:e2e       # Playwright で主要フローを確認（手順は e2e/REA
 
 ## 執筆と公開
 
-執筆は Obsidian プラグインで行います。`src/content/<カテゴリ>/<slug>.md` を Pull Request で作り、`main` へのマージで Cloudflare Pages がビルドして公開します。
+執筆は Obsidian プラグインか writer で行い、どちらも PR 経由で公開する。手順と仕組みはそれぞれの README にある。
 
-- **Obsidian プラグイン**（[tools/obsidian-slytxt](tools/obsidian-slytxt/README.md)）— ノートから「PR を作る（公開）」でブランチと Pull Request を作り、自動マージ（squash）を設定します。CI が通ればそのまま公開されます。Mac では本番反映まで確認済みで、iPhone への導入が残っています。
-
-公開フローの詳細は [アーキテクチャ](docs/architecture.md) を参照してください。
+- [Obsidian プラグイン](tools/obsidian-slytxt/README.md)
+- [writer](tools/writer-cloudflare/README.md)
 
 ## ドキュメント
 
