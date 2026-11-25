@@ -798,6 +798,21 @@ samp,
 .project-card__title a:hover {
   text-decoration: underline;
 }
+/* カードのどこを押しても記事へ（stretched link）。タイトルのリンクを ::after で
+   カード全体に広げ、カード内のタグなど別のリンクはその上に置く（#879）。 */
+.entry-card__title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.entry-card__footer {
+  position: relative;
+  z-index: 2;
+}
+.entry-card:hover .entry-card__title a {
+  text-decoration: underline;
+}
 .entry-card p,
 .project-card p {
   margin: 0;

@@ -106,3 +106,30 @@ test("site: 幅をまたがない resize ではメニューの開閉状態が変
   await expect(button).toHaveAttribute("aria-expanded", "true");
   await expect(menu).toBeVisible();
 });
+
+/** 遷移先のパス（日本語は URL では percent-encode される）。 */
+async function expectPath(page, href) {
+  const expected = new URL(href, SITE_URL).pathname;
+  await expect.poll(() => new URL(page.url()).pathname).toBe(expected);
+}
+
+test("site: 記事一覧のカードは余白を押しても記事へ遷移する", async ({ page }) => {
+  await page.goto(`${SITE_URL}/`);
+  const card = page.locator(".entry-card").first();
+  await expect(card).toBeVisible();
+  const href = await card.locator(".entry-card__title a").getAttribute("href");
+
+  // タイトルではなく、カードの左上の余白を押す（全体がリンクになっている）。
+  const box = await card.boundingBox();
+  await page.mouse.click(box.x + 6, box.y + 6);
+  await expectPath(page, href);
+});
+
+test("site: カード内のタグはカードのリンクではなくタグへ遷移する", async ({ page }) => {
+  await page.goto(`${SITE_URL}/`);
+  const tag = page.locator(".entry-card .tag").first();
+  await expect(tag).toBeVisible();
+  const href = await tag.getAttribute("href");
+  await tag.click();
+  await expectPath(page, href);
+});
