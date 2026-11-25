@@ -144,7 +144,7 @@ const toJsonLd = (data: unknown) => JSON.stringify(data).replaceAll("<", "\\u003
     <script is:inline>
       (() => {
         document.documentElement.classList.add("js");
-        // Blue-black terminal is the default look. `light` is an explicit opt-in.
+        // 紺のダークが既定。`light` は明示的に選んだときだけ。
         try {
           const isLight = localStorage.getItem("theme") === "light";
           document.documentElement.classList.toggle("light", isLight);

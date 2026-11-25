@@ -251,23 +251,6 @@ html[data-input="pointer"] .skip-link:focus {
   transform: translateY(-180%);
 }
 
-.prompt {
-  color: var(--accent-5);
-  font-family: var(--font-mono);
-  font-weight: 600;
-  flex: none;
-}
-@keyframes cursor-blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
-}
-
 /* ---------------------------------------------------------------------------
    Header and navigation
    --------------------------------------------------------------------------- */
@@ -307,21 +290,8 @@ html[data-input="pointer"] .skip-link:focus {
   letter-spacing: 0.02em;
   text-decoration: none;
 }
-.brand__mark {
-  display: inline-block;
-  color: var(--accent-5);
-  font-size: 1rem;
-}
 .brand__name {
   color: var(--text);
-}
-.brand__cursor {
-  display: inline-block;
-  width: 8px;
-  height: 1.05rem;
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--glow);
-  animation: cursor-blink 1.05s steps(1) infinite;
 }
 .site-header__actions {
   display: flex;
@@ -414,13 +384,6 @@ html[data-input="pointer"] .skip-link:focus {
   font-size: 0.9375rem;
   text-decoration: none;
 }
-.site-menu a::before {
-  content: "$ ";
-  color: var(--accent-5);
-}
-.site-menu a:hover::before {
-  content: "> ";
-}
 .site-menu__group > ul > li:last-child > a {
   border-bottom: 0;
 }
@@ -441,10 +404,6 @@ html[data-input="pointer"] .skip-link:focus {
 }
 .site-menu__sub a:hover {
   color: var(--accent-strong);
-}
-.site-menu__sub a:hover::before {
-  content: "> ";
-  color: var(--accent-5);
 }
 .site-menu a[aria-current="page"],
 .site-menu a[data-current-section="true"] {
@@ -579,67 +538,6 @@ html[data-input="pointer"] .skip-link:focus {
   text-wrap: balance;
 }
 
-/* ---------------------------------------------------------------------------
-   Not found: the 404 page as a terminal log
-   --------------------------------------------------------------------------- */
-.not-found__terminal {
-  max-width: 720px;
-  border: 1px solid var(--border);
-  background: linear-gradient(
-    color-mix(in srgb, var(--surface) 92%, transparent),
-    var(--bg-soft)
-  );
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--bg) 60%, transparent),
-    0 40px 80px -60px var(--shadow),
-    0 0 90px -40px var(--glow);
-}
-.not-found__terminal .terminal__bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
-}
-.not-found__terminal .terminal__dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  flex: none;
-}
-.not-found__terminal .terminal__dot--red {
-  background: var(--accent-red);
-}
-.not-found__terminal .terminal__dot--yellow {
-  background: var(--accent-warn);
-}
-.not-found__terminal .terminal__dot--green {
-  background: var(--accent-5);
-}
-.not-found__terminal .terminal__title {
-  margin-left: 8px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.not-found__body {
-  padding: clamp(24px, 4vw, 40px);
-}
-.not-found__log {
-  margin: 20px 0;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  line-height: 1.7;
-  overflow-x: auto;
-}
 .not-found__message {
   margin: 0 0 22px;
   color: var(--text-muted);
@@ -674,10 +572,6 @@ html[data-input="pointer"] .skip-link:focus {
   letter-spacing: 0.08em;
   font-weight: 500;
 }
-.eyebrow::before {
-  content: "❯ ";
-  color: var(--accent-5);
-}
 .section-links {
   display: flex;
   flex-wrap: wrap;
@@ -697,10 +591,6 @@ html[data-input="pointer"] .skip-link:focus {
   text-decoration: none;
   font-family: var(--font-mono);
   font-size: 0.875rem;
-}
-.button::before {
-  content: ">";
-  color: var(--accent-5);
 }
 .button:hover {
   border-color: var(--accent);
@@ -930,15 +820,6 @@ html[data-input="pointer"] .skip-link:focus {
   border-top: 1px solid var(--border);
   color: var(--text-muted);
 }
-.empty-state__cmd {
-  margin: 0 0 8px;
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-}
-.empty-state__cmd::before {
-  content: "$ ";
-  color: var(--accent-5);
-}
 .empty-state p {
   margin: 0;
 }
@@ -951,14 +832,7 @@ html[data-input="pointer"] .skip-link:focus {
   margin-top: 6px;
   font-size: 0.875rem;
   color: var(--text);
-  font-family: var(--font-mono);
   font-weight: 600;
-}
-.empty-state__title::after {
-  content: "_";
-  margin-left: 2px;
-  color: var(--accent);
-  animation: cursor-blink 1.05s steps(1) infinite;
 }
 .pagination {
   display: flex;
@@ -1401,10 +1275,6 @@ body:has(.site-header[data-hidden="true"]) .toc {
   font-size: 0.875rem;
   color: var(--text);
 }
-.toc__title::before {
-  content: "$ ";
-  color: var(--accent-5);
-}
 .toc ol {
   display: grid;
   gap: 8px;
@@ -1622,10 +1492,6 @@ html.js .adult-gate[data-locked="true"] {
   min-height: 36px;
   text-decoration: none;
 }
-.footer-links a::before {
-  content: "$ ";
-  color: var(--accent-5);
-}
 .muted {
   color: var(--text-muted);
 }
@@ -1738,12 +1604,6 @@ html.js [data-motion].is-shown {
   transform: translateY(-2px);
   border-color: var(--accent);
   box-shadow: 0 0 18px -8px var(--glow);
-}
-.brand__mark {
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.brand:hover .brand__mark {
-  transform: translateX(3px);
 }
 .theme-toggle__icon {
   display: inline-block;
@@ -1911,12 +1771,6 @@ html.konami-on .site-main {
   }
   body::after {
     display: none;
-  }
-  .brand__cursor {
-    animation: none;
-  }
-  .brand__cursor {
-    opacity: 1;
   }
   *,
   *::before,
