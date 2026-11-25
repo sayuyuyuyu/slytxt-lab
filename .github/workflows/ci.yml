@@ -71,6 +71,10 @@ jobs:
       - name: Check generated links
         run: pnpm run check:build
 
+      # UI の文字は見た目で示す（AGENTS.md）。許可リストに無い文字が増えたら落ちる。
+      - name: Check UI text allowlist
+        run: pnpm run check:ui-text
+
   # 主要フローを実ブラウザで確認する。サイトをローカルでビルドして配信する。
   e2e:
     name: e2e

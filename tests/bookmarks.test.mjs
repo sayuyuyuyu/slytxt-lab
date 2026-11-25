@@ -399,7 +399,8 @@ test("embed script is valid JS and carries the feed data", () => {
 test("unconnected embed still produces runnable JS", () => {
   const code = renderEmbed(null, RENDER_OPTIONS);
   assert.doesNotThrow(() => new Function(code));
-  assert.ok(code.includes("まだXと接続していません"));
+  // 文字ではなく UI（状態）で示すため、空のときの文言は持たない。
+  assert.ok(code.includes("empty"));
 });
 
 test("X client follows pagination until the requested count", async () => {

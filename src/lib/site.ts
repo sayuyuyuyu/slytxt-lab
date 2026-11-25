@@ -40,7 +40,6 @@ export type ArticleSection = {
   title: string;
   description: string;
   emptyTitle: string;
-  emptyDescription: string;
 };
 
 export const articleSections: Record<"tech" | "misc" | "comic" | "game" | "anime", ArticleSection> = {
@@ -48,31 +47,26 @@ export const articleSections: Record<"tech" | "misc" | "comic" | "game" | "anime
     title: categoryLabels.tech,
     description: "AI、MCP、クラウド、プログラミングを試した記録。",
     emptyTitle: emptyStateTitles.articles,
-    emptyDescription: "まだありません。AIやクラウドを試した記録の最初の1本がここに並びます。"
   },
   misc: {
     title: categoryLabels.misc,
     description: "どの区分にも入らないもの。短いメモや日々のこと。",
     emptyTitle: emptyStateTitles.articles,
-    emptyDescription: "まだありません。短いメモや日々のことがここに並びます。"
   },
   comic: {
     title: categoryLabels.comic,
     description: "漫画の感想。ジャンプ感想など。",
     emptyTitle: emptyStateTitles.articles,
-    emptyDescription: "まだありません。漫画の感想がここに並びます。"
   },
   game: {
     title: categoryLabels.game,
     description: "ゲームの話。音ゲーの記録など。",
     emptyTitle: emptyStateTitles.articles,
-    emptyDescription: "まだありません。ゲームの話がここに並びます。"
   },
   anime: {
     title: categoryLabels.anime,
     description: "アニメの感想。",
     emptyTitle: emptyStateTitles.articles,
-    emptyDescription: "まだありません。アニメの感想がここに並びます。"
   }
 };
 
@@ -81,7 +75,6 @@ export const articlesIndex: ArticleSection = {
   title: "Articles",
   description: "技術と漫画、ゲーム、アニメ、それ以外の記事。",
   emptyTitle: emptyStateTitles.articles,
-  emptyDescription: "まだありません。長い文章がここに並びます。"
 };
 
 /** Descriptions for the pages outside the article sections, shared by each page. */

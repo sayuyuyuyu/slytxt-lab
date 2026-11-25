@@ -29,7 +29,7 @@ const tags = tagCounts(await getAllEntries());
         <div class="listing-list">
           {page.entries.map((entry) => <ArticleCard entry={entry} headingLevel="h2" />)}
         </div>
-      ) : <EmptyState title={section.emptyTitle} description={section.emptyDescription} />}
+      ) : <EmptyState title={section.emptyTitle} />}
       <Pagination basePath={basePath} {...page} />
     </div>
   </section>
