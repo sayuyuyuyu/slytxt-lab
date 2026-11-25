@@ -289,14 +289,11 @@ button,input,select{font:inherit}
 .site-header{position:sticky;top:0;z-index:50;background:var(--bg)}
 .site-header__inner{width:min(100% - 48px,1040px);margin-inline:auto;min-height:65px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--border)}
 .brand{display:inline-flex;align-items:center;gap:10px;min-width:0;font-family:var(--font-mono);font-size:.98rem;font-weight:700;letter-spacing:.02em;text-decoration:none;color:var(--text)}
-.brand__mark{color:var(--accent-5);font-size:1rem}
-.brand__cursor{display:inline-block;width:8px;height:1.05rem;background:var(--accent)}
 .theme-toggle{width:44px;flex:0 0 44px;min-height:44px;padding:0;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--text);cursor:pointer;font-size:1.1rem;line-height:1}
 .theme-toggle:hover{background:var(--surface);border-color:var(--accent);color:var(--accent-strong)}
 .wrap{width:min(100% - 48px,1040px);margin-inline:auto;padding:0 0 64px}
 .page-head{padding:48px 0 0}
 .eyebrow{margin:0 0 12px;color:var(--accent);font-family:var(--font-mono);font-size:.72rem;letter-spacing:.08em;font-weight:500}
-.eyebrow::before{content:"❯ ";color:var(--accent-5)}
 h1{margin:0;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:500;line-height:1.4}
 .page-count{margin:14px 0 0;color:var(--text-muted);font-family:var(--font-mono);font-size:.78rem}
 .notice{margin:24px 0 0;border:1px solid var(--border);border-left:3px solid var(--accent);background:var(--surface);padding:12px 16px;font-size:.88rem}
@@ -337,7 +334,6 @@ h1{margin:0;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:500;line-height:1.4}
 .site-footer__dot{width:8px;height:8px;border-radius:50%;background:var(--accent-5)}
 .footer-links{display:flex;flex-wrap:wrap;gap:8px 24px}
 .footer-links a{display:inline-flex;align-items:center;min-height:36px;text-decoration:none;color:var(--text-muted)}
-.footer-links a::before{content:"$ ";color:var(--accent-5)}
 .footer-links a:hover{color:var(--accent-strong)}
 @media (max-width:640px){.site-header__inner,.wrap,.site-footer__inner{width:min(100% - 32px,1040px)}.tools__search{flex-basis:100%}}
 @media print{:root,:root.light{color-scheme:light;--bg:#f2f2f2;--bg-soft:#f2f2f2;--surface:#f2f2f2;--surface-2:#f2f2f2;--text:#1f2d40;--text-muted:#515d73;--border:#515d73;--border-strong:#515d73;--accent:#025959;--accent-strong:#294273;--accent-3:#4557bf;--accent-5:#025959;--accent-warn:color-mix(in srgb,#f2d7b6 34%,#1f2d40);--accent-red:color-mix(in srgb,#f2c5bb 34%,#1f2d40)}body{background:#f2f2f2}.site-header,.site-footer,.skip-link,.tools,.more{display:none!important}}
@@ -414,7 +410,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
 <div class="site-header__inner">
-<a class="brand" href="${escapeHtml(options.siteUrl)}" aria-label="${escapeHtml(options.siteName)} トップ"><span class="brand__mark" aria-hidden="true">❯</span><span class="brand__name">${escapeHtml(options.siteName)}</span><span class="brand__cursor" aria-hidden="true"></span></a>
+<a class="brand" href="${escapeHtml(options.siteUrl)}" aria-label="${escapeHtml(options.siteName)} トップ"><span class="brand__name">${escapeHtml(options.siteName)}</span></a>
 <button class="theme-toggle" type="button" aria-label="Toggle theme" data-theme-toggle><span aria-hidden="true" data-theme-icon>◐</span></button>
 </div>
 </header>
