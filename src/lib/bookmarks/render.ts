@@ -441,35 +441,52 @@ ${script}
 `;
 }
 
+/**
+ * 埋め込みの既定色。
+ * 埋め込み先のページにはサイトの配色を配れない（Shadow DOM の外）ため、
+ * `src/styles/global.css` の `--text` / `--accent` / `--text-muted` / `--border`
+ * の値をここに写す。写し忘れは tests/bookmarks.test.mjs が見る（#887）。
+ */
+export const EMBED_COLORS = {
+  light: { text: "#1f2d40", accent: "#025959", muted: "#515d73", border: "#bec2c9" },
+  dark: { text: "#f2f2f2", accent: "#11d9d9", muted: "#a29689", border: "#364357" }
+};
+
+/** `--xb-<役割>-default` を、呼び出し側が指定しなかったときの既定値として置く。 */
+const embedDefaults = (colors: Record<string, string>) =>
+  Object.entries(colors)
+    .map(([role, value]) => `--xb-${role}-default:${value};`)
+    .join("");
+
 /** 埋め込み先の CSS と干渉しないよう Shadow DOM に描くスタイル。 */
 const EMBED_STYLE = `
-:host{display:block;color:var(--xb-text,#292721);font:15px/1.8 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
-@media (prefers-color-scheme:dark){:host{color:var(--xb-text,#f2eee5)}}
+:host{${embedDefaults(EMBED_COLORS.light)}display:block;color:var(--xb-text,var(--xb-text-default));font:15px/1.8 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+@media (prefers-color-scheme:dark){:host{${embedDefaults(EMBED_COLORS.dark)}}}
 *,*::before,*::after{box-sizing:border-box}
-a{color:var(--xb-accent,#a43d29)}
+a{color:var(--xb-accent,var(--xb-accent-default))}
 .head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 14px}
 .title{font-weight:600}
-.meta{display:flex;gap:12px;color:var(--xb-muted,#706a60);font-size:.78rem}
+.meta{display:flex;gap:12px;color:var(--xb-muted,var(--xb-muted-default));font-size:.78rem}
 .cards{list-style:none;margin:0;padding:0;display:grid;gap:14px}
-.card{border:1px solid var(--xb-border,#e2dcd0);border-radius:14px;background:var(--xb-card,transparent);padding:16px 16px 12px}
+.card{border:1px solid var(--xb-border,var(--xb-border-default));border-radius:14px;background:var(--xb-card,transparent);padding:16px 16px 12px}
 .card__head{display:flex;align-items:center;gap:10px}
 .card__avatar{width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover}
-.card__avatar--fallback{display:inline-flex;align-items:center;justify-content:center;background:var(--xb-surface,rgba(127,127,127,.14));color:var(--xb-text,#292721);font-weight:600;font-size:.95rem}
+.card__avatar--fallback{display:inline-flex;align-items:center;justify-content:center;background:var(--xb-surface,rgba(127,127,127,.14));color:var(--xb-text,var(--xb-text-default));font-weight:600;font-size:.95rem}
 .card__who{min-width:0}
 .card__name{margin:0;font-weight:600;font-size:.92rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card__handle{margin:0;color:var(--xb-muted,#706a60);font-size:.78rem;line-height:1.35}
-.card__time{margin-left:auto;color:var(--xb-muted,#706a60);font-size:.74rem;white-space:nowrap;align-self:flex-start}
+.card__handle{margin:0;color:var(--xb-muted,var(--xb-muted-default));font-size:.78rem;line-height:1.35}
+.card__time{margin-left:auto;color:var(--xb-muted,var(--xb-muted-default));font-size:.74rem;white-space:nowrap;align-self:flex-start}
 .card__text{margin:12px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.95rem;line-height:1.85}
 .card__foot{display:flex;justify-content:flex-end;margin:10px 0 0}
 .card__open{font-size:.8rem}
 .card__media{display:grid;gap:6px;margin:12px 0 0;grid-template-columns:minmax(0,1fr)}
 .card__media--2,.card__media--3,.card__media--4{grid-template-columns:repeat(2,minmax(0,1fr))}
-.card__media-item{display:block;width:100%;height:auto;min-width:0;object-fit:cover;border:1px solid var(--xb-border,#e2dcd0);border-radius:10px}
+.card__media-item{display:block;width:100%;height:auto;min-width:0;object-fit:cover;border:1px solid var(--xb-border,var(--xb-border-default));border-radius:10px}
 .card__media--1 .card__media-item{max-height:420px}
 .card__media--2 .card__media-item,.card__media--3 .card__media-item,.card__media--4 .card__media-item{aspect-ratio:16/10}
 .card__media--3 .card__media-item:first-child{grid-row:span 2;aspect-ratio:auto;height:100%}
 .card__media-link{display:block}
-.notice,.empty{margin:14px 0 0;color:var(--xb-muted,#706a60);font-size:.85rem}
+.notice,.empty{margin:14px 0 0;color:var(--xb-muted,var(--xb-muted-default));font-size:.85rem}
 `;
 
 /** `<script src=".../embed.js">` で一覧をカードで描く。データは取得済みのものを埋め込むので追加の通信も CORS も要らない。 */

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { extractThemeCss } from "../tools/writer-cloudflare/scripts/theme-css.mjs";
 import {
   classifyError,
   readFeed,
@@ -17,7 +19,13 @@ import {
   toJstParts,
 } from "../src/lib/bookmarks/format.ts";
 import { matchesSecret } from "../src/lib/bookmarks/secret.ts";
-import { renderEmbed, renderHtml, renderJson, renderRss } from "../src/lib/bookmarks/render.ts";
+import {
+  EMBED_COLORS,
+  renderEmbed,
+  renderHtml,
+  renderJson,
+  renderRss,
+} from "../src/lib/bookmarks/render.ts";
 
 function memoryStore() {
   const map = new Map();
@@ -872,4 +880,70 @@ test("embed carries media data and renders it in the card", () => {
   assert.ok(code.includes("https://pbs.twimg.com/media/photo.jpg"));
   assert.ok(code.includes("https://video.twimg.com/movie.mp4"));
   assert.ok(code.includes("mediaNode"));
+});
+
+/* ---- 埋め込みの既定色（#887） ---- */
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+function blockVars(block) {
+  return new Map(
+    [...block.matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]),
+  );
+}
+
+/** `var()` と `color-mix(in srgb, ...)` だけを解く（global.css の役割変数で使う形）。 */
+function resolveColor(value, vars) {
+  const text = String(value ?? "").trim();
+  if (HEX.test(text)) return text.toLowerCase();
+  const varMatch = text.match(/^var\(--([\w-]+)\)$/);
+  if (varMatch) return resolveColor(vars.get(varMatch[1]), vars);
+  const mixMatch = text.match(/^color-mix\(in srgb,\s*(.+?)\s+(\d+)%,\s*(.+)\)$/);
+  if (mixMatch) {
+    const first = resolveColor(mixMatch[1], vars).slice(1);
+    const second = resolveColor(mixMatch[3], vars).slice(1);
+    const ratio = Number(mixMatch[2]) / 100;
+    const channels = [0, 2, 4].map((i) => {
+      const a = Number.parseInt(first.slice(i, i + 2), 16);
+      const b = Number.parseInt(second.slice(i, i + 2), 16);
+      return Math.round(a * ratio + b * (1 - ratio))
+        .toString(16)
+        .padStart(2, "0");
+    });
+    return `#${channels.join("")}`;
+  }
+  throw new Error(`解けない色: ${text}`);
+}
+
+test("埋め込みの既定色はサイトのパレット（文字・リンク・補助文字・枠）と一致する", async () => {
+  const css = await readFile(new URL("../src/styles/global.css", import.meta.url), "utf8");
+  // :root（パレット）, :root（ダーク）, :root.light の3ブロック。
+  const blocks = [...extractThemeCss(css).matchAll(/:root(\.light)?\s*\{([^}]*)\}/g)];
+  assert.equal(blocks.length, 3);
+  const palette = blockVars(blocks[0][2]);
+  const schemeVars = (index) => new Map([...palette, ...blockVars(blocks[index][2])]);
+  const roles = (vars) => ({
+    text: resolveColor(vars.get("text"), vars),
+    accent: resolveColor(vars.get("accent"), vars),
+    muted: resolveColor(vars.get("text-muted"), vars),
+    border: resolveColor(vars.get("border"), vars),
+  });
+
+  assert.deepEqual(EMBED_COLORS.dark, roles(schemeVars(1)));
+  assert.deepEqual(EMBED_COLORS.light, roles(schemeVars(2)));
+});
+
+test("埋め込みは既定色を --xb-*-default として出し、旧パレットの色を残さない", () => {
+  const code = renderEmbed(mediaSnapshot(), RENDER_OPTIONS);
+  for (const [scheme, colors] of Object.entries(EMBED_COLORS)) {
+    for (const [role, value] of Object.entries(colors)) {
+      assert.ok(
+        code.includes(`--xb-${role}-default:${value};`),
+        `${scheme} の ${role} が埋め込みに無い`,
+      );
+    }
+  }
+  for (const old of ["#292721", "#f2eee5", "#a43d29", "#706a60", "#e2dcd0"]) {
+    assert.ok(!code.toLowerCase().includes(old), `旧パレットの色が残っている: ${old}`);
+  }
 });
