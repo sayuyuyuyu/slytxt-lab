@@ -1,0 +1,143 @@
+---
+/**
+ * 検索のオーバーレイ（#880）。ヘッダーの検索ボタンから開き、ページ遷移なしで
+ * Pagefind の結果を出す。Pagefind の UI と索引は初回に開いたときだけ読み込む。
+ */
+---
+
+<dialog class="search-overlay" data-search-overlay aria-label="検索">
+  <div class="search-overlay__inner">
+    <div class="search-overlay__head">
+      <div id="search" class="search-box"></div>
+      <button class="button search-overlay__close" type="button" data-search-close>閉じる</button>
+    </div>
+    <p class="search-overlay__status" role="status" data-search-status>検索を読み込み中…</p>
+    <p class="search-overlay__help">短い言葉のほうが見つかりやすくなります。閉じるときは Esc を押します。</p>
+  </div>
+</dialog>
+
+<script is:inline>
+  (() => {
+    const dialog = document.querySelector("[data-search-overlay]");
+    const status = dialog?.querySelector("[data-search-status]");
+    if (!dialog || !status) return;
+
+    const triggers = () => Array.from(document.querySelectorAll("[data-search-open]"));
+    let loaded = false;
+    let loading = null;
+    let openedFrom = null;
+
+    const fail = () => {
+      status.hidden = false;
+      status.textContent = "検索を読み込めませんでした。ページを再読み込みしてください。";
+    };
+
+    // 初回だけ CSS と UI を読む。以降は同じインスタンスを使い回す。
+    const load = () => {
+      if (loaded) return Promise.resolve();
+      if (loading) return loading;
+      loading = new Promise((resolve, reject) => {
+        const css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = "/pagefind/pagefind-ui.css";
+        document.head.append(css);
+
+        const script = document.createElement("script");
+        script.src = "/pagefind/pagefind-ui.js";
+        script.onload = () => {
+          try {
+            new PagefindUI({
+              element: "#search",
+              showSubResults: true,
+              showImages: false,
+              translations: {
+                placeholder: "探したい言葉を入力",
+                clear_search: "クリア",
+                load_more: "結果をもっと読み込む",
+                search_label: "このサイトを検索",
+                filters_label: "絞り込み",
+                zero_results: "「[SEARCH_TERM]」の結果は見つかりませんでした",
+                many_results: "「[SEARCH_TERM]」の結果が [COUNT] 件見つかりました",
+                one_result: "「[SEARCH_TERM]」の結果が [COUNT] 件見つかりました",
+                total_zero_results: "結果は見つかりませんでした",
+                total_one_result: "[COUNT] 件の結果",
+                total_many_results: "[COUNT] 件の結果",
+                alt_search:
+                  "「[SEARCH_TERM]」の結果は見つかりませんでした。代わりに「[DIFFERENT_TERM]」の結果を表示しています",
+                search_suggestion:
+                  "「[SEARCH_TERM]」の結果は見つかりませんでした。次の言葉で探してみてください:",
+                searching: "「[SEARCH_TERM]」を検索中…",
+                results_label: "検索結果",
+                error_search: "検索に失敗しました",
+                input_hint: "入力すると結果が表示されます",
+                loading: "読み込み中…"
+              }
+            });
+            loaded = true;
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        };
+        script.onerror = reject;
+        document.head.append(script);
+      }).catch((error) => {
+        loading = null;
+        throw error;
+      });
+      return loading;
+    };
+
+    const focusInput = () => {
+      const input = dialog.querySelector(".pagefind-ui__search-input");
+      if (!input) return;
+      input.focus();
+      input.select();
+    };
+
+    const open = async (from) => {
+      openedFrom = from ?? document.activeElement;
+      if (!dialog.open) dialog.showModal();
+      status.hidden = false;
+      status.textContent = "検索を読み込み中…";
+      try {
+        await load();
+        status.hidden = true;
+        focusInput();
+      } catch {
+        fail();
+      }
+    };
+
+    const close = () => {
+      if (dialog.open) dialog.close();
+    };
+
+    for (const trigger of triggers()) {
+      trigger.addEventListener("click", (event) => {
+        event.preventDefault();
+        void open(trigger);
+      });
+    }
+
+    for (const closer of dialog.querySelectorAll("[data-search-close]")) {
+      closer.addEventListener("click", close);
+    }
+
+    // 背景（dialog の外側）を押したら閉じる。
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) close();
+    });
+
+    dialog.addEventListener("close", () => {
+      const target = openedFrom;
+      openedFrom = null;
+      if (target instanceof HTMLElement && document.contains(target)) target.focus();
+    });
+
+    // 開いている間は Pagefind の入力へフォーカスを保つ。
+    dialog.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && dialog.open) close();
+    });
+  })();
+</script>
