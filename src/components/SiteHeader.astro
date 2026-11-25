@@ -215,7 +215,7 @@ function isCurrentSection(href: string) {
       if (!header.contains(event.target as Node)) setOpen(false);
     });
 
-    // writer のメニューと同水準: 矢印キー / Home / End で項目間を移動する。
+    // 矢印キー / Home / End で項目間を移動する。
     menu.addEventListener("keydown", (event) => {
       if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
       const links = menuLinks();

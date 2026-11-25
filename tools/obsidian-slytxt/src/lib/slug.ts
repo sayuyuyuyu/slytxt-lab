@@ -1,5 +1,5 @@
 /**
- * 公開先のパスとブランチ名。writer（tools/writer-cloudflare）と同じ規則に揃える。
+ * 公開先のパス・ブランチ名・公開 URL の規則。
  * - 記事は src/content/<category>/<slug>.md、ブランチは write/<slug>
  */
 export type PublishCategory = "tech" | "misc" | "comic" | "game" | "anime";
@@ -10,7 +10,7 @@ export function isPublishCategory(value: string): value is PublishCategory {
   return (PUBLISH_CATEGORIES as string[]).includes(value);
 }
 
-/** 英数字とハイフンだけの slug。作れないときは日付に落とす（writer と同じ）。 */
+/** 英数字とハイフンだけの slug。作れないときは日付に落とす。 */
 export function normalizeSlug(raw: string, fallbackDate: string): string {
   const cleaned = String(raw ?? "")
     .toLowerCase()
@@ -33,7 +33,7 @@ export function publicUrl(category: PublishCategory, slug: string): string {
   return `https://slytxt.dev/articles/${category}/${slug}/`;
 }
 
-/** JST の今日（writer の today() と同じ扱い）。 */
+/** JST の今日。 */
 export function todayInTokyo(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",

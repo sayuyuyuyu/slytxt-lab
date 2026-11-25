@@ -12,7 +12,7 @@
 
 実装は `src/index.mjs`（Worker の入口）と、サイト側の `src/lib/feed/api.ts`（処理本体）・`src/lib/feed/compose.ts`（検証・ID・OGP）です。
 
-`public/` は writer と違ってリポジトリで追跡しています（Worker がそのまま配信するため）。アイコンはサイト本体の `public/` から取るので、差し替えたら `node tools/feed-cloudflare/scripts/prepare-assets.mjs` を実行して差分をコミットしてください（`tests/feed-assets.test.mjs` が一致を見張っています）。書き込みは writer と同じく `x-slytxt-client: 1` と同一オリジンを要求します（入口の Cloudflare Access と合わせて二重に守る）。
+`public/` はリポジトリで追跡しています（Worker がそのまま配信するため）。アイコンはサイト本体の `public/` から取るので、差し替えたら `node tools/feed-cloudflare/scripts/prepare-assets.mjs` を実行して差分をコミットしてください（`tests/feed-assets.test.mjs` が一致を見張っています）。書き込みは `x-slytxt-client: 1` と同一オリジンを要求します（入口の Cloudflare Access と合わせて二重に守る）。
 
 ## 準備
 
@@ -23,7 +23,7 @@
    ```
 
 2. 作り直した場合だけ、`wrangler.toml` の `database_id` を新しい ID に差し替える。バインディング名は `FEED` のまま（コードが `env.FEED` を読む）。
-3. Cloudflare Access で `feed.slytxt.dev` にアプリケーションを作り、本人のメールアドレスだけを許可する（writer と同じ設定）。
+3. Cloudflare Access で `feed.slytxt.dev` にアプリケーションを作り、本人のメールアドレスだけを許可する。
 4. デプロイする。
 
    デプロイは Workers Builds の GitHub 連携で、`main` への push 時に自動で行われます（2026-11-18 連携。ルートディレクトリ `tools/feed-cloudflare`、ビルドコマンドなし、デプロイコマンド `npx wrangler deploy`）。手動で出す場合は従来どおり:
@@ -32,7 +32,7 @@
    ./scripts/feed.sh deploy
    ```
 
-画像は writer と同じ R2 バケット `slytxt-writer-media` の `pub/` に置かれ、`https://media.slytxt.dev/<key>` で配信されます（`tools/media-cloudflare`）。フィードの画像は最初から `pub/` に置くので、writer の draft→pub の移動は通りません。
+画像は R2 バケット `slytxt-writer-media` の `pub/` に置かれ、`https://media.slytxt.dev/<key>` で配信されます（`tools/media-cloudflare`）。
 
 ## ローカルで動かす
 

@@ -8,9 +8,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ICONS = ["favicon.svg", "favicon.ico", "apple-touch-icon.png"];
 
 /**
- * feed の投稿画面はアイコンを自前の public/ から配信する（writer と違い
- * public/ が追跡対象）。サイト本体のアイコンとずれると、ホーム画面に追加
- * したときだけ古い意匠が残るため、一致を機械的に見張る。
+ * feed の投稿画面はアイコンを自前の public/ から配信する（public/ が追跡対象）。
+ * サイト本体のアイコンとずれると、ホーム画面に追加したときだけ古い意匠が
+ * 残るため、一致を機械的に見張る。
  */
 test("feed: 投稿画面のアイコンはサイト本体と一致する", async () => {
   for (const name of ICONS) {

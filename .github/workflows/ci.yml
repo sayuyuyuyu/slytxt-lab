@@ -71,8 +71,7 @@ jobs:
       - name: Check generated links
         run: pnpm run check:build
 
-  # 主要フローを実ブラウザで確認する。writer は wrangler dev（ローカル KV）で
-  # 起動するため、サイト本体より重い。UI の競合（#771 / #788）はここで拾う。
+  # 主要フローを実ブラウザで確認する。サイトをローカルでビルドして配信する。
   e2e:
     name: e2e
     runs-on: ubuntu-latest
@@ -97,11 +96,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      # writer はサブプロジェクト。public/ の生成に esbuild を使う。
-      - name: Install writer dependencies
-        run: pnpm install --frozen-lockfile
-        working-directory: tools/writer-cloudflare
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium

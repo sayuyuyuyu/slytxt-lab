@@ -20,7 +20,7 @@ binding = "FEED"
 database_name = "slytxt-feed"
 database_id = "570b8c9d-6ef3-4733-9de3-cf4b70f67c4f"
 
-# 公開メディアの R2（writer / media Worker と共有）。フィードの画像は
+# 公開メディアの R2（media Worker と共有）。フィードの画像は
 # 最初から pub/ に置き、media.slytxt.dev から配信する。
 [[r2_buckets]]
 binding = "MEDIA"

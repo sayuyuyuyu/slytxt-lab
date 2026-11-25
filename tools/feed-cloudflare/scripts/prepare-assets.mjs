@@ -2,7 +2,7 @@
 /**
  * feed の投稿画面（PWA）が使うアイコンを、サイト本体の public/ から取り込む。
  *
- * feed の public/ は writer と違ってリポジトリで追跡している（Worker が
+ * feed の public/ はリポジトリで追跡している（Worker が
  * そのまま配信するため）。サイト本体のアイコンを差し替えたら、これを実行して
  * 差分をコミットする。tests/feed-assets.test.mjs が一致を見張っている。
  */

@@ -1,11 +1,11 @@
 /**
  * 公開メディアの配信 Worker（media.slytxt.dev）。
  *
- * 執筆ツール（tools/writer-cloudflare）が Cloudflare R2 バケット
- * slytxt-writer-media の `pub/` プレフィックスへ移した画像だけを返す。
- * 下書き段階の画像（`draft/`）はこの Worker からは一切見えず、
- * writer（write.slytxt.dev、Cloudflare Access の裏）経由でのみ表示できる。
- * バケット自体は非公開で、公開境界はこの Worker のプレフィックス判定が担う。
+ * Obsidian プラグインと短文フィードが Cloudflare R2 バケット
+ * slytxt-writer-media の `pub/` プレフィックスへ置いた画像だけを返す。
+ * `pub/` 以外のキー（writer 時代の `draft/` など）はこの Worker からは
+ * 一切見えない。バケット自体は非公開で、公開境界はこの Worker の
+ * プレフィックス判定が担う。
  *
  * 配信（GET / HEAD）のほかに、Obsidian プラグインからのカバー画像の
  * アップロード（PUT /<キー>）を受ける。secret の UPLOAD_TOKEN と対になる

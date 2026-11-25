@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { extractThemeCss } from "../tools/writer-cloudflare/scripts/theme-css.mjs";
 import {
   classifyError,
   readFeed,
@@ -917,8 +916,9 @@ function resolveColor(value, vars) {
 
 test("埋め込みの既定色はサイトのパレット（文字・リンク・補助文字・枠）と一致する", async () => {
   const css = await readFile(new URL("../src/styles/global.css", import.meta.url), "utf8");
-  // :root（パレット）, :root（ダーク）, :root.light の3ブロック。
-  const blocks = [...extractThemeCss(css).matchAll(/:root(\.light)?\s*\{([^}]*)\}/g)];
+  // 行頭の :root（パレット）, :root（ダーク）, :root.light の3ブロック。
+  // @media print の中の :root は字下げされているので拾わない。
+  const blocks = [...css.matchAll(/^:root(\.light)?\s*\{([^}]*)\}/gm)];
   assert.equal(blocks.length, 3);
   const palette = blockVars(blocks[0][2]);
   const schemeVars = (index) => new Map([...palette, ...blockVars(blocks[index][2])]);

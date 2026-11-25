@@ -9,9 +9,9 @@
 図の要素と接続関係は次のとおりです（図のソースは `docs/diagrams/overview.mmd`、Mermaid 記法。SVG は Ondine で生成したもので、再生成は `npx ondine docs/diagrams/*.mmd` です）。
 
 - 読者は Cloudflare Pages のサイト（slytxt.dev）を閲覧し、公開済み画像は media.slytxt.dev から受け取ります。
-- 本人は2つの経路で書きます。Cloudflare Access の内側の執筆ツール（write.slytxt.dev）と、Mac / iPhone の Obsidian プラグイン（`tools/obsidian-slytxt/`）です。
-- どちらの経路も GitHub にブランチと Pull Request を作り、マージされると Cloudflare Pages が main をビルドして公開します。下書きの置き場所は経路で違います（writer は KV slytxt-writer-drafts、プラグインは Vault のノート）。
-- 執筆ツールは画像を R2（slytxt-writer-media）へ保存し、公開時に `draft/` から `pub/` へ移します。
+- 本人は Mac / iPhone の Obsidian プラグイン（`tools/obsidian-slytxt/`）で書きます。下書きは Vault のノートです。
+- プラグインは GitHub にブランチと Pull Request を作り、マージされると Cloudflare Pages が main をビルドして公開します。
+- 画像は R2（slytxt-writer-media）の `pub/` に置き、media.slytxt.dev から配信します。
 - X のブックマークは Pages Functions が配信し、取得結果は KV（BOOKMARKS）にキャッシュします。
 - 短文フィードは D1（slytxt-feed）に置きます。読者は Pages Functions が差し込んだ一覧を読み、投稿は feed.slytxt.dev の Worker が同じ D1 へ書きます。
 
@@ -68,43 +68,32 @@ refresh token が失効すると、取得が失敗し続けます。症状は、
 
 テストは `tests/bookmarks.test.mjs`（lib 層）と `tests/bookmarks-functions.test.mjs`（Functions の HTTP 層）です。
 
-### 執筆ツール writer（Worker: slytxt-writer）
-
-コードは `tools/writer-cloudflare/` です。入口はカスタムドメイン write.slytxt.dev のみ（workers.dev は無効）で、認証は Cloudflare Access が担い、本人のメールアドレスだけを許可します。
-
-下書きはブラウザの localStorage へ即時に保存され、裏で間引いて Cloudflare KV（バインディング `DRAFTS`、名前空間 slytxt-writer-drafts）へ同期されます。未同期の間は下書きが端末内だけに存在します。本文エディタは WYSIWYG（Milkdown Crepe）で、保存形式は markdown です。
-
-投稿後の見届けは Worker の Cron Triggers（毎分）が担います。タブを閉じても公開が完了するように、状態はサーバー側で進み、結果は KV に保存されて次回 writer を開いたときに通知されます。
-
-公開時の説明文には、任意で AI 要約（OpenCode Go）を使います。API キーの secret が未登録なら要約せず、本文の抜粋で公開します。
-
 ### メディア（R2 と Worker: slytxt-media）
 
-画像は非公開の R2 バケット `slytxt-writer-media` に置きます。下書き分は `draft/`、公開分は `pub/` のプレフィックスで分けます。
+画像は非公開の R2 バケット `slytxt-writer-media` の `pub/` に置き、Worker `slytxt-media`（media.slytxt.dev、認証なし）から配信します。記事のカバーはプラグインが、短文フィードの画像は feed の Worker が、それぞれ `pub/` へ上げます。`pub/` 以外のキーは URL を当てても 404 になります。旧来の `/media/*` URL は `public/_redirects` で media.slytxt.dev へ 301 リダイレクトします。
 
-下書きの画像は writer（Cloudflare Access の裏）経由でのみ表示されます。公開された画像だけが Worker `slytxt-media`（media.slytxt.dev、認証なし）から配信され、未公開のキーは URL を当てても 404 になります。旧来の `/media/*` URL は `public/_redirects` で media.slytxt.dev へ 301 リダイレクトします。
+`draft/` は writer 時代の下書き用のプレフィックスです。いまは書き込みません（残っているオブジェクトは順次削除します）。
 
 ## 公開フロー
 
 ![公開フロー](diagrams/publish-flow.svg)
 
-図のソースは `docs/diagrams/publish-flow.mmd`（Mermaid 記法）で、この図は writer の経路を描いたものです。手順は次のとおりです。
+図のソースは `docs/diagrams/publish-flow.mmd`（Mermaid 記法）です。手順は次のとおりです。
 
-1. 書く — 保存先は経路で違います。writer は本文を localStorage へ即時保存し、KV へ裏で同期します。Obsidian プラグインは Vault のノートをそのまま下書きにし、KV への同期はしません。
-2. 投稿 — GitHub REST API で作業ブランチを作り、記事ファイルを `src/content/<カテゴリ>/<slug>.md` として作成して Pull Request を開きます。writer で公開済み記事の一覧から開いて再編集した場合は、同じカテゴリなら同じファイルへの更新 PR になります。カテゴリを変えた場合は、新しいカテゴリへの書き出しと元カテゴリの削除を同じ PR で行う移動になります。どちらも公開日は元の記事から引き継がれ、更新日は再編集日に更新されます。writer ではこのとき画像を R2 の `draft/` から `pub/` へ移し、本文中の URL を media.slytxt.dev へ付け替えます。
-3. CI — Pull Request の CI（チェック名 `ci`）が成功することだけがマージの条件です。Cloudflare Pages のプレビュー結果は条件に入りません。
-4. マージ — 駆動するのは経路で違います。writer は UI のポーリングと Cron の見届け（毎分）の両方が進め、どちらが先でも冪等に収束します。結果は KV に `publish-result:` キーで残り、次回 writer を開いたときに通知され、公開できた下書きは一覧から消えます。Obsidian プラグインは PR に自動マージ（squash）を設定し、設定できなかった場合だけ GitHub で手動マージします。
-5. 公開 — main へのマージで Cloudflare Pages がビルドし、slytxt.dev に反映されます。
-
-writer 固有なのは下書きの KV 同期、画像の `draft/` → `pub/` 付け替え、`publish-result:` の見届けです。PR を作って CI の成功でマージされ、Pages が公開する部分は両経路で共通です。
+1. 書く — Obsidian（Mac / iPhone）のノートがそのまま下書きです。サーバーへの同期はしません。
+2. 画像 — カバー画像は media Worker のアップロード口（`PUT media.slytxt.dev/<キー>`）へ上げ、公開 URL を frontmatter の `cover` に差します。画像は Git に入れません。
+3. 投稿 — プラグインの「PR を作る（公開）」が GitHub REST API で作業ブランチ `write/<slug>` を作り、記事ファイルを `src/content/<カテゴリ>/<slug>.md` として作成して Pull Request を開きます。同じパスの記事が既にあれば更新 PR になります。タイトル未指定で本文の最初が見出しなら、その見出しをタイトルに使います。
+4. CI — Pull Request の CI（チェック名 `ci`）が成功することだけがマージの条件です。Cloudflare Pages のプレビュー結果は条件に入りません。
+5. マージ — プラグインが PR に自動マージ（squash）を設定します。設定できなかった場合だけ GitHub で手動マージします。
+6. 公開 — main へのマージで Cloudflare Pages がビルドし、slytxt.dev に反映されます。
 
 ## 認証と秘密情報
 
-- writer は Cloudflare Access（本人のメールアドレスのみ）。Worker 側に独自のトークン認証はありません。
+- 短文フィードの投稿画面（feed.slytxt.dev）は Cloudflare Access（本人のメールアドレスのみ）で守り、Worker 側でも `x-slytxt-client: 1` を要求します。
 - X ブックマークは推測不能な URL と管理トークンで守ります。
-- GitHub の fine-grained PAT や API キーは各 Worker の secret に登録し、リポジトリには値を書きません（登録方法は `tools/writer-cloudflare/README.md` を参照）。
+- GitHub の fine-grained PAT や API キーは、使う側（プラグインの設定、各 Worker の secret）に置き、リポジトリには値を書きません（登録方法は各 `tools/*/README.md` を参照）。
 
 ## デプロイ
 
 - サイト本体は main へのマージで Cloudflare Pages が自動デプロイします。
-- 3つの Worker（writer / media / feed）は `npx wrangler deploy -c tools/<対象>/wrangler.toml` で個別にデプロイします。wrangler はリポジトリの依存には足しません。
+- 2つの Worker（media / feed）は `npx wrangler deploy -c tools/<対象>/wrangler.toml` で個別にデプロイします。wrangler はリポジトリの依存には足しません。

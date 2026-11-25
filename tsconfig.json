@@ -10,7 +10,6 @@
   },
   "exclude": [
     "dist",
-    "tools/writer-cloudflare/public",
     "tools/obsidian-slytxt"
   ]
 }
