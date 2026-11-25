@@ -125,7 +125,7 @@ export type FeedItemsOptions = {
 /** 投稿一覧の HTML。0件のときは空状態を返す。 */
 export function renderFeedItems(posts: FeedPost[], options: FeedItemsOptions = {}): string {
   if (posts.length === 0) {
-    return `<p class="feed-empty">まだ投稿がありません。</p>`;
+    return "";
   }
   const more = options.nextHref
     ? `<a class="feed-more button" href="${escapeHtml(options.nextHref)}">もっと見る</a>`

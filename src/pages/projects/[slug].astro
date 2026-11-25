@@ -43,8 +43,8 @@ const crumbs = [{ label: "Projects", href: "/projects/" }, { label: displayTitle
       {lead && <p class="page-lead">{lead}</p>}
       <div class="article-meta">
         <span class="status">{projectStatusLabels[entry.data.status]}</span>
-        <span>Started <time datetime={entry.data.started.toISOString()}>{formatDate(entry.data.started)}</time></span>
-        {entry.data.updated && <span>Updated <time datetime={entry.data.updated.toISOString()}>{formatDate(entry.data.updated)}</time></span>}
+        <span><time datetime={entry.data.started.toISOString()}>{formatDate(entry.data.started)}</time></span>
+        {entry.data.updated && <span><time datetime={entry.data.updated.toISOString()}>{formatDate(entry.data.updated)}</time></span>}
       </div>
       <TagList tags={entry.data.tags} base="/projects/" />
     </div>

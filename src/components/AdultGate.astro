@@ -9,14 +9,12 @@ const { storageKey = "adult-content-consent" } = Astro.props;
 <div class="adult-gate" data-adult-gate data-adult-key={storageKey} data-locked="true" data-pagefind-ignore>
   <p>
     <strong>成人向け作品に関するレビューを含みます</strong>
-    閲覧を続ける場合は同意してください。同意はこのブラウザに保存されます。
   </p>
   <button class="button button--primary" type="button" data-adult-accept>同意して読む</button>
 </div>
 <noscript>
   <p class="adult-gate" style="display: block;">
     <strong>成人向け作品に関するレビューを含みます</strong>
-    本文は JavaScript を有効にして同意しないと表示されません。
   </p>
 </noscript>
 

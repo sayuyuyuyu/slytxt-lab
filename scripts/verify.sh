@@ -15,3 +15,4 @@ node --experimental-strip-types --test tests/*.test.mjs
 node_modules/.bin/astro build --force
 node_modules/.bin/pagefind --site dist --glob "**/*.html"
 node scripts/check-build.mjs
+node scripts/check-ui-text.mjs

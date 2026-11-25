@@ -34,7 +34,7 @@ const tags = tagCounts(await getProjects());
             {page.entries.map((entry) => <ProjectCard entry={entry} headingLevel="h2" />)}
           </div>
         ) : (
-          <EmptyState title={emptyStateTitles.projects} description="まだありません。つくったものが進み具合と一緒にここに並びます。" />
+          <EmptyState title={emptyStateTitles.projects} />
         )
       }
       <Pagination basePath="/projects" {...page} />

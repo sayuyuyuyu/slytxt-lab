@@ -6,7 +6,6 @@ export type { ArticleCollection, ArticleEntry, ProjectEntry, SiteEntry } from ".
 export {
   getAdjacentArticles,
   getEntryDate,
-  getEntryDateLabel,
   getEntryDescription,
   getEntryDisplayTitle,
   getEntryPath,

@@ -1,0 +1,36 @@
+---
+/**
+ * アイコン。テキストの字形（↗ や ☾）はフォントで大きさと位置が変わるため、
+ * 線の太さと大きさを揃えた SVG を使う。
+ */
+export type IconName = "search" | "moon" | "sun" | "arrow-up-right" | "close";
+
+type Props = {
+  name: IconName;
+  class?: string;
+};
+
+const { name, class: className } = Astro.props as Props;
+
+const PATHS: Record<IconName, string> = {
+  search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.3-4.3"/>',
+  moon: '<path d="M20 14.6A8.6 8.6 0 1 1 9.4 4a6.6 6.6 0 0 0 10.6 10.6Z"/>',
+  sun:
+    '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/>',
+  "arrow-up-right": '<path d="M7 17 17 7"/><path d="M9 7h8v8"/>',
+  close: '<path d="m6 6 12 12M18 6 6 18"/>'
+};
+---
+
+<svg
+  class:list={["icon", className]}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.8"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+  set:html={PATHS[name]}
+/>

@@ -1,6 +1,7 @@
 ---
 import { ARTICLE_COLLECTIONS, getArticles, getProjects } from "@/lib/content";
 import { categoryPaths, navGroups, site } from "@/lib/site";
+import Icon from "./Icon.astro";
 import ThemeToggle from "./ThemeToggle.astro";
 import SearchDialog from "./SearchDialog.astro";
 
@@ -62,7 +63,7 @@ function isCurrentSection(href: string) {
         aria-haspopup="dialog"
         data-search-open
       >
-        <span class="search-button__icon" aria-hidden="true">⌕</span>
+        <Icon name="search" class="search-button__icon" />
       </button>
       <button
         class="menu-button"

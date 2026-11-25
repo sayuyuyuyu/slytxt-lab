@@ -331,7 +331,7 @@ h1{margin:0;font-size:clamp(1.8rem,4vw,2.4rem);font-weight:500;line-height:1.4}
 .site-footer{border-top:1px solid var(--border);margin-top:8px;padding-block:22px 30px;font-family:var(--font-mono);font-size:.76rem;color:var(--text-muted)}
 .site-footer__inner{width:min(100% - 48px,1040px);margin-inline:auto;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
 .site-footer__status{display:inline-flex;align-items:center;gap:8px}
-.site-footer__dot{width:8px;height:8px;border-radius:50%;background:var(--accent-5)}
+
 .footer-links{display:flex;flex-wrap:wrap;gap:8px 24px}
 .footer-links a{display:inline-flex;align-items:center;min-height:36px;text-decoration:none;color:var(--text-muted)}
 .footer-links a:hover{color:var(--accent-strong)}
@@ -350,7 +350,7 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
   if (!snapshot) {
     body = `<p class="empty">まだXと接続していません。</p>`;
   } else if (items.length === 0) {
-    body = `<p class="empty">ブックマークがまだありません。</p>`;
+    body = ``;
   } else {
     const initial = Math.min(options.initialCount ?? items.length, items.length);
     const cards = items.map((item, index) => cardHtml(item, index >= initial)).join("\n");
@@ -416,7 +416,6 @@ export function renderHtml(snapshot: BookmarkSnapshot | null, options: RenderOpt
 </header>
 <main id="main-content" class="wrap" tabindex="-1">
 <div class="page-head">
-<p class="eyebrow">Bookmarks</p>
 <h1>Xのブックマーク</h1>
 ${countLine}
 </div>
@@ -426,7 +425,7 @@ ${body}
 </main>
 <footer class="site-footer">
 <div class="site-footer__inner">
-<span class="site-footer__status"><span class="site-footer__dot" aria-hidden="true"></span>&copy; ${year} ${escapeHtml(options.siteName)}</span>
+<span class="site-footer__status">&copy; ${year} ${escapeHtml(options.siteName)}</span>
 <nav class="footer-links" aria-label="フィード"><a href="${escapeHtml(options.rssUrl)}">RSS</a><a href="${escapeHtml(options.jsonUrl)}">JSON</a></nav>
 </div>
 </footer>
@@ -694,7 +693,7 @@ export function renderEmbed(snapshot: BookmarkSnapshot | null, options: RenderOp
   }
 
   if (!DATA.items.length) {
-    mount.appendChild(el("p", "empty", DATA.connected ? "ブックマークがまだありません。" : "まだXと接続していません。"));
+    mount.appendChild(el("p", "empty", DATA.connected ? "" : ""));
   } else {
     var list = el("ol", "cards");
     DATA.items.forEach(function (item) {

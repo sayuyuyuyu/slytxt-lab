@@ -1,5 +1,6 @@
 ---
 import ArticleCard from "@/components/ArticleCard.astro";
+import Icon from "@/components/Icon.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { getAllArticles, getProjects } from "@/lib/content";
 import { site } from "@/lib/site";
@@ -15,7 +16,7 @@ const recent = articles.slice(0, 6);
     <div class="container">
       <div class="section-head">
         <h2 id="recent-title">Articles</h2>
-        <div class="section-links"><a class="link-button" href="/articles/">All articles <span aria-hidden="true">↗</span></a><a class="link-button" href="/rss.xml">RSS <span aria-hidden="true">↗</span></a></div>
+        <div class="section-links"><a class="link-button link-button--icon" href="/articles/" aria-label="Articles"><Icon name="arrow-up-right" /></a><a class="link-button" href="/rss.xml">RSS <Icon name="arrow-up-right" /></a></div>
       </div>
       <div class="listing-list">{recent.map((entry) => <ArticleCard entry={entry} />)}</div>
     </div>
@@ -29,10 +30,10 @@ const recent = articles.slice(0, 6);
     <div class="container">
       <div class="section-head">
         <h2 id="feed-title">Feed</h2>
-        <a class="link-button" href="/feed/">All posts <span aria-hidden="true">↗</span></a>
+        <a class="link-button link-button--icon" href="/feed/" aria-label="Feed"><Icon name="arrow-up-right" /></a>
       </div>
       <div class="feed feed--home" data-pagefind-ignore>
-        <!--feed:start--><p class="feed-empty">まだ投稿がありません。</p><!--feed:end-->
+        <!--feed:start--><!--feed:end-->
       </div>
     </div>
   </section>
@@ -43,7 +44,7 @@ const recent = articles.slice(0, 6);
     <div class="container">
       <div class="section-head">
         <h2 id="projects-title">Projects</h2>
-        <a class="link-button" href="/projects/">All projects <span aria-hidden="true">↗</span></a>
+        <a class="link-button link-button--icon" href="/projects/" aria-label="Projects"><Icon name="arrow-up-right" /></a>
       </div>
       <div class="project-grid">{projects.slice(0, 4).map((entry) => <ProjectCard entry={entry} />)}</div>
     </div>

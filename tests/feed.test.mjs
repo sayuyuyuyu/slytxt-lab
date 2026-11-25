@@ -259,8 +259,8 @@ test("feed: リンクカードになった URL は本文に出さない", () => 
   assert.ok(noCard.includes('<a href="https://example.com/"'));
 });
 
-test("feed: 0件なら空状態、次ページがあれば「もっと見る」を出す", () => {
-  assert.match(renderFeedItems([]), /まだ投稿がありません/);
+test("feed: 0件なら何も出さず、次ページがあれば「もっと見る」を出す", () => {
+  assert.equal(renderFeedItems([]), "");
   const html = renderFeedItems(
     [{ id: "1", body: "x", createdAt: "2026-11-16T10:00:00.000Z", images: [] }],
     { nextHref: "/feed/?before=2026-11-16T10%3A00%3A00.000Z" }
@@ -452,7 +452,7 @@ test("feed: トップページは D1 が読めなくても全体を返し、枠�
   );
   assert.equal(response.status, 200);
   const body = await response.text();
-  assert.match(body, /フィードを読み込めませんでした/);
+  assert.ok(!body.includes("フィードを読み込めませんでした"));
   assert.ok(!body.includes("fallback"));
 });
 

@@ -136,7 +136,7 @@ export async function handleHomeFeed(context: PagesContext<FeedEnv>): Promise<Re
     items = posts.length === 0 ? null : renderFeedItems(posts);
   } catch (error) {
     console.error("feed: トップページの D1 読み取りに失敗しました", error);
-    items = `<p class="feed-empty">フィードを読み込めませんでした。</p>`;
+    items = "";
   }
 
   const result = await readShell(context, HOME_SHELL_PATH, "トップページ");

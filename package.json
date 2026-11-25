@@ -13,7 +13,8 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "fixture:ui": "node scripts/prepare-ui-fixture.mjs",
     "check:build": "node scripts/check-build.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:ui-text": "node scripts/check-ui-text.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "0.4.10",
