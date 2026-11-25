@@ -1,0 +1,91 @@
+---
+/**
+ * 一覧のタグ絞り込み（#881）。タグ専用ページの代わりに、一覧の上部で
+ * カードを絞り込む。状態は URL の `?tag=` に残し、ページ送りにも引き継ぐ。
+ * JS が無いときは `?tag=` 付きの一覧 URL へ遷移する（絞り込みは効かない）。
+ */
+type Props = {
+  tags: { slug: string; label: string; count: number }[];
+  basePath: string;
+  emptyMessage?: string;
+};
+
+const { tags, basePath, emptyMessage = "このページに、そのタグのものはありません。" } = Astro.props;
+---
+
+{
+  tags.length > 0 && (
+    <div class="tag-filter" role="group" aria-label="タグで絞り込む" data-tag-filter>
+      <a class="tag-filter__chip" href={`${basePath}/`} data-tag-chip="">
+        すべて
+      </a>
+      {tags.map((tag) => (
+        <a
+          class="tag-filter__chip"
+          href={`${basePath}/?tag=${encodeURIComponent(tag.slug)}`}
+          data-tag-chip={tag.slug}
+        >
+          <span class="tag__hash" aria-hidden="true">#</span>
+          {tag.label}
+        </a>
+      ))}
+    </div>
+  )
+}
+<p class="tag-filter__empty" data-tag-empty hidden>{emptyMessage}</p>
+
+<script is:inline>
+  (() => {
+  // この script は一覧のカードより前にある。カードは後から現れるので、
+  // 読み込みが終わってから探す。
+  const start = () => {
+    const filters = Array.from(document.querySelectorAll("[data-tag-filter]"));
+    if (filters.length === 0) return;
+    const cards = Array.from(document.querySelectorAll("[data-tag-entry]"));
+    const empties = Array.from(document.querySelectorAll("[data-tag-empty]"));
+    const chips = filters.flatMap((filter) => Array.from(filter.querySelectorAll("[data-tag-chip]")));
+
+    const apply = (slug) => {
+      let shown = 0;
+      for (const card of cards) {
+        const matched = !slug || (card.dataset.tags ?? "").split(" ").includes(slug);
+        card.hidden = !matched;
+        if (matched) shown += 1;
+      }
+      for (const chip of chips) {
+        chip.setAttribute("aria-current", (chip.dataset.tagChip ?? "") === slug ? "true" : "false");
+      }
+      for (const empty of empties) empty.hidden = shown > 0 || cards.length === 0;
+
+      // 絞り込みを URL に残し、ページ送りのリンクにも引き継ぐ。
+      const url = new URL(location.href);
+      if (slug) url.searchParams.set("tag", slug);
+      else url.searchParams.delete("tag");
+      history.replaceState(null, "", url);
+      for (const link of document.querySelectorAll(".pagination a[href]")) {
+        const next = new URL(link.getAttribute("href"), location.origin);
+        if (slug) next.searchParams.set("tag", slug);
+        else next.searchParams.delete("tag");
+        link.setAttribute("href", `${next.pathname}${next.search}`);
+      }
+    };
+
+    for (const chip of chips) {
+      chip.addEventListener("click", (event) => {
+        event.preventDefault();
+        const slug = chip.dataset.tagChip ?? "";
+        apply(slug);
+        chip.focus();
+      });
+    }
+
+    const initial = new URL(location.href).searchParams.get("tag") ?? "";
+    if (initial) apply(initial);
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  } else {
+    start();
+  }
+  })();
+</script>

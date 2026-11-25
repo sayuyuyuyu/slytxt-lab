@@ -2,6 +2,7 @@
 import { getEntryDate, getEntryDateLabel, getEntryDisplayTitle, getEntryPath, getEntryPreview, type ProjectEntry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 import { projectStatusLabels } from "@/lib/site";
+import { slugifyTag } from "@/lib/tags";
 import TagList from "./TagList.astro";
 
 type Props = {
@@ -22,7 +23,12 @@ const excerpt =
       : undefined;
 ---
 
-<article class="project-card" data-motion>
+<article
+  class="project-card"
+  data-motion
+  data-tag-entry
+  data-tags={entry.data.tags.map(slugifyTag).join(" ")}
+>
   <div class="project-card__meta">
     <span class="status">{projectStatusLabels[entry.data.status]}</span>
     <span aria-hidden="true"> / </span>
@@ -32,5 +38,5 @@ const excerpt =
     <a href={getEntryPath(entry)}>{displayTitle}</a>
   </Heading>
   {excerpt && <p>{excerpt}</p>}
-  <TagList tags={entry.data.tags} />
+  <TagList tags={entry.data.tags} base="/projects/" />
 </article>

@@ -33,8 +33,7 @@ export const categoryPaths = {
 /** Empty-state headings: one pattern, "No <collection> yet", kept distinct from the 404 heading "Not found". */
 export const emptyStateTitles = {
   articles: "No articles yet",
-  projects: "No projects yet",
-  tags: "No tags yet"
+  projects: "No projects yet"
 } as const;
 
 export type ArticleSection = {
@@ -89,7 +88,6 @@ export const articlesIndex: ArticleSection = {
 export const pageDescriptions = {
   about: "しらゆ（slytxt）のプロフィール。",
   projects: "しらゆがつくっているものと、いまの進み具合。",
-  tags: "記事と Projects をタグから辿れます。",
   feed: "短文のフィード。記事にするほどではないメモや写真を置いています。"
 } as const;
 
@@ -126,12 +124,6 @@ export const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "works",
     items: [{ href: "/projects/", label: categoryLabels.projects }]
-  },
-  {
-    label: "browse",
-    items: [
-      { href: "/tags/", label: "Tags" }
-    ]
   },
   {
     label: "meta",

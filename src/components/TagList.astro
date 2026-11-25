@@ -1,11 +1,13 @@
 ---
-import { tagPath } from "@/lib/tags";
+import { tagFilterPath } from "@/lib/tags";
 
 type Props = {
   tags: string[];
+  /** 絞り込み先の一覧（記事なら /articles/、Projects なら /projects/）。 */
+  base?: string;
 };
 
-const { tags } = Astro.props;
+const { tags, base = "/articles/" } = Astro.props;
 ---
 
 {
@@ -13,7 +15,7 @@ const { tags } = Astro.props;
     <ul class="tag-list" aria-label="Tags">
       {tags.map((tag) => (
         <li>
-          <a class="tag" href={tagPath(tag)}>
+          <a class="tag" href={tagFilterPath(base, tag)}>
             <span class="tag__hash" aria-hidden="true">#</span>{tag}
           </a>
         </li>

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { collectTags, slugifyTag, tagPath } from "../src/lib/tags.ts";
+import { collectTags, slugifyTag, tagCounts, tagFilterPath } from "../src/lib/tags.ts";
 
-test("existing public tag keeps its URL", () => {
+test("タグの絞り込み URL は一覧と slug で決まる", () => {
   assert.equal(slugifyTag("ジャンプ感想"), "ジャンプ感想");
-  assert.equal(tagPath("ジャンプ感想"), "/tags/ジャンプ感想/");
+  assert.equal(tagFilterPath("/articles", "ジャンプ感想"), "/articles/?tag=%E3%82%B8%E3%83%A3%E3%83%B3%E3%83%97%E6%84%9F%E6%83%B3");
+  assert.equal(tagFilterPath("/projects/", "hello world"), "/projects/?tag=hello-world");
   assert.equal(slugifyTag("hello world"), "hello-world");
 });
 
@@ -19,7 +20,7 @@ test("tags that differ only in symbols get different slugs", () => {
 
 test("symbol-only tags do not produce an empty slug", () => {
   assert.notEqual(slugifyTag("!!!"), "");
-  assert.equal(tagPath("!!!"), "/tags/~21~~21~~21~/");
+  assert.equal(tagFilterPath("/articles", "!!!"), "/articles/?tag=~21~~21~~21~");
 });
 
 test("collectTags keeps symbol-differing tags separate and skips empty tags", () => {
@@ -33,4 +34,17 @@ test("collectTags keeps symbol-differing tags separate and skips empty tags", ()
   assert.equal(tags.get("cplusplus"), "C++");
   assert.equal(tags.get("csharp"), "C#");
   assert.equal(tags.get("~21~~21~~21~"), "!!!");
+});
+
+test("tagCounts counts each entry once per tag and sorts by count", () => {
+  const entries = [
+    { data: { tags: ["漫画", "漫画", "技術"] } },
+    { data: { tags: ["漫画"] } },
+    { data: { tags: ["技術"] } },
+  ];
+  // 同じ件数は日本語の照合順（技術 → 漫画）。
+  assert.deepEqual(tagCounts(entries), [
+    { slug: "技術", label: "技術", count: 2 },
+    { slug: "漫画", label: "漫画", count: 2 },
+  ]);
 });

@@ -38,8 +38,13 @@ export function slugifyTag(tag: string): string {
   return slug;
 }
 
-export function tagPath(tag: string): string {
-  return `/tags/${slugifyTag(tag)}/`;
+/**
+ * タグで絞り込んだ一覧の URL（#881）。タグ専用ページは廃止し、一覧の
+ * `?tag=` に寄せる。
+ */
+export function tagFilterPath(basePath: string, tag: string): string {
+  const base = basePath.endsWith("/") ? basePath : `${basePath}/`;
+  return `${base}?tag=${encodeURIComponent(slugifyTag(tag))}`;
 }
 
 export function collectTags(entries: TaggedEntry[]): Map<string, string> {
@@ -56,4 +61,23 @@ export function collectTags(entries: TaggedEntry[]): Map<string, string> {
   }
 
   return tags;
+}
+
+/** タグごとの件数（多い順、同数は名前順）。一覧の絞り込みに出す（#881）。 */
+export function tagCounts(entries: TaggedEntry[]): { slug: string; label: string; count: number }[] {
+  const counts = new Map<string, { slug: string; label: string; count: number }>();
+  for (const entry of entries) {
+    const seen = new Set<string>();
+    for (const tag of entry.data.tags) {
+      const slug = slugifyTag(tag);
+      if (slug === "" || seen.has(slug)) continue;
+      seen.add(slug);
+      const current = counts.get(slug);
+      if (current) current.count += 1;
+      else counts.set(slug, { slug, label: tag, count: 1 });
+    }
+  }
+  return Array.from(counts.values()).sort(
+    (a, b) => b.count - a.count || a.label.localeCompare(b.label, "ja"),
+  );
 }
