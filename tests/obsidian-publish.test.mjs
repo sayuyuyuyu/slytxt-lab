@@ -544,3 +544,20 @@ test("obsidian: 説明文は画像埋め込み行を飛ばし、記法も残さ�
   assert.ok(!mixed.includes("media.slytxt.dev"), "画像 URL が説明文に混ざっている");
   assert.ok(mixed.includes("前文"));
 });
+
+test("obsidian: 公開後の X 投稿はタイトルと記事 URL を入れた intent を開く", async () => {
+  const { shareTarget, xIntentUrl } = await import("../tools/obsidian-slytxt/src/lib/share.ts");
+  assert.equal(
+    xIntentUrl("新しい記事", "https://slytxt.dev/articles/tech/new-post/"),
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent("新しい記事")}&url=${encodeURIComponent("https://slytxt.dev/articles/tech/new-post/")}`
+  );
+  // misc（Journal）はタイトルを持たないので、投稿文にも入れない。
+  assert.equal(
+    shareTarget("misc", "memo", "").xUrl,
+    `https://twitter.com/intent/tweet?text=&url=${encodeURIComponent("https://slytxt.dev/articles/misc/memo/")}`
+  );
+  assert.deepEqual(shareTarget("comic", "2026-11-25-strip", "4コマ"), {
+    articleUrl: "https://slytxt.dev/articles/comic/2026-11-25-strip/",
+    xUrl: `https://twitter.com/intent/tweet?text=${encodeURIComponent("4コマ")}&url=${encodeURIComponent("https://slytxt.dev/articles/comic/2026-11-25-strip/")}`
+  });
+});
