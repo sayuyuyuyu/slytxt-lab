@@ -1084,11 +1084,21 @@ textarea {
   padding: 0 12px 10px;
 }
 
-.task__result-label {
+/* 結果の一行（文字、リンク、X への投稿）。公開完了と公開パネルで共通。 */
+.result-label {
   min-width: 0;
   color: var(--text-muted);
   font-size: 0.875rem;
   overflow-wrap: anywhere;
+}
+
+/* 公開パネル内の結果（PR・公開ページ・X への投稿）。完了画面と同じ並び。 */
+.dialog__result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
 }
 
 .x-share {
@@ -1184,6 +1194,10 @@ textarea {
 .dialog__panel {
   position: relative;
   width: min(100%, 420px);
+  /* スマホ幅ではパネルが画面より高くなることがある（長いタイトル＋説明文）。
+     ボタンが画面外に出て押せない状態を避け、パネルの中をスクロールさせる。 */
+  max-height: 100%;
+  overflow-y: auto;
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: 16px;

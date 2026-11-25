@@ -204,7 +204,7 @@
           <span class="dialog__label">カテゴリ</span>
           <p id="publishCategory" class="dialog__value"></p>
         </div>
-        <div class="dialog__row">
+        <div class="dialog__row" id="publishTagsRow">
           <span class="dialog__label" id="tagsLabel">タグ</span>
           <div id="tags" class="tags" role="group" aria-labelledby="tagsLabel"></div>
           <input
@@ -218,7 +218,7 @@
           />
           <datalist id="tagCandidates"></datalist>
         </div>
-        <div class="dialog__row">
+        <div class="dialog__row" id="publishDescriptionRow">
           <label class="dialog__label" for="publishDescription">説明文</label>
           <textarea
             id="publishDescription"
@@ -234,6 +234,10 @@
         </div>
         <p class="dialog__note" id="publishFile"></p>
         <p class="dialog__note" id="publishNote">PR を作成し、CI が通ると自動でマージされます。</p>
+        <!-- 公開の経過と、公開後のリンク（PR・公開ページ・X への投稿）。
+             パネルを閉じずに公開すると、完了と同時にここで X に投稿できる。 -->
+        <p class="dialog__note" id="publishStatus" role="status" aria-live="polite" hidden></p>
+        <div class="dialog__result" id="publishResult" hidden></div>
         <div class="dialog__actions">
           <button id="publishCancel" class="button" type="button">キャンセル</button>
           <button id="publishConfirm" class="button button--primary" type="button">投稿する</button>
