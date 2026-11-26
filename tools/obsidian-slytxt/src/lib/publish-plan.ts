@@ -99,21 +99,24 @@ export function splitHeadingTitle(body: string): { heading: string; body: string
 }
 
 /**
- * 本文で最初に出てくる画像の参照を返す。Markdown 記法は URL かパス、
+ * 本文に出てくる画像の参照を出現順に返す。Markdown 記法は URL かパス、
  * Obsidian の埋め込みは Vault 内のファイル名（パス）をそのまま返す。
- * 画像が無ければ null。
+ * 同じ参照は 1 回だけ返す（サムネイルの候補として並べるため）。
  */
-export function firstImageSource(body: string): string | null {
-  const md = body.match(/!\[[^\]]*\]\(\s*(\S+?)\s*\)/);
-  const wiki = body.match(/!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/);
-  const mdSrc = md?.[1];
-  const wikiSrc = wiki?.[1]?.trim();
-  if (mdSrc !== undefined && wikiSrc !== undefined) {
-    return (md?.index ?? 0) <= (wiki?.index ?? 0) ? mdSrc : wikiSrc;
+export function bodyImageSources(body: string): string[] {
+  const pattern = /!\[[^\]]*\]\(\s*(\S+?)\s*\)|!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g;
+  const sources: string[] = [];
+  for (const match of body.matchAll(pattern)) {
+    const source = (match[1] ?? match[2] ?? "").trim();
+    if (!source || sources.includes(source)) continue;
+    sources.push(source);
   }
-  if (mdSrc !== undefined) return mdSrc;
-  if (wikiSrc !== undefined) return wikiSrc;
-  return null;
+  return sources;
+}
+
+/** 本文で最初に出てくる画像の参照。画像が無ければ null。 */
+export function firstImageSource(body: string): string | null {
+  return bodyImageSources(body)[0] ?? null;
 }
 
 export function preparePublish(meta: NoteMeta, today: string): PublishPayload {

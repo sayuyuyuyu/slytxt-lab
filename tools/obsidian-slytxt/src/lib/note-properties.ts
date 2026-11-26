@@ -6,7 +6,7 @@
  * 触らない純関数。
  */
 import { deriveTitle } from "./frontmatter.ts";
-import { deriveDescription } from "./publish-plan.ts";
+import { deriveDescription, firstImageSource } from "./publish-plan.ts";
 import { isPublishCategory, type PublishCategory } from "./slug.ts";
 
 /** 埋めるプロパティの値。キーは frontmatter のキーそのもの。 */
@@ -104,13 +104,21 @@ export function missingProperties({
   return patch;
 }
 
+/**
+ * カバーの決め方。auto は本文の先頭の画像、none は付けない、set は cover の画像を
+ * 使う。パネルで「なし」を選んだときに auto へ戻らないよう、値ではなく決め方で持つ。
+ */
+export type CoverMode = "auto" | "none" | "set";
+
 /** 公開パネルに最初から入れておく値。 */
 export type PanelValues = {
   title: string;
   description: string;
   category: PublishCategory;
   tags: string[];
+  /** coverMode が set のときの画像の参照（URL か Vault 内のパス）。 */
   cover: string;
+  coverMode: CoverMode;
 };
 
 /**
@@ -124,6 +132,8 @@ export function panelValues(input: NotePropertiesInput): PanelValues {
     const given = String(value ?? "").trim();
     return given || (fallback ?? "");
   };
+  // 明示した cover だけを値として持ち、本文からの既定は auto として区別する。
+  const cover = String(front.cover ?? "").trim();
   return {
     title: text(front.title, missing.title as string | undefined),
     description: text(front.description, missing.description as string | undefined),
@@ -131,6 +141,7 @@ export function panelValues(input: NotePropertiesInput): PanelValues {
       ? (front.category as PublishCategory)
       : ((missing.category as PublishCategory | undefined) ?? input.defaultCategory),
     tags: normalizeTags(front.tags).length > 0 ? normalizeTags(front.tags) : normalizeTags(missing.tags),
-    cover: text(front.cover, missing.cover as string | undefined)
+    cover,
+    coverMode: cover ? "set" : firstImageSource(input.body) ? "auto" : "none"
   };
 }

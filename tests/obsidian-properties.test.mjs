@@ -94,7 +94,8 @@ test("obsidian: 公開パネルの初期値は frontmatter 優先で、無けれ
     description: "本文の書き出し。",
     category: "tech",
     tags: ["漫画"],
-    cover: "https://media.slytxt.dev/a.jpg"
+    cover: "",
+    coverMode: "auto"
   });
 
   const filled = panelValues({
@@ -113,6 +114,26 @@ test("obsidian: 公開パネルの初期値は frontmatter 優先で、無けれ
     description: "説明",
     category: "game",
     tags: ["既存"],
-    cover: "https://media.slytxt.dev/b.jpg"
+    cover: "https://media.slytxt.dev/b.jpg",
+    coverMode: "set"
   });
+});
+
+test("obsidian: 本文に画像が無ければパネルのカバーは「なし」から始まる（#917）", () => {
+  const values = panelValues({
+    defaultCategory: "misc",
+    frontmatter: null,
+    body: "画像の無いメモです。"
+  });
+  assert.equal(values.cover, "");
+  assert.equal(values.coverMode, "none");
+
+  // Vault 内の画像は公開時にアップロードするので、値ではなく auto として持つ。
+  const vaultImage = panelValues({
+    defaultCategory: "comic",
+    frontmatter: {},
+    body: "![](Pasted%20image.png)"
+  });
+  assert.equal(vaultImage.cover, "");
+  assert.equal(vaultImage.coverMode, "auto");
 });
