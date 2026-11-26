@@ -15,6 +15,7 @@ import {
   serializeFrontmatter
 } from "../tools/obsidian-slytxt/src/lib/frontmatter.ts";
 import {
+  bodyImageSources,
   deriveDescription,
   firstImageSource,
   preparePublish,
@@ -529,6 +530,17 @@ test("obsidian: firstImageSource は最初の画像を記法の順で返す", ()
     "first.png"
   );
   assert.equal(firstImageSource("画像なし"), null);
+});
+
+test("obsidian: bodyImageSources は本文の画像を出現順に重複なく返す（#917）", () => {
+  assert.deepEqual(
+    bodyImageSources(
+      "文\n\n![[Pasted image 2026.png]]\n\n![](https://media.slytxt.dev/a.jpg)\n\n![[Pasted image 2026.png]]\n"
+    ),
+    ["Pasted image 2026.png", "https://media.slytxt.dev/a.jpg"]
+  );
+  assert.deepEqual(bodyImageSources("![図](photo.jpg)"), ["photo.jpg"]);
+  assert.deepEqual(bodyImageSources("画像なし"), []);
 });
 
 test("obsidian: 説明文は画像埋め込み行を飛ばし、記法も残さない（#797）", () => {

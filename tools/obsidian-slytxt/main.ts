@@ -7,7 +7,7 @@ import { classifyEmbedUrl, embedInsertion, embedLabel } from "./src/lib/embed";
 import { MAX_COVER_BYTES, MediaError, uploadCover, type MediaRequest } from "./src/lib/media";
 import { extractExtras } from "./src/lib/frontmatter";
 import { normalizeTags, panelValues, type PanelValues } from "./src/lib/note-properties";
-import { firstImageSource, preparePublish } from "./src/lib/publish-plan";
+import { bodyImageSources, firstImageSource, preparePublish } from "./src/lib/publish-plan";
 import { PublishError } from "./src/lib/github";
 import { isPublishCategory, todayInTokyo, type PublishCategory } from "./src/lib/slug";
 import { shareTarget } from "./src/lib/share";
@@ -155,9 +155,28 @@ export default class SlytxtPublishPlugin extends Plugin {
       defaultCategory: this.settings.defaultCategory
     });
     new PublishPanel(this.app, initial, {
-      uploadCover: () => this.pickAndUploadCover(),
+      bodyImages: bodyImageSources(body),
+      previewCover: (source) => this.coverPreviewUrl(file, source),
+      uploadCover: () => this.pickAndUploadCoverForPanel(),
       submit: (values) => void this.publish(file, values)
     }).open();
+  }
+
+  /** パネルのプレビュー用。Vault 内の画像はローカルの URL にする。 */
+  private coverPreviewUrl(file: TFile, source: string): string {
+    if (/^https?:\/\//.test(source)) return source;
+    const target = this.app.metadataCache.getFirstLinkpathDest(source, file.path);
+    return target ? this.app.vault.getResourcePath(target) : "";
+  }
+
+  /** パネルからのアップロード。失敗は通知で伝え、パネルには空文字を返す。 */
+  private async pickAndUploadCoverForPanel(): Promise<string> {
+    try {
+      return await this.pickAndUploadCover();
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : String(error), 12000);
+      return "";
+    }
   }
 
   /** 画像を選ばせてアップロードし、カーソル位置へ Markdown 画像として差し込む。 */
@@ -238,13 +257,17 @@ export default class SlytxtPublishPlugin extends Plugin {
     return url;
   }
 
-  /**
-   * カバー未指定のときの自動カバー。本文の最初の画像が URL ならそのまま、
-   * Vault 内のファイルならアップロードして URL にする。
-   * 取れない場合は空文字（カバーなしで公開する）。
-   */
+  /** カバー未指定（本文の先頭の画像）のときの自動カバー。画像が無ければ空文字。 */
   private async resolveAutoCover(file: TFile, bodyText: string): Promise<string> {
     const source = firstImageSource(bodyText);
+    return source ? this.resolveCoverSource(file, source) : "";
+  }
+
+  /**
+   * 画像の参照を公開 URL にする。URL はそのまま、Vault 内のファイルは
+   * media Worker へ上げる。取れない場合は空文字（カバーなしで公開する）。
+   */
+  private async resolveCoverSource(file: TFile, source: string): Promise<string> {
     if (!source) return "";
     if (/^https?:\/\//.test(source)) return source;
     if (!this.settings.uploadToken) return "";
@@ -275,7 +298,12 @@ export default class SlytxtPublishPlugin extends Plugin {
     const raw = await this.app.vault.read(file);
     const frontmatterMatch = raw.match(/^---\n([\s\S]*?)\n---/);
     const bodyText = raw.replace(/^---\n[\s\S]*?\n---\n?/, "");
-    const cover = values.cover || (await this.resolveAutoCover(file, bodyText));
+    const cover =
+      values.coverMode === "set"
+        ? await this.resolveCoverSource(file, values.cover)
+        : values.coverMode === "auto"
+          ? await this.resolveAutoCover(file, bodyText)
+          : "";
     const cache = this.app.metadataCache.getFileCache(file);
     const payload = preparePublish(
       {

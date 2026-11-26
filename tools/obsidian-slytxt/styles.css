@@ -29,14 +29,41 @@
 
 .slytxt-panel__cover {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
-  margin-left: auto;
+}
+
+.slytxt-panel__cover-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.slytxt-panel__label {
+  font-weight: 600;
+}
+
+.slytxt-panel__cover-state {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.slytxt-panel__cover-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.slytxt-panel__cover-controls select {
+  flex: 1 1 180px;
 }
 
 .slytxt-panel__thumb {
-  width: 96px;
-  height: 50px;
+  display: block;
+  width: 128px;
+  height: 72px;
   object-fit: cover;
   border-radius: 6px;
 }

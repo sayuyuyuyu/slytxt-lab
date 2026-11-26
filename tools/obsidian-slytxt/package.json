@@ -1,6 +1,6 @@
 {
   "name": "obsidian-slytxt-publish",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "Obsidian から slytxt-lab へ公開するプラグイン。",

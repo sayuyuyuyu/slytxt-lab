@@ -4,17 +4,28 @@
  * ノート画面には何も出さない。公開したいときだけこのパネルを開き、実値が
  * 入った状態から本人が確認して押す。値の事前入力は panelValues が行う。
  * タグはカンマ区切りにせずチップで扱い、カテゴリは選択制にする。
+ * サムネイルはラベルと文字付きの操作で示す（#917）。アイコンだけにしない。
  */
-import { App, Modal, setIcon } from "obsidian";
+import { App, Modal } from "obsidian";
 import type { PanelValues } from "./lib/note-properties";
 import { PUBLISH_CATEGORIES, type PublishCategory } from "./lib/slug";
 
 export type PublishPanelOptions = {
-  /** 画像を選んでアップロードし、公開 URL を返す。 */
+  /** 本文に出てくる画像の参照（出現順、重複なし）。 */
+  bodyImages: string[];
+  /** 参照を、パネルの中で表示できる URL にする（Vault 内ならローカルの URL）。 */
+  previewCover: (source: string) => string;
+  /** 端末から画像を選んでアップロードし、公開 URL を返す。失敗したら空文字。 */
   uploadCover: () => Promise<string>;
   /** 入力が確定したときに呼ぶ。 */
   submit: (values: PanelValues) => void;
 };
+
+/** 画像の参照から、選択肢に出す名前を探す。 */
+function coverName(source: string): string {
+  const name = source.split(/[\\/]/).pop() ?? source;
+  return name || source;
+}
 
 export class PublishPanel extends Modal {
   private values: PanelValues;
@@ -22,6 +33,9 @@ export class PublishPanel extends Modal {
   private tagsEl!: HTMLElement;
   private coverEl!: HTMLImageElement;
   private coverEmptyEl!: HTMLElement;
+  private coverStateEl!: HTMLElement;
+  private coverSelectEl!: HTMLSelectElement;
+  private coverUploadEl!: HTMLButtonElement;
 
   constructor(
     app: App,
@@ -59,24 +73,32 @@ export class PublishPanel extends Modal {
       this.values.category = category.value as PublishCategory;
     });
 
-    // カバー: サムネイルと、押すと端末から選べるボタン。
-    const coverWrap = row.createDiv({ cls: "slytxt-panel__cover" });
+    // カバー: 見出しと、選べることが分かる操作を置く（#917）。
+    const coverWrap = contentEl.createDiv({ cls: "slytxt-panel__cover" });
+    const coverHead = coverWrap.createDiv({ cls: "slytxt-panel__cover-head" });
+    coverHead.createSpan({ cls: "slytxt-panel__label", text: "サムネイル" });
+    this.coverStateEl = coverHead.createSpan({ cls: "slytxt-panel__cover-state" });
     this.coverEl = coverWrap.createEl("img", { cls: "slytxt-panel__thumb" });
     this.coverEmptyEl = coverWrap.createDiv({ cls: "slytxt-panel__thumb slytxt-panel__thumb--empty" });
-    const pick = coverWrap.createEl("button", { cls: "clickable-icon" });
-    pick.type = "button";
-    pick.setAttr("aria-label", "cover");
-    setIcon(pick, "image");
-    pick.addEventListener("click", async () => {
-      pick.disabled = true;
+    const coverControls = coverWrap.createDiv({ cls: "slytxt-panel__cover-controls" });
+    this.coverSelectEl = coverControls.createEl("select", {
+      cls: "dropdown",
+      attr: { "aria-label": "サムネイル" }
+    });
+    this.coverSelectEl.addEventListener("change", () => this.applyCoverChoice(this.coverSelectEl.value));
+    this.coverUploadEl = coverControls.createEl("button", { text: "画像をアップロード" });
+    this.coverUploadEl.type = "button";
+    this.coverUploadEl.addEventListener("click", async () => {
+      this.coverUploadEl.disabled = true;
       try {
         const url = await this.options.uploadCover();
         if (url) {
           this.values.cover = url;
+          this.values.coverMode = "set";
           this.renderCover();
         }
       } finally {
-        pick.disabled = false;
+        this.coverUploadEl.disabled = false;
       }
     });
 
@@ -133,9 +155,75 @@ export class PublishPanel extends Modal {
   }
 
   private renderCover(): void {
-    const has = Boolean(this.values.cover);
-    this.coverEl.toggleAttribute("hidden", !has);
-    this.coverEmptyEl.toggleAttribute("hidden", has);
-    if (has) this.coverEl.src = this.values.cover;
+    const source = this.coverSource();
+    const preview = source
+      ? /^https?:\/\//.test(source)
+        ? source
+        : this.options.previewCover(source)
+      : "";
+    this.coverEl.toggleAttribute("hidden", !preview);
+    this.coverEmptyEl.toggleAttribute("hidden", Boolean(preview));
+    if (preview) this.coverEl.src = preview;
+    this.coverStateEl.setText(this.coverStateText(source));
+    this.renderCoverSelect();
+  }
+
+  /** いま選んでいる画像の参照。無ければ空文字。 */
+  private coverSource(): string {
+    if (this.values.coverMode === "set") return this.values.cover;
+    if (this.values.coverMode === "auto") return this.options.bodyImages[0] ?? "";
+    return "";
+  }
+
+  private coverStateText(source: string): string {
+    if (this.values.coverMode === "none") return "なし（サムネイルを付けない）";
+    if (this.values.coverMode === "auto") return "本文の先頭の画像";
+    return source ? coverName(source) : "なし（サムネイルを付けない）";
+  }
+
+  /** 選択肢は「本文の先頭の画像」「なし」「本文の画像」の順に並べ直す。 */
+  private renderCoverSelect(): void {
+    const select = this.coverSelectEl;
+    select.empty();
+    const add = (value: string, text: string): HTMLOptionElement => {
+      const option = select.createEl("option", { text });
+      option.value = value;
+      return option;
+    };
+    add("auto", "本文の先頭の画像");
+    add("none", "なし");
+    this.options.bodyImages.forEach((source, index) => {
+      add(`body:${index}`, `${index + 1}. ${coverName(source)}`);
+    });
+    const uploaded = this.values.coverMode === "set" && !this.options.bodyImages.includes(this.values.cover);
+    if (uploaded) add("uploaded", "アップロードした画像");
+    select.value = this.coverChoiceValue(uploaded);
+  }
+
+  private coverChoiceValue(uploaded: boolean): string {
+    if (this.values.coverMode === "auto") return "auto";
+    if (this.values.coverMode === "none") return "none";
+    if (uploaded) return "uploaded";
+    const index = this.options.bodyImages.indexOf(this.values.cover);
+    return index === -1 ? "auto" : `body:${index}`;
+  }
+
+  /** 選択肢の値から、カバーの決め方を入れ替える。 */
+  private applyCoverChoice(value: string): void {
+    if (value === "auto") {
+      this.values.coverMode = "auto";
+      this.values.cover = "";
+    } else if (value === "none") {
+      this.values.coverMode = "none";
+      this.values.cover = "";
+    } else if (value.startsWith("body:")) {
+      const source = this.options.bodyImages[Number(value.slice("body:".length))];
+      if (!source) return;
+      this.values.coverMode = "set";
+      this.values.cover = source;
+    } else {
+      return;
+    }
+    this.renderCover();
   }
 }
